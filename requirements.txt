@@ -1,0 +1,20 @@
+# --- Web Framework ---
+fastapi
+uvicorn[standard]
+
+# --- Database ---
+sqlalchemy
+# psycopg2-binary  # For PostgreSQL (if you use it later)
+
+# --- Task Queue ---
+rq
+redis
+
+# --- Google Cloud ---
+googlemaps
+google-generativeai
+google-cloud-vision
+
+# --- Utilities ---
+pydantic-settings
+python-dotenv
