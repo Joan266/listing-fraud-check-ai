@@ -1,5 +1,6 @@
 # app/main.py
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, ConfigDict
 import redis
@@ -15,7 +16,21 @@ from app.core.config import settings
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.PROJECT_NAME)
+origins = [
+    "http://localhost",
+    "http://localhost:5500", # For Live Server
+    "http://127.0.0.1:5500",
+    "http://127.0.0.1:3000",# For Live Server
+    "null" # To allow opening the index.html as a local file
+]
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # Redis and RQ setup
 try:
     redis_conn = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)

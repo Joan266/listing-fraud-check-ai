@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FraudCheck.ai</title>
+  <style>
+    :root {
+      --primary-color: #007bff;
+      --secondary-color: #6c757d;
+      --background-color: #f8f9fa;
+      --text-color: #212529;
+      --border-color: #dee2e6;
+      --card-bg: #ffffff;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    main {
+      width: 100%;
+      max-width: 600px;
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: var(--text-color);
+      margin-bottom: 1.5rem;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    label {
+      font-weight: 600;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 0.75rem;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #results-container {
+      margin-top: 2rem;
+    }
+
+    #status {
+      font-weight: 600;
+      color: var(--secondary-color);
+      text-align: center;
+      padding: 1rem;
+      border: 1px dashed var(--border-color);
+      border-radius: 4px;
+    }
+
+    pre {
+      background-color: #e9ecef;
+      padding: 1rem;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+
+<body>
+
+  <main>
+    <h1>FraudCheck.ai 🕵️‍♂️</h1>
+    <form id="check-form">
+      <label for="address-input">Rental Address to Check:</label>
+      <input type="text" id="address-input" placeholder="e.g., Plaça de Catalunya, 1, Barcelona" required>
+      <button type="button" id="submit-btn">Check Address</button>
+    </form>
+
+    <div id="results-container" style="display: none;">
+      <p id="status">Waiting for submission...</p>
+
+      <div id="results-display" style="display: none;">
+        <h3>Analysis Results</h3>
+        <p><strong>Validation Status:</strong> <span id="res-validation"></span></p>
+        <p><strong>Formatted Address:</strong> <span id="res-address"></span></p>
+        <p><strong>Detected Place Types:</strong> <span id="res-types"></span></p>
+      </div>
+
+      <details>
+        <summary>Show Raw JSON Data</summary>
+        <pre><code id="result-json"></code></pre>
+      </details>
+    </div>
+  </main>
+
+  <script>
+    const checkForm = document.getElementById('check-form');
+    const addressInput = document.getElementById('address-input');
+    const resultsContainer = document.getElementById('results-container');
+    const statusElement = document.getElementById('status');
+
+    // For the new display
+    const resultsDisplay = document.getElementById('results-display');
+    const resValidation = document.getElementById('res-validation');
+    const resAddress = document.getElementById('res-address');
+    const resTypes = document.getElementById('res-types');
+
+    // For the raw JSON
+    const resultJsonElement = document.getElementById('result-json');
+
+    let pollingInterval;
+    const API_BASE_URL = 'http://127.0.0.1:8000';
+
+    // NEW function to display results in a structured way
+    const displayResults = (result) => {
+      // Show the formatted results container
+      resultsDisplay.style.display = 'block';
+
+      if (result.error) {
+        resValidation.textContent = 'ERROR';
+        resAddress.textContent = result.error;
+        resTypes.textContent = 'N/A';
+      } else {
+        resValidation.textContent = result.validation_result;
+        resAddress.textContent = result.formatted_address || 'N/A';
+        resTypes.textContent = result.place_types.join(', ') || 'N/A';
+      }
+    };
+
+    const pollForResult = (jobId) => {
+      statusElement.textContent = `Checking... (Job ID: ${jobId})`;
+      resultsDisplay.style.display = 'none'; // Hide old results
+
+      pollingInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/v1/checks/${jobId}`);
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+          const data = await response.json();
+          statusElement.textContent = `Status: ${data.status}`;
+          console.log('Polling data:', data);
+          if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+            clearInterval(pollingInterval);
+            resultJsonElement.textContent = JSON.stringify(data.result, null, 2);
+            displayResults(data.result); // Call our new display function
+          }
+        } catch (error) {
+          console.error('Polling error:', error);
+          statusElement.textContent = 'Error polling for result.';
+          clearInterval(pollingInterval);
+        }
+      }, 3000);
+    };
+
+    document.getElementById('submit-btn').addEventListener('click', async  (e) => {
+      if (pollingInterval) clearInterval(pollingInterval);
+
+      const address = addressInput.value;
+      statusElement.textContent = 'Submitting for analysis...';
+      resultJsonElement.textContent = '';
+      resultsContainer.style.display = 'block';
+      resultsDisplay.style.display = 'none';
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/checks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: address })
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const data = await response.json();
+        console.log('Submission response:', data);
+        pollForResult(data.job_id);
+
+      } catch (error) {
+        console.error('Submission error:', error);
+        statusElement.textContent = 'Failed to submit check.';
+      }
+    });
+  </script>
+</body>
+
+</html>
