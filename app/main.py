@@ -1,7 +1,7 @@
 # app/main.py
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import redis
 from rq import Queue
 import uuid
@@ -36,7 +36,9 @@ class JobResponse(BaseModel):
     job_id: str
 
 class JobStatusResponse(BaseModel):
-    job_id: str
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
     status: models.JobStatus
     input_data: dict
     result: dict | None = None
