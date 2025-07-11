@@ -14,7 +14,8 @@ class Settings(BaseSettings):
 
     # Google
     GOOGLE_API_KEY: str
-
+    GOOGLE_GEMINI_API_KEY: str 
+    GOOGLE_SEARCH_ENGINE_ID: str 
     class Config:
         env_file = ".env"
         case_sensitive = True

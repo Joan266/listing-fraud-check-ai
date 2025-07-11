@@ -46,6 +46,8 @@ except redis.exceptions.ConnectionError as e:
 # --- Pydantic Models for API ---
 class AddressCheckRequest(BaseModel):
     address: str
+    description: str | None = None
+    image_urls: list[str] | None = None
 
 class JobResponse(BaseModel):
     job_id: str
