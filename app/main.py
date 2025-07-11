@@ -21,6 +21,7 @@ origins = [
     "http://localhost:5500", # For Live Server
     "http://127.0.0.1:5500",
     "http://127.0.0.1:3000",# For Live Server
+    "http://localhost:5173", # For Live Server
     "null" # To allow opening the index.html as a local file
 ]
 
