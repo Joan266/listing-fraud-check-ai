@@ -1,42 +1,50 @@
 // src/App.tsx
 import { useState, useRef, useEffect } from 'react';
-import ChatMessage from './components/ChatMessage';
-import type { Message } from './components/ChatMessage';
+import ChatMessage, { Message } from './components/ChatMessage';
 import ReportView from './components/ReportView';
-import type { AnalysisResult } from './types'; 
+import InputForm from './components/InputForm';
+import type { AnalysisResult, ListingData } from './types';
 import './App.css';
 
-// Define the states of our conversation
-type ConversationState = 'WAITING_FOR_ADDRESS' | 'WAITING_FOR_DESCRIPTION' | 'WAITING_FOR_IMAGES' | 'ANALYZING' | 'DONE';
+const initialMessages: Message[] = [
+  { id: 1, text: "Hello! Please provide the listing details below to start the analysis.", sender: 'ai' }
+];
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: "Hello! To begin the fraud analysis, please provide the rental property's full address.", sender: 'ai' }
-  ]);
-  const [listingData, setListingData] = useState({ address: '', description: '', image_urls: [] as string[] });
-  const [inputValue, setInputValue] = useState('');
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isLoading, setIsLoading] = useState(false);
   const [finalResult, setFinalResult] = useState<AnalysisResult | null>(null);
-  const [conversationState, setConversationState] = useState<ConversationState>('WAITING_FOR_ADDRESS');
-  const [messageId, setMessageId] = useState(2);
+  
+  // Use a ref for the message ID to ensure immediate updates
+  const messageIdCounter = useRef(2); 
   const chatWindowRef = useRef<HTMLDivElement>(null);
 
   const API_BASE_URL = 'http://127.0.0.1:8000';
 
   useEffect(() => {
     chatWindowRef.current?.scrollTo(0, chatWindowRef.current.scrollHeight);
-  }, [messages, finalResult]);
+  }, [messages]);
 
   const addMessage = (text: string, sender: 'user' | 'ai') => {
-    const newMessage: Message = { id: messageId, text, sender };
-    setMessageId(prevId => prevId + 1);
+    const newMessage: Message = { id: messageIdCounter.current, text, sender };
+    messageIdCounter.current++; // Increment the counter immediately
     setMessages(prev => [...prev, newMessage]);
   };
+
+  // --- NEW: Function to reset the entire application state ---
+  const handleNewCheck = () => {
+    setMessages(initialMessages);
+    setFinalResult(null);
+    setIsLoading(false);
+    messageIdCounter.current = 2;
+  };
   
-  const startFullAnalysis = async () => {
+  const startFullAnalysis = async (listingData: ListingData) => {
     setIsLoading(true);
     setFinalResult(null);
-    addMessage('Thank you. I have all the information. Starting the full analysis now... This may take a moment.', 'ai');
+
+    // Don't reset messages, just add to the conversation
+    addMessage('Thank you. Starting the full analysis now... This may take a moment.', 'ai');
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/checks`, {
@@ -66,78 +74,50 @@ function App() {
         if (data.status === 'COMPLETED' || data.status === 'FAILED') {
           clearInterval(interval);
           setIsLoading(false);
-          setConversationState('DONE');
 
           if (data.status === 'COMPLETED') {
             setFinalResult(data.result);
           } else {
-            addMessage('Sorry, the analysis failed.', 'ai');
+            const errorMessage = data.result?.error || 'An unknown error occurred on the backend.';
+            addMessage(`Sorry, the analysis failed: ${errorMessage}`, 'ai');
           }
         }
       } catch (error) {
-        // ... error handling ...
+          console.error('Polling error:', error);
+          clearInterval(interval);
+          setIsLoading(false);
+          addMessage('Sorry, there was an error processing your request.', 'ai');
       }
     }, 3000);
   };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputValue.trim() === '' || isLoading) return;
-
-    const userInput = inputValue;
-    addMessage(userInput, 'user');
-    setInputValue('');
-
-    if (conversationState === 'WAITING_FOR_ADDRESS') {
-      setListingData({ ...listingData, address: userInput });
-      addMessage("Thank you. Now, please paste the listing's full description.", 'ai');
-      setConversationState('WAITING_FOR_DESCRIPTION');
-    } else if (conversationState === 'WAITING_FOR_DESCRIPTION') {
-      setListingData({ ...listingData, description: userInput });
-      addMessage("Great. Finally, please paste the image URLs, one per line.", 'ai');
-      setConversationState('WAITING_FOR_IMAGES');
-    } else if (conversationState === 'WAITING_FOR_IMAGES') {
-      const urls = userInput.split('\n').filter(url => url.trim() !== '');
-      setListingData({ ...listingData, image_urls: urls });
-      setConversationState('ANALYZING');
-      await startFullAnalysis();
-    }
-  };
-
-  const getInputPlaceholder = () => {
-    if (isLoading) return 'Analyzing...';
-    switch (conversationState) {
-      case 'WAITING_FOR_ADDRESS': return 'Enter the rental address...';
-      case 'WAITING_FOR_DESCRIPTION': return 'Paste the description here...';
-      case 'WAITING_FOR_IMAGES': return 'Paste image URLs here...';
-      default: return 'Analysis complete.';
-    }
-  };
-
+  
   return (
-    <div className="chat-app">
-      <div className="chat-window" ref={chatWindowRef}>
-        {messages.map((msg) => (
-          <ChatMessage key={msg.id} message={msg} />
-        ))}
-        {finalResult && <ReportView result={finalResult} />}
+    <div className="main-layout">
+      <div className="chat-app">
+        <div className="chat-window" ref={chatWindowRef}>
+          {messages.map((msg) => (
+            <ChatMessage key={msg.id} message={msg} />
+          ))}
+          {/* Add a button to start over if the report is shown */}
+          {finalResult && (
+            <div className="new-check-container">
+              <button onClick={handleNewCheck}>Start New Check</button>
+            </div>
+          )}
+        </div>
+        {/* Only show the input form if there is no final result yet */}
+        {!finalResult && <InputForm onSubmit={startFullAnalysis} isLoading={isLoading} />}
       </div>
-      <form className="chat-input-form" onSubmit={handleSendMessage}>
-        <textarea
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder={getInputPlaceholder()}
-          disabled={isLoading || conversationState === 'DONE'}
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSendMessage(e);
-            }
-          }}
-        />
-        <button type="submit" disabled={isLoading || conversationState === 'DONE'}>Send</button>
-      </form>
+
+      <div className="report-panel">
+        {finalResult ? (
+          <ReportView result={finalResult} />
+        ) : (
+          <div className="report-placeholder">
+            {isLoading ? 'Analysis in progress...' : 'The analysis report will appear here.'}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
