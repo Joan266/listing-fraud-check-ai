@@ -1,95 +1,162 @@
 // src/components/InputForm.tsx
-import React, { useState, useRef, useEffect } from 'react';
-import type { ListingData } from '../types';
-import './InputForm.css';
-import { useMapsLibrary } from '@vis.gl/react-google-maps'; // <-- Import the hook
+// src/components/InputForm.tsx
+import type { AnalysisData } from '../types'; 
+import React, { useState } from 'react';
+import { Search, FileText, Image, MessageSquare, Clipboard, Shield } from 'lucide-react';
 
 interface InputFormProps {
-  onSubmit: (data: ListingData) => void;
-  isLoading: boolean;
+  onAnalyze: (data: AnalysisData) => void;
+  isLoading: boolean; 
 }
+const InputForm: React.FC<InputFormProps> = ({ onAnalyze, isLoading }) => {
+  const [formData, setFormData] = useState<AnalysisData>({
+    address: '',
+    description: '',
+    imageUrls: '',
+    hostConversation: '',
+    rawListing: ''
+  });
 
-const InputForm: React.FC<InputFormProps> = ({ onSubmit, isLoading }) => {
-  const [address, setAddress] = useState('');
-  const [description, setDescription] = useState('');
-  const [imageUrls, setImageUrls] = useState('');
-  
-  const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const handleInputChange = (field: keyof AnalysisData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
-  // --- NEW: Use the hook to safely load the 'places' library ---
-  const places = useMapsLibrary('places');
+  const handleRawListingPaste = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      rawListing: value
+    }));
 
-  // This useEffect will now re-run when the 'places' library is loaded
-  useEffect(() => {
-    // Wait until both the input element and the places library are ready
-    if (!inputRef.current || !places) {
-      return;
-    }
-
-    // Now it's safe to create the Autocomplete instance
-    autocompleteRef.current = new places.Autocomplete(inputRef.current, {
-      types: ['address'],
-      fields: ['formatted_address']
-    });
-
-    autocompleteRef.current.addListener('place_changed', () => {
-      const place = autocompleteRef.current?.getPlace();
-      if (place?.formatted_address) {
-        setAddress(place.formatted_address);
+    // Simple auto-parsing logic
+    if (value.trim()) {
+      // Extract potential address
+      const addressMatch = value.match(/(?:dirección|ubicación|address|calle|street)[:\s]+([^\n,]+)/i);
+      if (addressMatch) {
+        setFormData(prev => ({
+          ...prev,
+          address: addressMatch[1].trim()
+        }));
       }
-    });
 
-  }, [places]); // The dependency array ensures this runs when 'places' is ready
+      // Extract potential price and description
+      const lines = value.split('\n').filter(line => line.trim());
+      if (lines.length > 2) {
+        setFormData(prev => ({
+          ...prev,
+          description: lines.slice(0, 3).join(' ').substring(0, 200) + '...'
+        }));
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const urls = imageUrls.split('\n').filter(url => url.trim() !== '');
-    onSubmit({
-      address,
-      description,
-      image_urls: urls
-    });
+    if (formData.address.trim() || formData.rawListing.trim()) {
+      onAnalyze(formData);
+    }
   };
 
+  const isFormValid = formData.address.trim() || formData.rawListing.trim();
+
   return (
-    <form className="input-form-container" onSubmit={handleSubmit}>
-      <div className="form-field">
-        <label htmlFor="address-input">1. Rental Address</label>
-        <input
-          ref={inputRef}
-          id="address-input"
-          type="text"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Type and select the address..."
-          required
-          disabled={isLoading}
-        />
-      </div>
-      {/* ... rest of the form is the same ... */}
-       <div className="form-field">
-        <label htmlFor="description-input">2. Listing Description (Optional)</label>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Raw Listing Paste Area */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          <Clipboard className="inline w-4 h-4 mr-1" />
+          Contenido del Anuncio
+        </label>
         <textarea
-          id="description-input"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Paste the full description text here..."
-          disabled={isLoading}
+          value={formData.rawListing}
+          onChange={(e) => handleRawListingPaste(e.target.value)}
+          placeholder="Copia y pega aquí el contenido de la página del anuncio para autocompletar el formulario..."
+          className="w-full h-24 px-4 py-3 border-2 border-dashed border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none placeholder-slate-500 bg-slate-50 transition-all duration-200 hover:border-slate-400"
         />
+        <p className="text-xs text-slate-500 mt-1">
+          Pega el contenido completo del anuncio y los campos se completarán automáticamente
+        </p>
       </div>
-      <div className="form-field">
-        <label htmlFor="image-urls-input">3. Listing Image URLs (Optional)</label>
+
+      {/* Address Field */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          <Search className="inline w-4 h-4 mr-1" />
+          Dirección
+        </label>
+        <div className="relative">
+          <input
+            type="text"
+            value={formData.address}
+            onChange={(e) => handleInputChange('address', e.target.value)}
+            placeholder="Ingresa la dirección de la propiedad"
+            className="w-full px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 hover:border-slate-400"
+          />
+          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+        </div>
+      </div>
+
+      {/* Description Field */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          <FileText className="inline w-4 h-4 mr-1" />
+          Descripción del Anuncio
+        </label>
         <textarea
-          id="image-urls-input"
-          value={imageUrls}
-          onChange={(e) => setImageUrls(e.target.value)}
-          placeholder="Paste image URLs, one per line..."
-          disabled={isLoading}
+          value={formData.description}
+          onChange={(e) => handleInputChange('description', e.target.value)}
+          placeholder="Descripción completa de la propiedad..."
+          className="w-full h-20 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none transition-all duration-200 hover:border-slate-400"
         />
       </div>
-      <button type="submit" disabled={isLoading}>
-        {isLoading ? 'Analyzing...' : 'Run Full Analysis'}
+
+      {/* Image URLs Field */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          <Image className="inline w-4 h-4 mr-1" />
+          URLs de las Imágenes
+        </label>
+        <textarea
+          value={formData.imageUrls}
+          onChange={(e) => handleInputChange('imageUrls', e.target.value)}
+          placeholder="URLs de las imágenes del anuncio (una por línea)..."
+          className="w-full h-16 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none transition-all duration-200 hover:border-slate-400"
+        />
+      </div>
+
+      {/* Host Conversation Field */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          <MessageSquare className="inline w-4 h-4 mr-1" />
+          Conversación con el Anfitrión
+        </label>
+        <textarea
+          value={formData.hostConversation}
+          onChange={(e) => handleInputChange('hostConversation', e.target.value)}
+          placeholder="Copia aquí la conversación que hayas tenido con el propietario..."
+          className="w-full h-20 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none transition-all duration-200 hover:border-slate-400"
+        />
+      </div>
+
+      {/* Analyze Button */}
+      <button
+        type="submit"
+        disabled={!isFormValid || isLoading}
+        className="w-full px-6 py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+      >
+        {isLoading ? (
+          <>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            <span>Analizando...</span>
+          </>
+        ) : (
+          <>
+            <Shield className="w-5 h-5" />
+            <span>Analizar Anuncio</span>
+          </>
+        )}
       </button>
     </form>
   );
