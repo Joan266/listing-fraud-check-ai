@@ -49,6 +49,7 @@ class AddressCheckRequest(BaseModel):
     address: str
     description: str | None = None
     image_urls: list[str] | None = None
+    communication_text: str | None = None
 
 class JobResponse(BaseModel):
     job_id: str

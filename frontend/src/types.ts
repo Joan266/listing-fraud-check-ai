@@ -1,26 +1,38 @@
 // src/types.ts
 
-// Define the shape of a single red flag
-export interface RedFlag {
-  type: string;
-  message: string;
-  severity: 'Low' | 'Medium' | 'High'; // The strict, correct type
+export interface Alert {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  severity: 'high' | 'medium' | 'low';
 }
 
-// Define the shape of the entire analysis result
+// The new, final AnalysisResult structure
 export interface AnalysisResult {
-  summary: string;
-  risk_score: 'Low' | 'Medium' | 'High';
-  red_flags: RedFlag[];
-  raw_google_data?: {
-    coordinates?: {
-      lat: number;
-      lng: number;
-    };
+  trustScore: number;
+  executiveSummary: string;
+  location: {
+    lat: number;
+    lng: number;
+    verified: boolean;
   };
+  alerts: Alert[];
 }
-export interface ListingData {
+
+// Updated form data to match InputForm.tsx
+export interface AnalysisData {
   address: string;
   description: string;
-  image_urls: string[];
+  imageUrls: string;
+  hostConversation: string;
+  rawListing: string;
+}
+
+// NEW: The shape of a chat message object
+export interface ChatMessageData {
+  id: string;
+  type: 'user' | 'ai';
+  content: string;
+  timestamp: Date;
 }

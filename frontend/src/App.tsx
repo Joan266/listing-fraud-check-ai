@@ -1,67 +1,68 @@
 // src/App.tsx
-import { useState, useRef, useEffect } from 'react';
-import ChatMessage, { Message } from './components/ChatMessage';
-import ReportView from './components/ReportView';
-import InputForm from './components/InputForm';
-import type { AnalysisResult, ListingData } from './types';
+import { useState } from 'react';
+import { APIProvider } from '@vis.gl/react-google-maps';
+import InteractionPanel from './components/InteractionPanel';
+import ReportPanel from './components/ReportPanel';
+import type { AnalysisResult, AnalysisData, ChatMessageData } from './types';
+import { Shield, Zap } from 'lucide-react';
 import './App.css';
-
-const initialMessages: Message[] = [
-  { id: 1, text: "Hello! Please provide the listing details below to start the analysis.", sender: 'ai' }
-];
+// Define the initial welcome message for the chat
+const initialMessage: ChatMessageData = {
+  id: '1',
+  type: 'ai',
+  content: "Welcome to VeriRent. To start, please provide the listing details in the form below.",
+  timestamp: new Date()
+};
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [isLoading, setIsLoading] = useState(false);
-  const [finalResult, setFinalResult] = useState<AnalysisResult | null>(null);
-  
-  // Use a ref for the message ID to ensure immediate updates
-  const messageIdCounter = useRef(2); 
-  const chatWindowRef = useRef<HTMLDivElement>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  // --- RE-INTRODUCE CHAT MESSAGE STATE ---
+  const [chatMessages, setChatMessages] = useState<ChatMessageData[]>([initialMessage]);
 
+  const apiKey = import.meta.env.VITE_Maps_API_KEY;
   const API_BASE_URL = 'http://127.0.0.1:8000';
 
-  useEffect(() => {
-    chatWindowRef.current?.scrollTo(0, chatWindowRef.current.scrollHeight);
-  }, [messages]);
-
-  const addMessage = (text: string, sender: 'user' | 'ai') => {
-    const newMessage: Message = { id: messageIdCounter.current, text, sender };
-    messageIdCounter.current++; // Increment the counter immediately
-    setMessages(prev => [...prev, newMessage]);
+  const addChatMessage = (content: string, type: 'user' | 'ai') => {
+    const newMessage: ChatMessageData = {
+      id: Date.now().toString(),
+      type,
+      content,
+      timestamp: new Date()
+    };
+    setChatMessages(prev => [...prev, newMessage]);
   };
 
-  // --- NEW: Function to reset the entire application state ---
-  const handleNewCheck = () => {
-    setMessages(initialMessages);
-    setFinalResult(null);
-    setIsLoading(false);
-    messageIdCounter.current = 2;
-  };
-  
-  const startFullAnalysis = async (listingData: ListingData) => {
-    setIsLoading(true);
-    setFinalResult(null);
+  const handleAnalyze = async (formData: AnalysisData) => {
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+    setChatMessages([initialMessage]); // Reset chat on new analysis
 
-    // Don't reset messages, just add to the conversation
-    addMessage('Thank you. Starting the full analysis now... This may take a moment.', 'ai');
+    addChatMessage('Thank you. Starting the full analysis... This may take a moment.', 'ai');
+
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const foundUrls = formData.imageUrls.match(urlRegex) || [];
+
+    const payload = {
+      address: formData.address,
+      description: formData.description || formData.rawListing,
+      image_urls: foundUrls,
+      communication_text: formData.hostConversation
+    };
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/checks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(listingData) 
+        body: JSON.stringify(payload)
       });
-
       if (!response.ok) throw new Error('Failed to submit job');
-      
       const data = await response.json();
       pollForResult(data.job_id);
-
     } catch (error) {
       console.error('Submission error:', error);
-      setIsLoading(false);
-      addMessage('Sorry, I couldn\'t connect to the analysis service.', 'ai');
+      setIsAnalyzing(false);
+      addChatMessage('Sorry, I couldn\'t connect to the analysis service.', 'ai');
     }
   };
 
@@ -70,55 +71,62 @@ function App() {
       try {
         const response = await fetch(`${API_BASE_URL}/api/v1/checks/${jobId}`);
         const data = await response.json();
-
         if (data.status === 'COMPLETED' || data.status === 'FAILED') {
           clearInterval(interval);
-          setIsLoading(false);
-
-          if (data.status === 'COMPLETED') {
-            setFinalResult(data.result);
-          } else {
-            const errorMessage = data.result?.error || 'An unknown error occurred on the backend.';
-            addMessage(`Sorry, the analysis failed: ${errorMessage}`, 'ai');
-          }
+          setIsAnalyzing(false);
+          addChatMessage('Analysis complete. You can view the report on the right.', 'ai');
+          setAnalysisResult(data.result);
         }
       } catch (error) {
-          console.error('Polling error:', error);
-          clearInterval(interval);
-          setIsLoading(false);
-          addMessage('Sorry, there was an error processing your request.', 'ai');
+        console.error('Polling error:', error);
+        clearInterval(interval);
+        setIsAnalyzing(false);
+        addChatMessage('Sorry, there was an error processing your request.', 'ai');
       }
     }, 3000);
   };
-  
-  return (
-    <div className="main-layout">
-      <div className="chat-app">
-        <div className="chat-window" ref={chatWindowRef}>
-          {messages.map((msg) => (
-            <ChatMessage key={msg.id} message={msg} />
-          ))}
-          {/* Add a button to start over if the report is shown */}
-          {finalResult && (
-            <div className="new-check-container">
-              <button onClick={handleNewCheck}>Start New Check</button>
-            </div>
-          )}
-        </div>
-        {/* Only show the input form if there is no final result yet */}
-        {!finalResult && <InputForm onSubmit={startFullAnalysis} isLoading={isLoading} />}
-      </div>
 
-      <div className="report-panel">
-        {finalResult ? (
-          <ReportView result={finalResult} />
-        ) : (
-          <div className="report-placeholder">
-            {isLoading ? 'Analysis in progress...' : 'The analysis report will appear here.'}
+  if (!apiKey) {
+    return <div>Error: VITE_Maps_API_KEY is missing.</div>;
+  }
+
+  return (
+    <APIProvider apiKey={apiKey} libraries={['places']}>
+      <div className="min-h-screen bg-slate-50">
+        <header className="bg-white shadow-sm border-b border-slate-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                  <Shield className="w-5 h-5 text-white" />
+                </div>
+                <h1 className="text-2xl font-bold text-slate-800">VeriRent</h1>
+              </div>
+              {/* --- UPDATED PART --- */}
+              <div className="hidden sm:flex items-center space-x-1 text-sm text-slate-600 font-medium">
+                <Zap className="w-4 h-4 text-grey-500" />
+                <span>El Carfax de los Alquileres</span>
+              </div>
+            </div>
           </div>
-        )}
+        </header>
+
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <InteractionPanel
+              onAnalyze={handleAnalyze}
+              isAnalyzing={isAnalyzing}
+              chatMessages={chatMessages}
+              setChatMessages={setChatMessages}
+            />
+            <ReportPanel
+              isAnalyzing={isAnalyzing}
+              analysisResult={analysisResult}
+            />
+          </div>
+        </main>
       </div>
-    </div>
+    </APIProvider>
   );
 }
 
