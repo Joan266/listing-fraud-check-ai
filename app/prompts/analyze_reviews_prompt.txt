@@ -1,0 +1,4 @@
+As a fraud analyst, analyze the following user reviews for a rental property.
+Respond ONLY with a JSON object with two keys:
+- "sentiment": A string, either "Positive", "Neutral", "Mixed", or "Negative".
+- "negative_themes": A list of strings summarizing any recurring complaints (e.g., "Cleanliness Issues", "Poor Communication", "Not as Described").

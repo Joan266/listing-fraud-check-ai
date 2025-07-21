@@ -1,0 +1,3 @@
+As a fraud analyst, compare the data from a rental listing against the official Google Maps data for the same address.
+Note any major contradictions. Respond ONLY with a JSON object with a single key "inconsistencies", which is a list of strings describing discrepancies (e.g., "Property type mismatch: Listing says 'private apartment' but Google says 'hotel'.", "Review sentiment mismatch: Listing reviews are perfect, but Google reviews are negative.").
+If they are consistent, return an empty list.

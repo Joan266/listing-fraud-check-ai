@@ -2,124 +2,89 @@
 from googleapiclient.discovery import build
 from app.core.config import settings
 import logging
-from . import gemini_analysis
-logger = logging.getLogger(__name__)
 
-def search_web(query: str, get_count: bool = False) -> dict:
+# Create the service client once to be reused. This is more efficient.
+try:
+    search_service = build("customsearch", "v1", developerKey=settings.GOOGLE_API_KEY)
+except Exception as e:
+    logging.error(f"Failed to build Google Search service client: {e}")
+    search_service = None
+
+def search_web(query: str, exact_match: bool = False) -> list[dict]:
     """
-    Performs a web search using the Google Custom Search API.
-    Returns snippets or the total result count.
+    Performs a single web search and returns a list of result items.
+    Each item is a dictionary containing title, link, and snippet.
     """
+    if not search_service:
+        return []
+    
+    search_query = f'"{query}"' if exact_match else query
+    
     try:
-        service = build("customsearch", "v1", developerKey=settings.GOOGLE_API_KEY)
-        
-        res = service.cse().list(
-            q=query,
+        res = search_service.cse().list(
+            q=search_query,
             cx=settings.GOOGLE_SEARCH_ENGINE_ID,
             num=3
         ).execute()
 
-        if get_count:
-            count = int(res.get('searchInformation', {}).get('totalResults', 0))
-            return {"total_results": count}
-
         if 'items' not in res:
-            return {"snippets": ""}
-
-        snippets = [item.get('snippet', '') for item in res['items']]
-        return {"snippets": " ".join(snippets)}
-
-    except Exception as e:
-        logger.error(f"Google Search API call failed for query '{query}': {e}")
-        return {"snippets": "", "total_results": 0}
-    
-def find_description_duplicates(query: str, get_count: bool = False, exact_match: bool = True) -> dict:
-    """
-    Performs a web search using the Google Custom Search API.
-    Returns snippets or the total result count.
-    """
-    try:
-        # Añade comillas para una búsqueda de frase exacta, crucial para detectar duplicados.
-        if exact_match:
-            query = f'"{query}"'
-
-        service = build("customsearch", "v1", developerKey=settings.GOOGLE_API_KEY)
+            return []
         
-        res = service.cse().list(
-            q=query,
-            cx=settings.GOOGLE_SEARCH_ENGINE_ID,
-            num=3
-        ).execute()
-
-        if get_count:
-            count = int(res.get('searchInformation', {}).get('totalResults', 0))
-            return {"total_results": count}
-
-        if 'items' not in res:
-            return {"snippets": ""}
-
-        snippets = [item.get('snippet', '') for item in res['items']]
-        return {"snippets": " ".join(snippets)}
-
+        # Return a list of dictionaries with the key information
+        return [
+            {
+                "title": item.get("title"),
+                "link": item.get("link"),
+                "snippet": item.get("snippet")
+            } 
+            for item in res.get("items", [])
+        ]
     except Exception as e:
-        logger.error(f"Google Search API call failed for query '{query}': {e}")
-        # Devuelve una estructura consistente en caso de error
-        return {"snippets": "", "total_results": 0}
-    
-def check_host_reputation(host_name: str) -> dict:
-    """
-    Performs web searches for a host's name plus negative keywords
-    and uses Gemini to analyze the results for reputation red flags.
-    """
-    if not host_name:
-        return {"issue_found": False, "summary": "No host name provided."}
+        logging.error(f"Google Search API call failed for query '{search_query}': {e}")
+        return []
 
-    # Keywords in both English and Spanish
-    search_keywords = ['scam', 'fraud', 'complaint', 'estafa', 'fraude', 'queja', 'reviews']
-    
-    all_snippets = ""
-    for keyword in search_keywords:
-        query = f'"{host_name}" {keyword}'
-        search_result = search_web(query, get_count=False)
-        all_snippets += search_result.get("snippets", "") + " "
-    
-    if not all_snippets.strip():
-        return {"issue_found": False, "summary": "No public information or complaints found for the host."}
+# in app/services/Google Search.py
+import pycountry
 
-    # Send the collected snippets to Gemini for analysis
-    return gemini_analysis.analyze_host_reputation(all_snippets, host_name)
-def check_external_reputation(property_name: str, address_components: list) -> dict:
+def prepare_reputation_queries(inputs: dict, query_limit: int = 8) -> list[str]:
     """
-    Performs multi-lingual web searches for a property's name to find
-    negative press, complaints, or scam reports.
+    Generates a targeted list of high-impact search queries using localized keywords.
     """
-    if not property_name:
-        return {"issue_found": False, "summary": "No property name to check."}
-
-    # Determine country to use localized keywords
-    country_code = 'en' # Default to English
-    for component in address_components:
-        if 'country' in component.get('types', []):
-            country_code = component.get('short_name', 'en').lower()
-            break
-    
+    # --- Localized Keyword Map ---
     keyword_map = {
-        'en': ['scam', 'fraud', 'complaint', 'review', 'nightmare'],
-        'es': ['estafa', 'fraude', 'queja', 'reseña', 'pesadilla']
-        # Add more languages as needed
+        'en': ['scam', 'fraud', 'complaint', 'review'],
+        'es': ['estafa', 'fraude', 'queja', 'opiniones'],
+        'fr': ['arnaque', 'fraude', 'plainte', 'avis'],
+        'pt': ['fraude', 'golpe', 'queixa', 'reclamação'],
+        'de': ['betrug', 'beschwerde', 'erfahrungen'],
+        'it': ['truffa', 'frode', 'lamentela', 'recensioni'],
     }
-
-    # Get keywords for the detected country, plus English as a fallback
-    keywords_to_search = set(keyword_map.get(country_code, []) + keyword_map['en'])
-
-    all_snippets = ""
-    for keyword in keywords_to_search:
-        query = f'"{property_name}" {keyword}'
-        search_result = search_web(query, get_count=False)
-        all_snippets += search_result.get("snippets", "") + " "
     
-    if not all_snippets.strip():
-        return {"issue_found": False, "summary": "No negative public information found for this property."}
+    # --- Get Languages for the Country ---
+    country_code = inputs.get('country_code', 'us').lower()
+    languages_to_use = set(['en']) # Default to English
+    try:
+        # Get all official language codes for the country
+        country_data = pycountry.countries.get(alpha_2=country_code.upper())
+        if country_data:
+            for lang in country_data.languages:
+                languages_to_use.add(lang.alpha_2)
+    except (AttributeError, KeyError):
+        pass # Stick with English if country isn't found
 
-    # Send the collected snippets to Gemini for analysis
-    return gemini_analysis.analyze_search_results_for_reputation(all_snippets, property_name)
+    # --- Build the Keyword List ---
+    keywords_to_search = set()
+    for lang_code in languages_to_use:
+        keywords_to_search.update(keyword_map.get(lang_code, []))
+    
+    # --- Generate Queries ---
+    queries = []
+    # Prioritize unique identifiers
+    search_terms = [inputs.get("email"), inputs.get("phone"), inputs.get("host_name")]
+
+    for term in search_terms:
+        if term:
+            for keyword in keywords_to_search:
+                queries.append(f'"{term}" {keyword}')
+    
+    return list(set(queries))[:query_limit]

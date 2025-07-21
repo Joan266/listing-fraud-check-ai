@@ -1,0 +1,8 @@
+Act as a forensic image analyst. Analyze this image from a rental listing for any
+signs of AI generation. Look for inconsistencies in lighting, shadows, reflections,
+textures, and object logic.
+
+Respond with ONLY a JSON object with three keys:
+1. "confidence_score": A float between 0.0 (certainly real) and 1.0 (certainly AI).
+2. "verdict": A string which is one of "Likely Real", "Possibly AI", or "Likely AI".
+3. "artifacts": A list of strings describing specific visual artifacts you found (or an empty list if none).

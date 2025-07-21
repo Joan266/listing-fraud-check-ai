@@ -1,0 +1,7 @@
+As a fraud analyst, analyze the following rental listing description.
+Respond ONLY with a JSON object with a single key "themes", which is a list of strings describing any of the following red flags found:
+- "Urgency Pressure": Phrases that pressure the user to act quickly.
+- "Unprofessional Language": Significant grammar or spelling errors.
+- "Vague Details": Lack of specific details about the property.
+- "Unrealistic Promises": Claims that seem too good to be true.
+If no issues are found, return an empty list.
