@@ -1,5 +1,5 @@
 # app/tasks/fraud_checker.py
-from app.db.database import SessionLocal
+from app.db.session import SessionLocal
 from app.db.models import FraudCheck, JobStatus
 from app.services import google_apis, gemini_analysis, google_search, image_analysis
 import uuid
@@ -195,7 +195,8 @@ def run_fraud_check_task(job_id: str):
             "positive_signals": positive_signals
         }
         final_summary = gemini_analysis.synthesize_final_report(synthesis_data)
-        _finalize_report(db, db_job, final_score, final_summary, red_flags, place_data)
+        _finalize_report(db, db_job, final_score, final_summary, red_flags, positive_signals, listing_summary, place_data)
+
 
     except Exception as e:
         logger.error(f"Fraud Check Task failed for job_id {job_id}: {e}", exc_info=True)
@@ -252,7 +253,6 @@ def _finalize_report(db, db_job, final_score, summary, red_flags, positive_signa
     final_alerts = format_signals(red_flags, 'alert')
     final_positives = format_signals(positive_signals, 'positive')
     
-    # NEW: The enhanced final report structure
     final_report = {
         "trustScore": final_score,
         "executiveSummary": summary,
@@ -264,45 +264,6 @@ def _finalize_report(db, db_job, final_score, summary, red_flags, positive_signa
         },
         "alerts": final_alerts,
         "positive_signals": final_positives,
-        "raw_google_data": None # Avoid sending large raw data object to the frontend
-    }
-    
-    db_job.result = final_report
-    db_job.status = JobStatus.COMPLETED
-    db.commit()
-    logger.info(f"Completed fraud check for job_id: {db_job.id}. Final Score: {final_score}")
-
-    """Formats and saves the final report to the database."""
-    
-    def format_alerts(flags):
-        alerts = []
-        # Simplified category mapping
-        category_map = {
-            "Image Analysis": "image", "Communication Analysis": "communication",
-            "Address Validation": "location", "Data Inconsistency": "general",
-            "External Reputation": "general", "Description Analysis": "general"
-        }
-        for i, flag in enumerate(flags):
-            alerts.append({
-                "id": f"alert-{i}", "title": flag["type"], "description": flag["message"],
-                "category": category_map.get(flag["type"], "general"), 
-                "severity": flag["severity"].lower(),
-                "image_url": flag.get("image_url") # Pass along image_url if it exists
-            })
-        return alerts
-
-    final_alerts = format_alerts(red_flags)
-    
-    final_report = {
-        "trustScore": final_score,
-        "executiveSummary": summary,
-        "location": {
-            "lat": place_data.get('geometry', {}).get('location', {}).get('lat'),
-            "lng": place_data.get('geometry', {}).get('location', {}).get('lng'),
-            "verified": place_data.get("validation_result") == "PERFECT_MATCH"
-        },
-        "alerts": final_alerts,
-        "raw_google_data": place_data if "error" not in place_data else None
     }
     
     db_job.result = final_report

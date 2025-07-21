@@ -22,51 +22,47 @@ except Exception as e:
     logger.error(f"Failed to initialize Google Maps client: {e}")
     gmaps = None
 
+# In a file like app/services/google_apis.py
+
 def validate_address_and_get_place_details(address: str) -> dict:
     """
-    Validates an address and gets rich details from the Google Places API.
+    Validates an address and gets rich details, gracefully handling partial matches.
     """
     if not gmaps:
-        return {"error": "Google Maps client not initialized. Check API Key."}
+        return {"error": "Google Maps client not initialized."}
 
     try:
-        # Step 1: Geocode the address
         geocode_result = gmaps.geocode(address)
+
+        # Handle case where Google finds nothing at all
         if not geocode_result:
             return {
                 "validation_result": "NO_MATCH",
                 "address_provided": address,
                 "error": "Address not found by Google Geocoding."
             }
-            
-        # --- Start with a base report containing our initial findings ---
-        initial_data = {
-            "validation_result": "PERFECT_MATCH" if not geocode_result[0].get('partial_match') else "PARTIAL_MATCH",
+
+        first_result = geocode_result[0]
+        
+        # --- Build the base report with whatever we have ---
+        report = {
+            "validation_result": "PERFECT_MATCH" if not first_result.get('partial_match') else "PARTIAL_MATCH",
             "address_provided": address,
-            "coordinates": geocode_result[0]['geometry']['location'],
+            "formatted_address": first_result.get('formatted_address'),
+            "coordinates": first_result.get('geometry', {}).get('location'),
             "error": None
         }
 
-        place_id = geocode_result[0].get('place_id')
-        if not place_id:
-            initial_data["error"] = "Geocoded address has no Place ID."
-            return initial_data
+        # --- Try to get richer details using the Place ID ---
+        place_id = first_result.get('place_id')
+        if place_id:
+            place_details = gmaps.place(place_id=place_id, fields=relevant_fields).get('result', {})
+            
+            report.update(place_details)
+        else:
+            report["error"] = "Geocoded address has no Place ID, details may be limited."
 
-        # Step 2: Use Place ID to get rich details
-        place_details_result = gmaps.place(place_id=place_id, fields=relevant_fields)
-        
-        # --- Merge the rich details from Google with our initial findings ---
-        # The 'result' from Google becomes our new base
-        final_report = place_details_result.get('result', {})
-        
-        # Update it with the data we already gathered
-        final_report.update(initial_data)
+        return report
 
-        return final_report
-
-    except googlemaps.exceptions.ApiError as e:
-        logger.error(f"Google Maps API error: {e}")
-        return {"error": f"Google Maps API error: {e.body if hasattr(e, 'body') else str(e)}"}
     except Exception as e:
-        logger.error(f"An unexpected error occurred in google_apis: {e}")
-        return {"error": f"An unexpected error occurred: {e}"}
+        return {"error": f"An unexpected error occurred in Google API call: {e}"}
