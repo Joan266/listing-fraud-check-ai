@@ -1,0 +1,7 @@
+As a fraud analyst, analyze the following host profile data.
+Respond ONLY with a valid JSON object. Do not include any other text or explanation.
+The JSON object must have a single key "themes", which is a list of strings describing any of the following red flags:
+- "Unverified Profile": The host lacks platform verification.
+- "New Account": The host account was created very recently.
+- "No History": The host has no previous reviews or listings.
+- "Inconsistent Name": The host name does not match other provided info.

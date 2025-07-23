@@ -1,0 +1,8 @@
+As a fraud analyst, analyze the following conversation.
+Respond ONLY with a JSON object with a single key "themes", which is a list of strings describing any of the following fraudulent themes found:
+- "Risky Payment Request": Any request to pay outside a secure platform.
+- "High-Pressure Tactics": Language that creates false urgency.
+- "Refusal to View": Excuses for why an in-person viewing isn't possible.
+- "Evasive Answers": Avoiding direct questions.
+- "Phishing Attempt": Requesting unusual personal information.
+If no issues are found, return an empty list.
