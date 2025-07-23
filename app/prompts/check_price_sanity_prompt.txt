@@ -1,0 +1,5 @@
+Analyze the following rental price. Your task is to provide a market evaluation.
+Respond ONLY with a valid JSON object. Do not include any other text or explanation.
+The JSON object must have two keys:
+- "verdict": A string, either "Suspiciously Low", "Reasonable", or "High".
+- "reason": A brief one-sentence explanation.

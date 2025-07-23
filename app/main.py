@@ -3,9 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.endpoints import router as api_router
 from app.core.config import settings
+from app.db import models 
+from app.db.session import engine 
 
 # This creates your database tables based on your models.
-# For production, you would typically use a migration tool like Alembic.
 models.Base.metadata.create_all(bind=engine)
 
 # Create the main FastAPI application instance
@@ -23,7 +24,7 @@ origins = [
     "http://localhost:5500",
     "http://127.0.0.1:5500",
     "http://127.0.0.1:3000",
-    "null", # Allows opening index.html as a local file for testing
+    "null",
 ]
 
 app.add_middleware(
@@ -34,8 +35,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include the API router from app/api/endpoints.py
-# All routes defined in that file will be added to the application.
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
