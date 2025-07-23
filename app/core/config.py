@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str
     GOOGLE_GEMINI_API_KEY: str 
     GOOGLE_SEARCH_ENGINE_ID: str 
+    
+    RISK_SCORE_THRESHOLD: int = 70 
     class Config:
         env_file = ".env"
         case_sensitive = True

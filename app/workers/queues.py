@@ -9,7 +9,6 @@ try:
     redis_conn = redis.Redis(
         host=settings.REDIS_HOST,
         port=settings.REDIS_PORT,
-        decode_responses=True
     )
     redis_conn.ping()
     print("Successfully connected to Redis for RQ.")

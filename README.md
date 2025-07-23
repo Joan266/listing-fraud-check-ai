@@ -13,6 +13,8 @@ This project is the backend service for the FraudCheck.ai MVP. Its purpose is to
 * [Redis](https://redis.io/) & [RQ (Redis Queue)](https://python-rq.org/)
 * [SQLAlchemy](https://www.sqlalchemy.org/)
 * [Google Maps Platform APIs](https://mapsplatform.google.com/)
+* [Google Cloud Vision](https://cloud.google.com/vision)
+* [Google Generative AI (Gemini)](https://ai.google.dev/)
 
 ---
 
@@ -24,7 +26,7 @@ Follow these steps to get your local development environment running.
 
 * Python 3.10+
 * Docker (for running Redis easily)
-* A Google Cloud Platform account with the Maps Platform APIs enabled.
+* A Google Cloud Platform account with the required APIs enabled.
 
 ### Installation & Setup
 
@@ -50,45 +52,41 @@ Follow these steps to get your local development environment running.
         ```sh
         cp .env.example .env
         ```
-    * Edit the `.env` file and add your `GOOGLE_API_KEY`.
+    * Edit the `.env` file and add your `GOOGLE_API_KEY` and other credentials.
+
+---
 
 ### Running the Application
 
-You'll need to run three separate services in three different terminals.
+You'll need to run four separate services in four different terminals for the full development environment.
 
 1.  **Terminal 1: Start Redis**
     ```sh
     docker run -d -p 6379:6379 --name fraudcheck-redis redis
     ```
 
-2.  **Terminal 2: Start the RQ Worker**
+2.  **Terminal 2: Start the Analysis Worker**
+    *(This worker handles all the heavy and fast analysis tasks.)*
     ```sh
-    python worker.py
+    python analysis_worker.py
     ```
 
-3.  **Terminal 3: Start the FastAPI Server**
+3.  **Terminal 3: Start the Chat Worker**
+    *(This worker handles real-time chat functionality.)*
+    ```sh
+    python chat_worker.py
+    ```
+
+4.  **Terminal 4: Start the FastAPI Server**
     ```sh
     uvicorn app.main:app --reload
     ```
 The API will be available at `http://127.0.0.1:8000`.
 
 ---
-## Usage
 
-You can test the address validation endpoint using `curl`:
+### Monitoring Background Jobs
 
-1.  **Submit a job:**
-    ```sh
-    curl -X POST "[http://127.0.0.1:8000/api/v1/checks](http://127.0.0.1:8000/api/v1/checks)" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "address": "Plaça de Catalunya, 1, 08002 Barcelona, Spain"
-    }'
-    ```
-    This will return a `job_id`.
-
-2.  **Poll for the result:**
-    ```sh
-    # Replace YOUR_JOB_ID with the one you received
-    curl [http://127.0.0.1:8000/api/v1/checks/YOUR_JOB_ID](http://127.0.0.1:8000/api/v1/checks/YOUR_JOB_ID)
-    ```
+To monitor the status of your queues and jobs, run the RQ Dashboard in a separate terminal:
+```sh
+rq-dashboard

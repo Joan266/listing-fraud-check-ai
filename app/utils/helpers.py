@@ -16,7 +16,7 @@ def load_prompt(prompt_name: str) -> str:
         return ""
     
 
-def generate_input_hash(data: dict) -> str:
+def generate_hash(data: dict) -> str:
     """
     Creates a predictable SHA-256 hash from a dictionary.
 

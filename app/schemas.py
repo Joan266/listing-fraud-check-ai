@@ -7,16 +7,21 @@ from app.db.models import JobStatus # Import the Enum from your models
 class FraudCheckRequest(BaseModel):
     """
     Defines the structure of the data the client sends to start an analysis.
-    All fields are optional to allow for maximum flexibility.
     """
-    rawListing: str | None = None
+    listing_url: str | None = None 
     address: str | None = None
     description: str | None = None
     image_urls: list[str] | None = None
     communication_text: str | None = None
     host_name: str | None = None
-    # Add any other specific fields you expect from the user
+    
+    email: str | None = None
+    phone: str | None = None
 
+    reviews: list[dict] | None = None
+    price_details: dict | None = None
+    host_profile: dict | None = None
+    property_type: str | None = None
 # --- Response Schemas ---
 
 class JobResponse(BaseModel):

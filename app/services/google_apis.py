@@ -8,12 +8,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # The full list of fields we want for our analysis
-relevant_fields = [
-    'address_component', 'adr_address', 'business_status', 'formatted_address',
-    'geometry/location', 'name', 'photo', 'place_id', 'type', 'url',
-    'international_phone_number', 'opening_hours', 'website',
-    'rating', 'reviews', 'user_ratings_total'
+relevant_fields = relevant_fields = [
+    # Core Identification
+    "place_id",
+    "name",
+    "formatted_address",
+    "address_component", 
+    "url",               
+
+    # Location
+    "geometry",          
+
+    # Key Fraud Signals
+    "business_status",
+    "type",             
+    "rating",
+    "user_ratings_total",
+    "reviews"            
 ]
+
 
 # Configure clients once
 try:
