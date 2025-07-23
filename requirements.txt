@@ -4,17 +4,25 @@ uvicorn[standard]
 
 # --- Database ---
 sqlalchemy
-# psycopg2-binary  # For PostgreSQL (if you use it later)
+psycopg2-binary  
 
 # --- Task Queue ---
 rq
 redis
+rq-dashboard     
 
 # --- Google Cloud ---
 googlemaps
 google-generativeai
 google-cloud-vision
+google-api-python-client 
 
 # --- Utilities ---
 pydantic-settings
 python-dotenv
+requests         
+pycountry      
+Pillow
+whois
+python-whois
+requests
