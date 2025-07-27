@@ -103,3 +103,17 @@ def synthesize_advanced_report(full_context: dict) -> dict:
     prompt = prompt.replace("[LANGUAGE_CODE]", "en") 
     context_str = json.dumps(full_context, indent=2)
     return _call_gemini_with_json_response(advanced_model, prompt, context_str)
+def extract_data_from_text(raw_text: str) -> dict:
+    """Extracts structured data from a raw text paste of a listing."""
+    prompt = load_prompt("data_extraction_prompt")
+    # Limit the text to avoid exceeding token limits
+    return _call_gemini_with_json_response(fast_model, prompt, raw_text[:12000])
+
+def process_q_and_a(full_context: dict) -> dict:
+    """
+    Handles post-analysis Q&A using the advanced model for better reasoning.
+    """
+    prompt = load_prompt("post_analysis_chat_prompt")
+    context_str = json.dumps(full_context, indent=2)
+    # Use the advanced_model for high-quality, nuanced answers
+    return _call_gemini_with_json_response(advanced_model, prompt, context_str)
