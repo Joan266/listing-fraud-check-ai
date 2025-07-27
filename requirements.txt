@@ -26,3 +26,6 @@ Pillow
 whois
 python-whois
 requests
+passlib[bcrypt]
+python-jose[cryptography]
+slowapi
