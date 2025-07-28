@@ -15,9 +15,32 @@ class ChatRequest(BaseModel):
     Defines the structure for incoming requests to chat-related endpoints.
     """
     session_id: str
-    # FIX: Added chat_id as an optional field to handle both initial and follow-up messages.
     chat_id: Optional[str] = None 
     message: Message
+class RawExtractedData(BaseModel):
+    listing_url: Optional[str] = None
+    property_type: Optional[str] = None
+    address: Optional[str] = None
+    general_overview: Optional[str] = None
+    amenities: Optional[List[str]] = None
+    notable_features: Optional[List[str]] = None
+    area_description: Optional[str] = None
+    rules_and_restrictions: Optional[List[str]] = None
+    suspicious_notes: Optional[List[str]] = None
+    image_urls: Optional[List[str]] = None
+    communication_text: Optional[str] = None
+    host_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    base_price_text: Optional[str] = None
+    cleaning_fee: Optional[str] = None
+    service_fee: Optional[str] = None
+    security_deposit: Optional[str] = None
+    taxes: Optional[str] = None
+    discounts_text: Optional[str] = None
+    payment_terms_text: Optional[str] = None
+    reviews: Optional[List[Dict[str, Any]]] = None
+    host_profile: Optional[Dict[str, Any]] = None
 
 class ExtractedListingData(BaseModel):
     """
@@ -33,7 +56,7 @@ class ExtractedListingData(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     reviews: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
-    price_details: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    price_details: Optional[str] = None
     host_profile: Optional[Dict[str, Any]] = Field(default_factory=dict)
     property_type: Optional[str] = None
 
@@ -57,13 +80,21 @@ class JobResponse(BaseModel):
     """Simple response model for endpoints that launch a background job."""
     job_id: str
 
+class FlagItem(BaseModel):
+    """
+    Represents a single flag with its category and description.
+    """
+    category: str
+    description: str
+
 class FinalReport(BaseModel):
     """
     Schema for the final, synthesized report returned when an analysis is complete.
     """
-    authenticityScore: int = Field(..., alias="authenticity_score")
-    qualityScore: int = Field(..., alias="quality_score")
+    authenticity_score: int
+    quality_score: int
     sidebar_summary: str
+    flags: List[FlagItem]
     chat_explanation: str
     suggested_actions: List[str]
 

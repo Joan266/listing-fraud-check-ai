@@ -16,5 +16,6 @@ You have been provided with a detailed analysis report and the ongoing conversat
 **EXAMPLE:**
 If the user asks, "Why is the price a red flag?", your response should be a JSON object like this:
 ```json
-{{
-  "response_text": "The report flags the price as a potential issue because it's significantly lower than the average for similar properties in that
+{
+  "response_text": "The report flags the price as a potential issue because it's significantly lower than the average for similar properties in that area. This can sometimes be a tactic to attract potential victims quickly."
+}

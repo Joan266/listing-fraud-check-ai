@@ -10,31 +10,18 @@ from app.services import chat_service
 
 router = APIRouter()
 
-@router.post("/extract-data", response_model=ChatResponse)
+@router.post("/extract-data", response_model=ExtractedListingData)
 @limiter.limit("30/minute")
-def extract_data_from_chat(request: Request, chat_request: ChatRequest, db: Session = Depends(get_db)):
+def extract_data_from_text(request: Request, chat_request: ChatRequest):
     """
     Handles the initial data-gathering step.
-    It takes the raw text from the user, creates a new chat session in the DB,
-    extracts structured data, and returns the data and chat_id to the frontend.
     """
     if not chat_request.message or not chat_request.message.content:
         raise HTTPException(status_code=400, detail="Message content cannot be empty.")
     
-    # Process the data extraction and get the response for the frontend
-    response_data = chat_service.process_data_extraction(
-        session_id=chat_request.session_id,
-        chat_id=None, # Always create a new chat on first extraction
-        user_message=chat_request.message.model_dump()
-    )
+    formatted_data = chat_service.extract_and_format_data(chat_request.message.model_dump())
 
-    # Construct the response using the schema
-    return ChatResponse(
-        chat_id=response_data["chat_id"],
-        # The 'response' field is no longer needed for the frontend in this step
-        response={"role": "assistant", "content": "Data extracted."}, 
-        extracted_data=response_data["extracted_data"]
-    )
+    return formatted_data
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -79,6 +66,7 @@ def create_analysis(request: Request, fraud_request: FraudCheckRequest, db: Sess
 
     # Exclude session_id for hashing to ensure duplicate checks work across sessions
     input_data = fraud_request.model_dump(exclude_unset=True, exclude={'session_id', 'chat_history'})
+    
     input_hash = generate_hash(input_data)
 
     # Check if this exact analysis has been run before to save resources
@@ -96,15 +84,12 @@ def create_analysis(request: Request, fraud_request: FraudCheckRequest, db: Sess
     db.add(new_check)
     db.commit()
     db.refresh(new_check)
-    
-    # Find the corresponding Chat session and link it to this analysis
-    # This is crucial for the post-analysis Q&A to have the right context.
-    chat_session = db.query(models.Chat).filter(models.Chat.session_id == fraud_request.session_id).order_by(models.Chat.created_at.desc()).first()
-    if chat_session:
-        chat_session.fraud_check_id = new_check.id
-        db.commit()
-
-    # Enqueue the main orchestrator job in the background
+    new_chat = models.Chat(
+        session_id=fraud_request.session_id,
+        fraud_check_id=new_check.id # Link the chat to the analysis
+    )
+    db.add(new_chat)
+    db.commit()
     analysis_fast_queue.enqueue(start_full_analysis, new_check.id)
     return {"job_id": str(new_check.id)}
 

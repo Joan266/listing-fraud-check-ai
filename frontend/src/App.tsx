@@ -8,7 +8,6 @@ import ThemeToggle from './components/Layout/ThemeToggle';
 import LandingPage from './pages/LandingPage';
 import ReviewPage from './pages/ReviewPage';
 import ResultsPage from './pages/ResultsPage';
-
 const AppContent: React.FC = () => {
   const { currentAnalysis, theme } = useAppSelector((state) => state.app);
 
@@ -21,30 +20,30 @@ const AppContent: React.FC = () => {
     if (!currentAnalysis) {
       return <LandingPage />;
     }
-    
+
     if (currentAnalysis.finalReport) {
       return <ResultsPage />;
     }
-    
+
     return <ReviewPage />;
   };
 
   return (
     <div className={`flex h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <Sidebar />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
         <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b px-6 py-4 flex justify-end`}>
           <ThemeToggle />
         </div>
-        
+
         {/* Main Content */}
         <div className="flex-1 overflow-auto">
           {getCurrentPage()}
         </div>
       </div>
-      
+
       {/* Toast Notifications */}
       <Toaster
         position="top-right"

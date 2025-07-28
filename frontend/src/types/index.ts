@@ -13,20 +13,20 @@ export interface ExtractedData {
   property_type?: string;
 }
 
+export interface FlagItem {
+  category: string;
+  description: string;
+}
+
 export interface FinalReport {
-  authenticityScore: number;
-  qualityScore: number;
+  authenticity_score: number;
+  quality_score: number;
   sidebar_summary: string;
+  flags: FlagItem[];
   chat_explanation: string;
   suggested_actions: string[];
 }
 
-export interface JobStatus {
-  id: string;
-  status: 'pending' | 'running' | 'finished' | 'failed';
-  result?: any;
-  error?: string;
-}
 
 export interface Analysis {
   id: string;
@@ -34,12 +34,14 @@ export interface Analysis {
   status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
   extractedData: ExtractedData;
   finalReport?: FinalReport;
-  geocodeResult?: {
-    latitude: number;
-    longitude: number;
-    formatted_address: string;
-  };
   createdAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  type: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
 }
 
 export interface AppState {
@@ -51,26 +53,22 @@ export interface AppState {
   error: string | null;
   theme: 'light' | 'dark';
   sidebarCollapsed: boolean;
+  chatMessages: ChatMessage[];
 }
 
-export interface ApiResponse<T> {
-  data: T;
-  message?: string;
+export interface ChatRequest {
+    session_id: string;
+    chat_id: string;
+    message: {
+        role: 'user' | 'assistant';
+        content: string;
+    };
 }
 
-export interface ExtractDataResponse {
-  extracted_data: ExtractedData;
-  geocode_job_id: string;
-}
-
-export interface AnalysisResponse {
-  check_id: string;
-  status: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  type: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
+export interface ChatResponse {
+    chat_id: string;
+    response: {
+        role: 'assistant';
+        content: string;
+    };
 }

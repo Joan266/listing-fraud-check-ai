@@ -132,11 +132,11 @@ const Sidebar: React.FC = () => {
                   </span>
                   {analysis.finalReport && (
                     <div className="flex space-x-1">
-                      <span className={`text-xs font-medium ${getScoreColor(analysis.finalReport.authenticityScore)}`}>
-                        A:{analysis.finalReport.authenticityScore}
+                      <span className={`text-xs font-medium ${getScoreColor(analysis.finalReport.authenticity_score)}`}>
+                        A:{analysis.finalReport.authenticity_score}
                       </span>
-                      <span className={`text-xs font-medium ${getScoreColor(analysis.finalReport.qualityScore)}`}>
-                        Q:{analysis.finalReport.qualityScore}
+                      <span className={`text-xs font-medium ${getScoreColor(analysis.finalReport.quality_score)}`}>
+                        Q:{analysis.finalReport.quality_score}
                       </span>
                     </div>
                   )}
