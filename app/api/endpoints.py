@@ -114,7 +114,8 @@ def create_analysis(request: Request, fraud_request: FraudCheckRequest, db: Sess
 def get_analysis_status(
     request: Request,
     check_id: str,
-    session_id: str = Header(...), # Require session_id in header for security
+    # FIX: Explicitly tell FastAPI to look for the 'session_id' header
+    session_id: str = Header(..., alias="session_id"), 
     db: Session = Depends(get_db)
 ):
     """
