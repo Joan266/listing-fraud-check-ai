@@ -1,54 +1,74 @@
-import React from 'react';
-import { MapPin } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
+
+const containerStyle = {
+  width: '100%',
+  height: '100%',
+};
+
+// IMPORTANT: Add your Google Maps API Key to a .env.local file in the /frontend directory
+// VITE_Maps_API_KEY=YOUR_KEY_HERE
+const googleMapsApiKey = import.meta.env.VITE_Maps_API_KEY;
 
 interface MapComponentProps {
-  address?: string;
-  latitude?: number;
-  longitude?: number;
-  theme: 'light' | 'dark';
-  className?: string;
+  address: string;
+  onAddressChange: (newAddress: string) => void;
 }
 
-const MapComponent: React.FC<MapComponentProps> = ({ 
-  address, 
-  latitude, 
-  longitude, 
-  theme, 
-  className = '' 
-}) => {
-  // For demo purposes, we'll show a placeholder map
-  // In production, you'd integrate with Google Maps, Mapbox, etc.
-  
+const MapComponent = ({ address, onAddressChange }: MapComponentProps) => {
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: googleMapsApiKey,
+  });
+
+  const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (isLoaded && address) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ address }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const { lat, lng } = results[0].geometry.location;
+          setPosition({ lat: lat(), lng: lng() });
+        } else {
+          console.error(`Geocode was not successful for the following reason: ${status}`);
+        }
+      });
+    }
+  }, [address, isLoaded]);
+
+  const onMarkerDragEnd = useCallback((event: google.maps.MapMouseEvent) => {
+    if (event.latLng) {
+      const newLat = event.latLng.lat();
+      const newLng = event.latLng.lng();
+      setPosition({ lat: newLat, lng: newLng });
+      
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat: newLat, lng: newLng } }, (results, status) => {
+          if (status === 'OK' && results && results[0]) {
+              onAddressChange(results[0].formatted_address);
+          }
+      });
+    }
+  }, [onAddressChange]);
+
+  if (loadError) return <div>Error loading maps. Please ensure your API key is correct.</div>;
+  if (!isLoaded) return <div>Loading Map...</div>;
+
   return (
-    <div className={`${className} relative overflow-hidden rounded-lg ${
-      theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'
-    } border`}>
-      {latitude && longitude ? (
-        <div className="w-full h-full flex items-center justify-center">
-          <div className="text-center">
-            <MapPin size={48} className="mx-auto mb-4 text-yellow-400" />
-            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Location Verified
-            </h3>
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
-              {address}
-            </p>
-            <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'} mt-2`}>
-              {latitude.toFixed(6)}, {longitude.toFixed(6)}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="w-full h-full flex items-center justify-center">
-          <div className="text-center">
-            <MapPin size={48} className={`mx-auto mb-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              {address ? 'Verifying location...' : 'No address provided'}
-            </p>
-          </div>
-        </div>
+    <GoogleMap
+      mapContainerStyle={containerStyle}
+      center={position || { lat: 40.7128, lng: -74.0060 }} // Default to NYC if no position
+      zoom={position ? 15 : 10}
+    >
+      {position && (
+        <MarkerF
+          position={position}
+          draggable={true}
+          onDragEnd={onMarkerDragEnd}
+        />
       )}
-    </div>
+    </GoogleMap>
   );
 };
 
