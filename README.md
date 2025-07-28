@@ -4,7 +4,7 @@ An AI-powered web application to help travelers detect and avoid online rental f
 
 ## About The Project
 
-This project is the backend service for the FraudCheck.ai MVP. Its purpose is to provide an API that can analyze rental listing details (address, images, description) to identify potential red flags associated with common online scams. The core value is to provide travelers with a quick, AI-powered "second opinion" for peace of mind and financial protection.
+This project is the backend service for the FraudCheck.ai MVP. Its purpose is to provide an API that can analyze rental listing details to identify potential red flags associated with common scams. The core value is to provide travelers with a quick, AI-powered "second opinion" for peace of mind.
 
 ### Built With
 
@@ -58,35 +58,47 @@ Follow these steps to get your local development environment running.
 
 ### Running the Application
 
-You'll need to run four separate services in four different terminals for the full development environment.
+For a full development environment, you will need to run the services in separate terminals.
 
 1.  **Terminal 1: Start Redis**
+    This command starts a Redis container in the background.
     ```sh
     docker run -d -p 6379:6379 --name fraudcheck-redis redis
     ```
 
-2.  **Terminal 2: Start the Analysis Worker**
-    *(This worker handles all the heavy and fast analysis tasks.)*
-    ```sh
-    python analysis_worker.py
-    ```
-
-3.  **Terminal 3: Start the Chat Worker**
-    *(This worker handles real-time chat functionality.)*
-    ```sh
-    python chat_worker.py
-    ```
-
-4.  **Terminal 4: Start the FastAPI Server**
+2.  **Terminal 2: Start the FastAPI Server**
+    This runs the main web application. The database will be created automatically the first time you run this.
     ```sh
     uvicorn app.main:app --reload
     ```
-The API will be available at `http://127.0.0.1:8000`.
+    The API will be available at `http://127.0.0.1:8000`.
+
+3.  **Terminal 3 & 4: Start the RQ Workers**
+    These processes will listen for and execute background jobs.
+    ```sh
+    # In Terminal 3
+    python analysis_worker.py
+
+    # In Terminal 4
+    python chat_worker.py
+    ```
+
+4.  **Terminal 5: Start the Monitoring Dashboard (Optional)**
+    This allows you to see the status of your jobs in a web browser.
+    ```sh
+    rq-dashboard
+    ```
+    The dashboard will be available at `http://localhost:9181`.
 
 ---
 
-### Monitoring Background Jobs
+## API Endpoints
 
-To monitor the status of your queues and jobs, run the RQ Dashboard in a separate terminal:
-```sh
-rq-dashboard
+The primary endpoints are:
+
+* `POST /extract-data`: Handles the initial text paste to extract listing data.
+* `POST /analysis`: Starts the full fraud analysis pipeline.
+* `GET /analysis/{check_id}`: Polls for the status and result of an analysis.
+* `POST /chat`: Handles post-analysis follow-up questions.
+
+You can interact with all endpoints via the interactive docs at **`http://127.0.0.1:8000/docs`**.
