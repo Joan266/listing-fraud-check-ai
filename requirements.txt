@@ -1,31 +1,32 @@
-# --- Web Framework ---
+# --- Web Framework & Server ---
 fastapi
 uvicorn[standard]
+slowapi
 
 # --- Database ---
 sqlalchemy
-psycopg2-binary  
+psycopg2-binary
 
 # --- Task Queue ---
 rq
 redis
-rq-dashboard     
+rq-dashboard
 
-# --- Google Cloud ---
-googlemaps
-google-generativeai
+# --- Google Cloud Services ---
+google-api-python-client
 google-cloud-vision
-google-api-python-client 
+google-generativeai
+googlemaps
+
+# --- Authentication ---
+passlib[bcrypt]
+python-jose[cryptography]
 
 # --- Utilities ---
 pydantic-settings
 python-dotenv
-requests         
-pycountry      
-Pillow
-whois
-python-whois
 requests
-passlib[bcrypt]
-python-jose[cryptography]
-slowapi
+Pillow
+python-whois
+pycountry
+langdetect
