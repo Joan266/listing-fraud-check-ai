@@ -1,7 +1,3 @@
-/**
- * Represents the structured data extracted from a rental listing.
- * All fields are optional as not all listings contain all data points.
- */
 export interface ExtractedData {
   listing_url?: string;
   address?: string;
@@ -17,9 +13,6 @@ export interface ExtractedData {
   property_type?: string;
 }
 
-/**
- * Represents the final synthesized report from the AI analysis.
- */
 export interface FinalReport {
   authenticityScore: number;
   qualityScore: number;
@@ -28,27 +21,18 @@ export interface FinalReport {
   suggested_actions: string[];
 }
 
-/**
- * Defines the structure for a single chat message.
- */
-export interface ChatMessage {
+export interface JobStatus {
   id: string;
-  type: 'user' | 'assistant' | string; // Allow string for backend role flexibility
-  content: string;
-  timestamp: string;
+  status: 'pending' | 'running' | 'finished' | 'failed';
+  result?: any;
+  error?: string;
 }
 
-/**
- * Represents a single analysis job, from initiation to completion.
- * This is the central object for tracking state in the UI.
- */
 export interface Analysis {
-  id: string; // The main analysis ID (from FraudCheck.id)
-  chatId: string; // The ID for the chat session associated with this analysis
+  id: string;
   sessionId: string;
   status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
   extractedData: ExtractedData;
-  chatMessages: ChatMessage[]; // Holds the conversation history for this analysis
   finalReport?: FinalReport;
   geocodeResult?: {
     latitude: number;
@@ -58,9 +42,6 @@ export interface Analysis {
   createdAt: string;
 }
 
-/**
- * Defines the entire state structure for the Redux store.
- */
 export interface AppState {
   currentSessionId: string;
   currentAnalysis: Analysis | null;
@@ -70,4 +51,26 @@ export interface AppState {
   error: string | null;
   theme: 'light' | 'dark';
   sidebarCollapsed: boolean;
+}
+
+export interface ApiResponse<T> {
+  data: T;
+  message?: string;
+}
+
+export interface ExtractDataResponse {
+  extracted_data: ExtractedData;
+  geocode_job_id: string;
+}
+
+export interface AnalysisResponse {
+  check_id: string;
+  status: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  type: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
 }

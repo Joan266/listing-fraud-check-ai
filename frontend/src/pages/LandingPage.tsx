@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, Lightbulb, Shield, Zap } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
-import { extractDataAsync, setError } from '../store/appSlice';
+import { extractDataAsync } from '../store/appSlice';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
 import { gsap } from 'gsap';
 
 const LandingPage: React.FC = () => {
   const [listingText, setListingText] = useState('');
-  const { loading, loadingMessage, theme, error } = useAppSelector((state) => state.app);
+  const { loading, loadingMessage, theme } = useAppSelector((state) => state.app);
   const dispatch = useAppDispatch();
   
   const headerRef = useRef<HTMLDivElement>(null);
@@ -37,11 +37,7 @@ const LandingPage: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (listingText.trim()) {
-      // Dispatch the thunk to start the data extraction process
       dispatch(extractDataAsync(listingText.trim()));
-    } else {
-      // Set an error if the user tries to submit an empty form
-      dispatch(setError("Please paste some listing text to get started."));
     }
   };
 
@@ -119,7 +115,7 @@ const LandingPage: React.FC = () => {
               {loading ? (
                 <>
                   <LoadingSpinner size="sm" color="text-gray-900" />
-                  <span>{loadingMessage || 'Analyzing...'}</span>
+                  <span>{loadingMessage}</span>
                 </>
               ) : (
                 <>
@@ -128,7 +124,6 @@ const LandingPage: React.FC = () => {
                 </>
               )}
             </button>
-             {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
           </div>
         </form>
 
