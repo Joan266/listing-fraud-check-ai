@@ -1,8 +1,12 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
-import { AppState, Analysis, ExtractedData, FinalReport } from '../types';
+import { AppState, Analysis, ExtractedData, ChatMessage } from '../types';
 import { apiClient } from '../api/client';
 
+/**
+ * Retrieves the session ID from sessionStorage or creates a new one.
+ * This ensures the user's session persists across page reloads.
+ */
 const getSessionId = (): string => {
   let sessionId = sessionStorage.getItem('safeLease_sessionId');
   if (!sessionId) {
@@ -12,6 +16,9 @@ const getSessionId = (): string => {
   return sessionId;
 };
 
+/**
+ * Loads the analysis history from localStorage.
+ */
 const getStoredHistory = (): Analysis[] => {
   try {
     const stored = localStorage.getItem('safeLease_history');
@@ -21,6 +28,10 @@ const getStoredHistory = (): Analysis[] => {
   }
 };
 
+/**
+ * Saves the analysis history to localStorage.
+ * @param history The array of analysis objects to save.
+ */
 const saveHistoryToStorage = (history: Analysis[]) => {
   try {
     localStorage.setItem('safeLease_history', JSON.stringify(history));
@@ -29,6 +40,7 @@ const saveHistoryToStorage = (history: Analysis[]) => {
   }
 };
 
+// Define the initial state of the application
 const initialState: AppState = {
   currentSessionId: getSessionId(),
   currentAnalysis: null,
@@ -40,62 +52,39 @@ const initialState: AppState = {
   sidebarCollapsed: localStorage.getItem('safeLease_sidebarCollapsed') === 'true',
 };
 
-// Async thunks
+// --- ASYNCHRONOUS THUNKS ---
+
+/**
+ * Thunk for the initial data extraction from raw text.
+ */
 export const extractDataAsync = createAsyncThunk(
   'app/extractData',
   async (listingText: string, { getState, dispatch }) => {
     const state = getState() as { app: AppState };
-    const sessionId = state.app.currentSessionId;
-
     dispatch(setLoadingMessage('Extracting listing details...'));
-    
-    const response = await apiClient.extractData(listingText, sessionId);
-    
-    // Start polling for geocode job
-    dispatch(setLoadingMessage('Verifying address on map...'));
-    dispatch(pollGeocodeJob(response.geocode_job_id));
-    
+    const response = await apiClient.extractData(listingText, state.app.currentSessionId);
     return response;
   }
 );
 
-export const pollGeocodeJob = createAsyncThunk(
-  'app/pollGeocodeJob',
-  async (jobId: string, { dispatch }) => {
-    const poll = async (): Promise<any> => {
-      const jobStatus = await apiClient.getJobStatus(jobId);
-      
-      if (jobStatus.status === 'finished') {
-        return jobStatus.result;
-      } else if (jobStatus.status === 'failed') {
-        throw new Error(jobStatus.error || 'Geocoding failed');
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        return poll();
-      }
-    };
-    
-    return poll();
-  }
-);
-
+/**
+ * Thunk for submitting the confirmed data to start the full analysis pipeline.
+ */
 export const submitAnalysisAsync = createAsyncThunk(
   'app/submitAnalysis',
   async (extractedData: ExtractedData, { getState, dispatch }) => {
     const state = getState() as { app: AppState };
-    const sessionId = state.app.currentSessionId;
-
     dispatch(setLoadingMessage('Running full analysis, this may take a minute...'));
-    
-    const response = await apiClient.submitAnalysis(extractedData, sessionId);
-    
-    // Start polling for analysis completion
-    dispatch(pollAnalysisStatus(response.check_id));
-    
+    const response = await apiClient.submitAnalysis(extractedData, state.app.currentSessionId);
+    // Once submitted, start polling for the result.
+    dispatch(pollAnalysisStatus(response.job_id));
     return response;
   }
 );
 
+/**
+ * Thunk for polling the analysis status until it's completed or fails.
+ */
 export const pollAnalysisStatus = createAsyncThunk(
   'app/pollAnalysisStatus',
   async (checkId: string, { getState }) => {
@@ -103,59 +92,63 @@ export const pollAnalysisStatus = createAsyncThunk(
     const sessionId = state.app.currentSessionId;
 
     const poll = async (): Promise<any> => {
+      // Add a delay before the first poll to give the backend time to start
+      await new Promise(resolve => setTimeout(resolve, 3000));
       const analysisStatus = await apiClient.getAnalysisStatus(checkId, sessionId);
       
       if (analysisStatus.status === 'COMPLETED') {
-        return analysisStatus.final_report;
+        return analysisStatus;
       } else if (analysisStatus.status === 'FAILED') {
-        throw new Error('Analysis failed');
+        throw new Error('Analysis failed. Please try again.');
       } else {
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Continue polling every 3 seconds
         return poll();
       }
     };
-    
     return poll();
   }
 );
 
-export const updateAnalysisAsync = createAsyncThunk(
-  'app/updateAnalysis',
-  async ({ checkId, extractedData }: { checkId: string; extractedData: ExtractedData }, { getState, dispatch }) => {
-    const state = getState() as { app: AppState };
-    const sessionId = state.app.currentSessionId;
+/**
+ * Thunk for sending a message in the post-analysis chat.
+ */
+export const sendChatMessageAsync = createAsyncThunk(
+  'app/sendChatMessage',
+  async (message: ChatMessage, { getState }) => {
+      const state = getState() as { app: AppState };
+      const { currentSessionId, currentAnalysis } = state.app;
+      
+      if (!currentAnalysis || !currentAnalysis.chatId) {
+          throw new Error("Cannot send message: no active analysis or chat session.");
+      }
 
-    dispatch(setLoadingMessage('Updating analysis...'));
-    
-    const response = await apiClient.updateAnalysis(checkId, extractedData, sessionId);
-    
-    // Start polling for updated analysis completion
-    dispatch(pollAnalysisStatus(response.check_id));
-    
-    return response;
+      const response = await apiClient.sendChatMessage(message, currentAnalysis.chatId, currentSessionId);
+      
+      // Return the AI's response to be added to the state
+      return {
+          id: uuidv4(),
+          type: response.response.role,
+          content: response.response.content,
+          timestamp: new Date().toISOString()
+      } as ChatMessage;
   }
 );
+
 
 const appSlice = createSlice({
   name: 'app',
   initialState,
   reducers: {
+    // Reducers for synchronous state updates
     setLoadingMessage: (state, action: PayloadAction<string>) => {
       state.loading = true;
       state.loadingMessage = action.payload;
       state.error = null;
     },
-    clearLoading: (state) => {
-      state.loading = false;
-      state.loadingMessage = '';
-    },
     setError: (state, action: PayloadAction<string>) => {
       state.error = action.payload;
       state.loading = false;
       state.loadingMessage = '';
-    },
-    clearError: (state) => {
-      state.error = null;
     },
     toggleTheme: (state) => {
       state.theme = state.theme === 'light' ? 'dark' : 'light';
@@ -177,43 +170,48 @@ const appSlice = createSlice({
         state.currentAnalysis = analysis;
       }
     },
+    addUserMessage: (state, action: PayloadAction<ChatMessage>) => {
+        if (state.currentAnalysis) {
+            state.currentAnalysis.chatMessages.push(action.payload);
+        }
+    }
   },
+  // Reducers for handling async thunk lifecycle actions
   extraReducers: (builder) => {
     builder
-      // Extract data
+      // Initial data extraction
+      .addCase(extractDataAsync.pending, (state) => {
+          state.loading = true;
+          state.loadingMessage = 'Extracting data...';
+      })
       .addCase(extractDataAsync.fulfilled, (state, action) => {
         const newAnalysis: Analysis = {
-          id: uuidv4(),
+          id: '', // The real analysis ID will be set after submission
+          chatId: action.payload.chat_id, // Store the chat ID
           sessionId: state.currentSessionId,
           status: 'PENDING',
           extractedData: action.payload.extracted_data,
+          chatMessages: [], // Initialize chat history
           createdAt: new Date().toISOString(),
         };
         state.currentAnalysis = newAnalysis;
+        state.loading = false;
       })
       .addCase(extractDataAsync.rejected, (state, action) => {
         state.error = action.error.message || 'Failed to extract data';
         state.loading = false;
       })
       
-      // Geocode polling
-      .addCase(pollGeocodeJob.fulfilled, (state, action) => {
-        if (state.currentAnalysis) {
-          state.currentAnalysis.geocodeResult = action.payload;
-        }
-        state.loading = false;
-        state.loadingMessage = '';
+      // Analysis submission
+      .addCase(submitAnalysisAsync.pending, (state) => {
+          state.loading = true;
+          state.loadingMessage = 'Submitting for full analysis...';
       })
-      .addCase(pollGeocodeJob.rejected, (state, action) => {
-        state.error = action.error.message || 'Geocoding failed';
-        state.loading = false;
-      })
-      
-      // Submit analysis
       .addCase(submitAnalysisAsync.fulfilled, (state, action) => {
         if (state.currentAnalysis) {
-          state.currentAnalysis.id = action.payload.check_id;
+          state.currentAnalysis.id = action.payload.job_id;
           state.currentAnalysis.status = 'RUNNING';
+          state.loadingMessage = 'Analysis in progress... this may take a minute.';
         }
       })
       .addCase(submitAnalysisAsync.rejected, (state, action) => {
@@ -225,42 +223,54 @@ const appSlice = createSlice({
       .addCase(pollAnalysisStatus.fulfilled, (state, action) => {
         if (state.currentAnalysis) {
           state.currentAnalysis.status = 'COMPLETED';
-          state.currentAnalysis.finalReport = action.payload;
+          state.currentAnalysis.finalReport = action.payload.final_report;
           
-          // Add to history
+          // Initialize chat with the AI's opening summary
+          state.currentAnalysis.chatMessages.push({
+            id: uuidv4(),
+            type: 'assistant',
+            content: action.payload.final_report.chat_explanation,
+            timestamp: new Date().toISOString()
+          });
+
+          // Update history
           const existingIndex = state.analysisHistory.findIndex(a => a.id === state.currentAnalysis!.id);
-          if (existingIndex >= 0) {
+          if (existingIndex !== -1) {
             state.analysisHistory[existingIndex] = state.currentAnalysis;
           } else {
             state.analysisHistory.unshift(state.currentAnalysis);
           }
           
-          // Keep only last 50 analyses
-          state.analysisHistory = state.analysisHistory.slice(0, 50);
+          state.analysisHistory = state.analysisHistory.slice(0, 50); // Limit history size
           saveHistoryToStorage(state.analysisHistory);
         }
         state.loading = false;
-        state.loadingMessage = '';
       })
       .addCase(pollAnalysisStatus.rejected, (state, action) => {
-        state.error = action.error.message || 'Analysis failed';
+        state.error = action.error.message || 'Analysis polling failed';
         state.loading = false;
         if (state.currentAnalysis) {
           state.currentAnalysis.status = 'FAILED';
         }
+      })
+
+      // Post-analysis chat
+      .addCase(sendChatMessageAsync.fulfilled, (state, action) => {
+          if (state.currentAnalysis) {
+              state.currentAnalysis.chatMessages.push(action.payload);
+          }
       });
   },
 });
 
 export const {
   setLoadingMessage,
-  clearLoading,
   setError,
-  clearError,
   toggleTheme,
   toggleSidebar,
   resetCurrentAnalysis,
   loadAnalysisFromHistory,
+  addUserMessage,
 } = appSlice.actions;
 
 export default appSlice.reducer;
