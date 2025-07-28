@@ -1,5 +1,5 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
 from sqlalchemy.orm import Session
 from app.core.limiter import limiter
 from app.db import models
@@ -80,8 +80,12 @@ def get_analysis_status(
     return check_result
 
 @router.get("/analysis/history")
-@limiter.limit("20/minute") # Limit history requests as well
-def get_session_history(request: Request, session_id: str, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+def get_session_history(
+    request: Request,
+    db: Session = Depends(get_db),
+    session_id: str = Query(...) 
+):
     """Gets the analysis history for a given session_id."""
     history = db.query(models.FraudCheck).filter(models.FraudCheck.session_id == session_id).all()
     return history
