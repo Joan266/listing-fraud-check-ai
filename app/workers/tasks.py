@@ -156,7 +156,7 @@ def job_reverse_image_search(check_id_arg):
     try:
         check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
         if not check: return {"error": "Check not found"}
-        image_urls = check.input_data.get("image_urls", [])[:MAX_IMAGES_TO_ANALYZE]
+        image_urls = (check.input_data.get("image_urls") or [])[:MAX_IMAGES_TO_ANALYZE]
         inputs = {"image_urls": image_urls}
     finally:
         db.close()
@@ -184,7 +184,7 @@ def job_ai_image_detection(check_id_arg):
     try:
         check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
         if not check: return {"error": "Check not found"}
-        initial_urls = check.input_data.get("image_urls", [])[:MAX_IMAGES_TO_ANALYZE]
+        initial_urls = (check.input_data.get("image_urls") or [])[:MAX_IMAGES_TO_ANALYZE]
     finally:
         db.close()
 
@@ -292,7 +292,8 @@ def job_price_and_host_check(check_id_arg):
             "price_details": check.input_data.get("price_details"),
             "property_type": check.input_data.get("property_type"),
             "address": check.input_data.get("address"),
-            "host_profile": check.input_data.get("host_profile")
+            "host_profile": check.input_data.get("host_profile"),
+            "description": check.input_data.get("description") 
         }
     finally:
         db.close()
@@ -301,8 +302,17 @@ def job_price_and_host_check(check_id_arg):
         results = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             futures = {}
-            if all([data.get("price_details"), data.get("property_type"), data.get("address")]):
-                futures[executor.submit(gemini_analysis.check_price_sanity, data["price_details"], data["property_type"], data["address"])] = "price_analysis"
+            
+            # Update the condition to check for description as well
+            if all([data.get("price_details"), data.get("property_type"), data.get("address"), data.get("description")]):
+                futures[executor.submit(
+                    gemini_analysis.check_price_sanity, 
+                    data["price_details"], 
+                    data["property_type"], 
+                    data["address"],
+                    data["description"]
+                )] = "price_analysis"
+            
             if data.get("host_profile"):
                 futures[executor.submit(gemini_analysis.analyze_host_profile, data["host_profile"])] = "host_analysis"
             

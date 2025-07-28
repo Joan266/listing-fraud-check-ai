@@ -1,4 +1,5 @@
 import toast from 'react-hot-toast';
+import { ExtractedData } from '../types';
 
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
@@ -19,8 +20,8 @@ class ApiClient {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       return await response.json();
@@ -33,38 +34,32 @@ class ApiClient {
 
   async extractData(listingText: string, sessionId: string) {
     return this.request<{
-      extracted_data: any;
-      geocode_job_id: string;
+      chat_id: string;
+      extracted_data: ExtractedData;
     }>('/extract-data', {
       method: 'POST',
       body: JSON.stringify({
-        listing_text: listingText,
         session_id: sessionId,
+        message: { role: 'user', content: listingText }
       }),
     });
   }
 
-  async getJobStatus(jobId: string) {
-    return this.request<{
-      id: string;
-      status: string;
-      result?: any;
-      error?: string;
-    }>(`/jobs/${jobId}`);
-  }
+  async submitAnalysis(extractedData: any, sessionId: string, chatId?: string) {
+    const payload = {
+      ...extractedData,
+      session_id: sessionId,
+      chat_history: chatId ? [{ role: 'user', content: 'Initial data' }] : [],
+    };
 
-  async submitAnalysis(extractedData: any, sessionId: string) {
     return this.request<{
-      check_id: string;
-      status: string;
+      job_id: string;
     }>('/analysis', {
       method: 'POST',
-      headers: {
-        'X-Session-ID': sessionId,
-      },
-      body: JSON.stringify(extractedData),
+      body: JSON.stringify(payload),
     });
   }
+
 
   async getAnalysisStatus(checkId: string, sessionId: string) {
     return this.request<{
@@ -73,23 +68,11 @@ class ApiClient {
       final_report?: any;
     }>(`/analysis/${checkId}`, {
       headers: {
-        'X-Session-ID': sessionId,
+        'session_id': sessionId,
       },
     });
   }
-
-  async updateAnalysis(checkId: string, extractedData: any, sessionId: string) {
-    return this.request<{
-      check_id: string;
-      status: string;
-    }>(`/analysis/${checkId}`, {
-      method: 'PUT',
-      headers: {
-        'X-Session-ID': sessionId,
-      },
-      body: JSON.stringify(extractedData),
-    });
-  }
+  
 }
 
 export const apiClient = new ApiClient();

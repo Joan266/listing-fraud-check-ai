@@ -4,51 +4,30 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.db.models import Chat, ChatMessage, FraudCheck, JobStatus
 from app.db.session import SessionLocal
-from app.schemas import ExtractedListingData
+from app.schemas import ExtractedListingData, RawExtractedData
 from app.services import gemini_analysis
+from app.services import data_formatter
 from app.utils.helpers import load_prompt
 
-def process_data_extraction(session_id: str, chat_id: uuid.UUID | None, user_message: dict) -> dict:
+def extract_and_format_data(user_message: dict) -> dict:
     """
-    Handles the Phase 1 logic of extracting structured data from the user's raw text paste.
-    This function is now streamlined for a single, non-conversational submission.
+    Takes raw text, calls the AI for extraction, validates, and formats it.
+    This function does not interact with the database.
     """
-    # Use a single database session for the entire operation
-    db = SessionLocal()
-    try:
-        # A new chat is always created for the initial data extraction
-        chat = Chat(session_id=session_id, status=JobStatus.PENDING)
-        db.add(chat)
-        db.commit()
-        db.refresh(chat)
+    raw_text = user_message.get("content", "")
+    if not raw_text:
+        return {}
 
-        # Save the user's raw text as the first message
-        db.add(ChatMessage(chat_id=chat.id, role="user", content=user_message['content']))
-        db.commit()
-
-        # Call Gemini to extract structured data from the raw text
-        # The context is simple: just the user's pasted text.
-        extracted_data_json = gemini_analysis.extract_data_from_text(user_message['content'])
-
-        if "error" in extracted_data_json:
-            raise HTTPException(status_code=500, detail=f"AI data extraction failed: {extracted_data_json['error']}")
-
-        # Store the extracted data within the chat record itself
-        chat.extracted_data = extracted_data_json
-        db.commit()
-        
-        # Validate and structure the data using the Pydantic schema
-        extracted_data_schema = ExtractedListingData.model_validate(extracted_data_json)
-
-        return {
-            "chat_id": str(chat.id), 
-            "extracted_data": extracted_data_schema.model_dump(),
-        }
-        
-    finally:
-        # Ensure the database session is always closed
-        db.close()
-        
+    # 1. Call the AI to get the simple, raw data
+    raw_data_dict = gemini_analysis.extract_data_from_text(raw_text)
+    if "error" in raw_data_dict:
+        raise HTTPException(status_code=500, detail=f"AI data extraction failed: {raw_data_dict['error']}")
+    
+    # 2. Validate and format the data
+    raw_data_validated = RawExtractedData.model_validate(raw_data_dict)
+    final_formatted_data = data_formatter.format_extracted_data(raw_data_validated)
+    
+    return final_formatted_data
 def process_q_and_a(session_id: str, chat_id: uuid.UUID, user_message: dict, db: Session) -> dict:
     """
     Handles the Phase 2 logic of answering follow-up questions after an analysis is complete.

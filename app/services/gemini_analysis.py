@@ -74,9 +74,9 @@ def analyze_listing_reviews(reviews: list) -> dict:
     review_text = "\n".join([f"- {r.get('text')}" for r in reviews])
     return _call_gemini_with_json_response(fast_model, prompt, review_text)
 
-def check_price_sanity(price_details: dict, property_type: str, address: str) -> dict:
+def check_price_sanity(price_details: str, property_type: str,description:str, address: str) -> dict:
     prompt = load_prompt("check_price_sanity_prompt")
-    context = f"Address: {address}\nType: {property_type}\nPrice: {price_details}"
+    context = f"Address: {address}\nType: {property_type}\nPrice: {price_details}\nListing Description: {description}"
     return _call_gemini_with_json_response(fast_model, prompt, context)
 
 def analyze_host_profile(host_data: dict) -> dict:
