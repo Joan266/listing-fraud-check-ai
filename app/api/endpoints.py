@@ -1,3 +1,4 @@
+from typing import List
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
 from sqlalchemy.orm import Session
@@ -5,23 +6,25 @@ from app.core.limiter import limiter
 from app.db import models
 from app.db.session import get_db
 from app.workers.queues import analysis_fast_queue
-from app.schemas import FraudCheckRequest, JobResponse, JobStatusResponse, ChatRequest, ChatResponse, ExtractedListingData
-from app.services import chat_service
+from app.schemas import FraudCheckRequest, JobResponse, JobStatusResponse, ChatRequest,HistoryResponse, ChatResponse,ExtractRequest, ExtractDataResponse, Message
+from app.services import chat_service, extract_data_service
+
 
 router = APIRouter()
 
-@router.post("/extract-data", response_model=ExtractedListingData)
+@router.post("/extract-data", response_model=ExtractDataResponse)
 @limiter.limit("30/minute")
-def extract_data_from_text(request: Request, chat_request: ChatRequest):
+def extract_data_from_text(request: Request, extract_request: ExtractRequest):
     """
     Handles the initial data-gathering step.
     """
-    if not chat_request.message or not chat_request.message.content:
-        raise HTTPException(status_code=400, detail="Message content cannot be empty.")
+    if not extract_request.listing_content:
+        raise HTTPException(status_code=400, detail="Listing content cannot be empty.")
     
-    formatted_data = chat_service.extract_and_format_data(chat_request.message.model_dump())
+    # FIX: Pass the string directly
+    formatted_data = extract_data_service.extract_and_format_data(extract_request.listing_content)
 
-    return formatted_data
+    return {"extracted_data": formatted_data}
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -47,7 +50,6 @@ def handle_post_analysis_chat(request: Request, chat_request: ChatRequest, db: S
     return ChatResponse(
         chat_id=response_data["chat_id"],
         response=response_data["response"],
-        extracted_data=None # No data extraction in this phase
     )
 
 
@@ -99,7 +101,6 @@ def create_analysis(request: Request, fraud_request: FraudCheckRequest, db: Sess
 def get_analysis_status(
     request: Request,
     check_id: str,
-    # FIX: Explicitly tell FastAPI to look for the 'session_id' header
     session_id: str = Header(..., alias="session_id"), 
     db: Session = Depends(get_db)
 ):
@@ -123,17 +124,68 @@ def get_analysis_status(
         
     return check_result
 
+@router.put("/analysis/{check_id}", response_model=JobResponse, status_code=202)
+@limiter.limit("5/hour")
+def rerun_analysis(
+    request: Request,
+    check_id: str,
+    fraud_request: FraudCheckRequest,
+    db: Session = Depends(get_db)
+):
+    """Updates an existing analysis with new data and reruns the full pipeline."""
+    from app.workers.orchestrator import start_full_analysis
+    from app.utils.helpers import generate_hash
 
-@router.get("/analysis/history")
+    job_uuid = uuid.UUID(check_id)
+    existing_check = db.query(models.FraudCheck).filter(models.FraudCheck.id == job_uuid).first()
+    if not existing_check:
+        raise HTTPException(status_code=404, detail="Analysis not found.")
+    
+    # Security check
+    if existing_check.session_id != fraud_request.session_id:
+        raise HTTPException(status_code=403, detail="Not authorized.")
+
+    # Update the record
+    updated_data = fraud_request.model_dump(exclude_unset=True, exclude={'session_id'})
+    existing_check.input_data = updated_data
+    existing_check.input_hash = generate_hash(updated_data)
+    existing_check.status = models.JobStatus.PENDING
+    existing_check.final_report = None
+    db.commit()
+
+    # Re-enqueue the orchestrator job
+    analysis_fast_queue.enqueue(start_full_analysis, existing_check.id)
+    return {"job_id": str(existing_check.id)}
+# Add this new endpoint
+@router.get("/chat/{chat_id}/messages", response_model=List[Message])
+@limiter.limit("60/minute")
+def get_chat_messages(
+    request: Request,
+    chat_id: str,
+    session_id: str = Header(..., alias="session_id"),
+    db: Session = Depends(get_db)
+):
+    """Gets all messages for a specific chat, verifying session ownership."""
+    chat_uuid = uuid.UUID(chat_id)
+    chat = db.query(models.Chat).filter(models.Chat.id == chat_uuid).first()
+    
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found.")
+    if chat.session_id != session_id:
+        raise HTTPException(status_code=403, detail="Not authorized.")
+        
+    return chat.messages
+@router.get("/analysis/history", response_model=HistoryResponse) 
 @limiter.limit("20/minute")
 def get_session_history(
     request: Request,
-    db: Session = Depends(get_db),
-    session_id: str = Query(...) 
+    session_id: str = Query(...), 
+    db: Session = Depends(get_db)
 ):
     """Gets the analysis history for a given session_id."""
-    history = db.query(models.FraudCheck).filter(
+    reports = db.query(models.FraudCheck).filter(
         models.FraudCheck.session_id == session_id,
-        models.FraudCheck.status == models.JobStatus.COMPLETED # Only return completed analyses
+        models.FraudCheck.status == models.JobStatus.COMPLETED 
     ).order_by(models.FraudCheck.created_at.desc()).all()
-    return history
+    
+    return HistoryResponse(history=reports)
