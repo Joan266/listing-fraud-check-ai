@@ -8,6 +8,7 @@ import ThemeToggle from './components/Layout/ThemeToggle';
 import LandingPage from './pages/LandingPage';
 import ReviewPage from './pages/ReviewPage';
 import ResultsPage from './pages/ResultsPage';
+import { LoadingScreen } from './components/UI/LoadingScreen';
 const AppContent: React.FC = () => {
   const { currentAnalysis, theme } = useAppSelector((state) => state.app);
 
