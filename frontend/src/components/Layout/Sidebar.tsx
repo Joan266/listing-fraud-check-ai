@@ -1,12 +1,17 @@
 import React from 'react';
-import { Home, History, Settings, ChevronLeft, ChevronRight, Plus, FileSearch,Highlighter,ShieldCheck   } from 'lucide-react';
-import { Link } from 'react-router-dom'; // Import Link
+import { History, Plus, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAppSelector, useAppDispatch } from '../../hooks/redux';
+import { toggleSidebar, setCurrentAnalysisId } from '../../store/appSlice';
 
 const Sidebar: React.FC = () => {
-  const { sidebarCollapsed, analysisHistory, currentAnalysis, theme } = useAppSelector((state) => state.app);
- 
+  const { sidebarCollapsed, sessionHistory, currentAnalysisId, theme } = useAppSelector((state) => state.app);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+
   const handleNewAnalysis = () => {
-  
+    dispatch(setCurrentAnalysisId(null));
+    navigate('/new');
   };
 
   const formatDate = (dateString: string) => {
@@ -29,7 +34,6 @@ const Sidebar: React.FC = () => {
       theme === 'dark' ? 'bg-gray-900 border-r border-gray-800' : 'bg-white border-r'
     } flex flex-col h-screen relative shadow-md`}>
       
-      {/* Toggle Button */}
       <button
         onClick={() => dispatch(toggleSidebar())}
         className={`absolute -right-3 top-8 w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-lg border ${
@@ -39,11 +43,10 @@ const Sidebar: React.FC = () => {
         {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
 
-      {/* Header */}
       <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
         <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
           <div className="w-10 h-10 bg-yellow-400 rounded-lg flex items-center justify-center flex-shrink-0">
-            <ShieldCheck   size={20} className="text-gray-900" />
+            <ShieldCheck size={20} className="text-gray-900" />
           </div>
           {!sidebarCollapsed && (
             <div>
@@ -55,21 +58,18 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* New Analysis Button */}
       <div className="p-4">
-        <Link
-          to="/new"
+        <button
           onClick={handleNewAnalysis}
-          className={`w-full  py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg font-semibold transition-all duration-200 flex items-center transform hover:scale-105 ${
+          className={`w-full py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg font-semibold transition-all duration-200 flex items-center transform hover:scale-105 ${
             sidebarCollapsed ? 'justify-center px-2' : 'px-4 space-x-2'
           }`}
         >
           <Plus size={20} />
           {!sidebarCollapsed && <span>New Analysis</span>}
-        </Link>
+        </button>
       </div>
 
-      {/* Analysis History */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {!sidebarCollapsed && (
           <div className={`px-4 pt-4 pb-2 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
@@ -81,12 +81,12 @@ const Sidebar: React.FC = () => {
         )}
         
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {analysisHistory.map((analysis) => (
+          {sessionHistory.map((analysis) => (
             <Link
               key={analysis.id}
-              to={`/results/${analysis.id}`} // Use Link for navigation
+              to={`/results/${analysis.id}`}
               className={`block w-full p-3 rounded-lg border text-left transition-all ${
-                currentAnalysis?.id === analysis.id
+                currentAnalysisId === analysis.id
                   ? theme === 'dark' 
                     ? 'bg-yellow-400/10 border-yellow-400/30'
                     : 'bg-yellow-100 border-yellow-300'
@@ -99,31 +99,31 @@ const Sidebar: React.FC = () => {
                 <>
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs opacity-75">
-                      {formatDate(analysis.createdAt)}
+                      {formatDate(analysis.created_at)}
                     </span>
-                    {analysis.finalReport && (
+                    {analysis.final_report && (
                       <div className="flex space-x-1.5">
-                        <span className={`text-xs font-bold ${getScoreColor(analysis.finalReport.authenticityScore)}`}>
-                          A:{analysis.finalReport.authenticityScore}
+                        <span className={`text-xs font-bold ${getScoreColor(analysis.final_report.authenticity_score)}`}>
+                          A:{analysis.final_report.authenticity_score}
                         </span>
-                        <span className={`text-xs font-bold ${getScoreColor(analysis.finalReport.qualityScore)}`}>
-                          Q:{analysis.finalReport.qualityScore}
+                        <span className={`text-xs font-bold ${getScoreColor(analysis.final_report.quality_score)}`}>
+                          Q:{analysis.final_report.quality_score}
                         </span>
                       </div>
                     )}
                   </div>
                   <div className="text-sm font-medium truncate">
-                    {analysis.extractedData.address || 'Unknown Address'}
+                    {analysis.input_data.address || 'Unknown Address'}
                   </div>
                   <div className="text-xs opacity-75 truncate">
-                    {analysis.extractedData.property_type || 'Property'}
+                    {analysis.input_data.property_type || 'Property'}
                   </div>
                 </>
               ) : (
                  <div className="flex items-center justify-center">
-                    {analysis.finalReport ? (
-                        <span className={`text-sm font-bold ${getScoreColor(analysis.finalReport.authenticityScore)}`}>
-                            {analysis.finalReport.authenticityScore}
+                    {analysis.final_report ? (
+                        <span className={`text-sm font-bold ${getScoreColor(analysis.final_report.authenticity_score)}`}>
+                            {analysis.final_report.authenticity_score}
                         </span>
                     ) : <History size={18} />}
                  </div>
@@ -131,7 +131,7 @@ const Sidebar: React.FC = () => {
             </Link>
           ))}
           
-          {analysisHistory.length === 0 && !sidebarCollapsed && (
+          {sessionHistory.length === 0 && !sidebarCollapsed && (
             <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
               <History size={32} className="mx-auto mb-2 opacity-50" />
               <p className="text-sm">No analyses yet</p>

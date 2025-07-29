@@ -127,12 +127,9 @@ def job_description_plagiarism_check(check_id_arg):
         if not description or len(description) < 150:
             return {"plagiarized": False, "summary": "Description too short to check."}
 
-        sentences = [s.strip() for s in description.split('.') if len(s.strip()) > 50]
-        if not sentences:
-            return {"plagiarized": False, "summary": "No suitable sentences found."}
+        snippet_to_check = description[:200]
 
-        sentence_to_check = sentences[len(sentences) // 2]
-        search_results = google_search.search_web(sentence_to_check, exact_match=True)
+        search_results = google_search.search_web(snippet_to_check, exact_match=True)
 
         if len(search_results) > 1:
             return {

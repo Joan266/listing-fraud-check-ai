@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Shield,
   MessageCircle,
@@ -11,41 +11,48 @@ import {
 import ScoreGauge from '../components/UI/ScoreGauge';
 import { gsap } from 'gsap';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
+import { useAppSelector, useAppDispatch } from '../hooks/redux';
+import { sendChatMessageAsync, addChatMessage } from '../store/appSlice';
+import MapComponent from '../components/UI/MapComponent';
 
 const ResultsPage: React.FC = () => {
-  const navigate = useNavigate(); // Initialize useNavigate
+  const { analysisId } = useParams<{ analysisId: string }>();
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { theme, finalReport, extractedData, chatMessages, isLoading: isSendingMessage } = useAppSelector(state => state.app);
 
   const [newMessage, setNewMessage] = useState('');
-
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Entrance animation
     if (containerRef.current) {
       gsap.fromTo(containerRef.current,
         { opacity: 0, y: 20 },
         { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }
       );
     }
-  }, []);
+  }, [analysisId]); // Rerun animation if the ID changes
 
   useEffect(() => {
-    // Scroll to bottom of chat
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
   const handleSendMessage = async () => {
-  
+    if (!newMessage.trim() || !analysisId) return;
+    dispatch(sendChatMessageAsync(newMessage.trim()));
+    setNewMessage('');
   };
 
   const handleRerunAnalysis = () => {
-    // Navigate back to the review page for the current analysis
-    
-      navigate(`/review/${}`);
-    
+    if (analysisId) {
+      navigate(`/review/${analysisId}`);
+    }
   };
 
+  if (!finalReport || !extractedData) {
+    return <div>Loading results...</div>; // Or a more sophisticated loading state
+  }
 
   return (
     <div className={`min-h-full ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} p-6`}>
@@ -60,7 +67,6 @@ const ResultsPage: React.FC = () => {
                 Analysis Results
               </h1>
             </div>
-
             <div className="flex space-x-3">
               <button
                 onClick={handleRerunAnalysis}
@@ -74,38 +80,27 @@ const ResultsPage: React.FC = () => {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-
           {/* Results Panel - Left Side */}
           <div className="lg:col-span-2 space-y-6">
-
             {/* Summary Card */}
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Overall Assessment
               </h2>
-
               <div className="flex flex-wrap justify-center gap-x-12 gap-y-6 mb-6">
-                <ScoreGauge
-                  score={}
-                  title="Authenticity Score"
-                  theme={theme}
-                />
-                <ScoreGauge
-                  score={}
-                  title="Quality Score"
-                  theme={theme}
-                />
+                <ScoreGauge score={finalReport.authenticity_score} title="Authenticity Score" theme={theme} />
+                <ScoreGauge score={finalReport.quality_score} title="Quality Score" theme={theme} />
               </div>
-
               <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
                 <h3 className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Summary
                 </h3>
                 <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {}
+                  {finalReport.sidebar_summary}
                 </p>
               </div>
             </div>
+
             {/* Map Card */}
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <div className="flex items-center space-x-2 mb-4">
@@ -114,13 +109,16 @@ const ResultsPage: React.FC = () => {
                   Location Verification
                 </h2>
               </div>
-
-
+               <MapComponent
+                  address={extractedData.address}
+                  theme={theme}
+                  className="h-80"
+                  onLocationChange={() => {}} // Read-only map on results page
+                />
             </div>
 
             {/* Detailed Analysis Sections */}
             <div className="grid md:grid-cols-2 gap-6">
-
               {/* Image Analysis */}
               <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
                 <div className="flex items-center space-x-2 mb-4">
@@ -130,10 +128,9 @@ const ResultsPage: React.FC = () => {
                   </h3>
                 </div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Analyzed { || 0} images for authenticity and quality.
+                  Analyzed {extractedData.image_urls?.length || 0} images for authenticity and quality.
                 </p>
               </div>
-
               {/* Host Reputation */}
               <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
                 <div className="flex items-center space-x-2 mb-4">
@@ -147,14 +144,14 @@ const ResultsPage: React.FC = () => {
                 </p>
               </div>
             </div>
+
             {/* Suggested Actions */}
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Recommended Actions
               </h2>
-
               <div className="space-y-3">
-                {.map((action, index) => (
+                {finalReport.suggested_actions.map((action, index) => (
                   <div key={index} className="flex items-start space-x-3">
                     <div className="w-6 h-6 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-sm font-bold mt-0.5 flex-shrink-0">
                       {index + 1}
@@ -171,7 +168,6 @@ const ResultsPage: React.FC = () => {
           {/* Chat Interface - Right Side */}
           <div className="lg:col-span-1">
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg h-[calc(100vh-12rem)] flex flex-col`}>
-
               {/* Chat Header */}
               <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                 <div className="flex items-center space-x-2">
@@ -184,30 +180,26 @@ const ResultsPage: React.FC = () => {
                   Get detailed explanations about the analysis
                 </p>
               </div>
-
               {/* Chat Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {((message) => (
+                {chatMessages.map((message, index) => (
                   <div
-                    key={message.id}
-                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                    key={index}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[80%] p-3 rounded-lg ${message.type === 'user'
-                          ? 'bg-yellow-400 text-gray-900'
-                          : theme === 'dark'
-                            ? 'bg-gray-700 text-gray-300'
-                            : 'bg-gray-100 text-gray-700'
+                      className={`max-w-[80%] p-3 rounded-lg ${message.role === 'user'
+                        ? 'bg-yellow-400 text-gray-900'
+                        : theme === 'dark'
+                          ? 'bg-gray-700 text-gray-300'
+                          : 'bg-gray-100 text-gray-700'
                         }`}
                     >
                       <p className="text-sm" dangerouslySetInnerHTML={{ __html: message.content.replace(/\n/g, '<br />') }}></p>
-                      <p className={`text-xs mt-1 opacity-75 text-right`}>
-                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
                     </div>
                   </div>
                 ))}
-                {isSendingMessage && (
+                {isSendingMessage && chatMessages[chatMessages.length-1].role === 'user' && (
                   <div className="flex justify-start">
                     <div className={`max-w-[80%] p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
                       <LoadingSpinner size="sm" />
@@ -216,7 +208,6 @@ const ResultsPage: React.FC = () => {
                 )}
                 <div ref={chatEndRef} />
               </div>
-
               {/* Chat Input */}
               <div className={`p-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                 <div className="flex space-x-2">
