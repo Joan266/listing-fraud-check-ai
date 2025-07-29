@@ -9,25 +9,6 @@ from app.services import gemini_analysis
 from app.services import data_formatter
 from app.utils.helpers import load_prompt
 
-def extract_and_format_data(user_message: dict) -> dict:
-    """
-    Takes raw text, calls the AI for extraction, validates, and formats it.
-    This function does not interact with the database.
-    """
-    raw_text = user_message.get("content", "")
-    if not raw_text:
-        return {}
-
-    # 1. Call the AI to get the simple, raw data
-    raw_data_dict = gemini_analysis.extract_data_from_text(raw_text)
-    if "error" in raw_data_dict:
-        raise HTTPException(status_code=500, detail=f"AI data extraction failed: {raw_data_dict['error']}")
-    
-    # 2. Validate and format the data
-    raw_data_validated = RawExtractedData.model_validate(raw_data_dict)
-    final_formatted_data = data_formatter.format_extracted_data(raw_data_validated)
-    
-    return final_formatted_data
 def process_q_and_a(session_id: str, chat_id: uuid.UUID, user_message: dict, db: Session) -> dict:
     """
     Handles the Phase 2 logic of answering follow-up questions after an analysis is complete.
