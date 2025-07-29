@@ -1,71 +1,91 @@
-import datetime
+from datetime import datetime
 import uuid
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Optional, Dict, Any
 from app.db.models import JobStatus
-
-# --- Internal Data Structures ---
-
 class Message(BaseModel):
-    """Represents a single message in a chat."""
     role: str
     content: str
-
-class ExtractedListingData(BaseModel):
-    """Schema for the structured data after formatting."""
-    listing_url: Optional[str] = None
-    address: Optional[str] = None
-    description: Optional[str] = None
-    image_urls: Optional[List[str]] = Field(default_factory=list)
-    communication_text: Optional[str] = None
-    host_name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    reviews: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
-    price_details: Optional[str] = None
-    host_profile: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    property_type: Optional[str] = None
-
-class FinalReport(BaseModel):
-    """Schema for the final, synthesized report."""
-    authenticity_score: int
-    quality_score: int
-    sidebar_summary: str
-    chat_explanation: str
-    suggested_actions: List[str]
-
-# --- API Request Payloads (Data SENT to the API) ---
-
-class ExtractRequest(BaseModel):
-    session_id: str
-    listing_content: str
 
 class ChatRequest(BaseModel):
     session_id: str
     chat_id: str
     message: Message
-
-class FraudCheckRequest(ExtractedListingData):
-    """The main analysis request, including session info."""
-    session_id: str
-
-# --- API Response Payloads (Data RECEIVED from the API) ---
-
-class ExtractDataResponse(BaseModel):
-    """The response from the initial data extraction."""
-    extracted_data: ExtractedListingData
-
+    
 class ChatResponse(BaseModel):
-    """The response for a post-analysis chat message."""
     chat_id: str
     response: Message
 
+class ExtractRequest(BaseModel):
+    session_id: str
+    listing_content: str
+
+class ExtractedData(BaseModel):
+    listing_url: Optional[str] = None
+    address: Optional[str] = None
+    description: Optional[str] = None
+    image_urls: Optional[List[str]] = None
+    communication_text: Optional[str] = None
+    host_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    reviews: Optional[List[Dict[str, Any]]] = None
+    price_details: Optional[str] = None
+    host_profile: Optional[Dict[str, Any]] = None
+    property_type: Optional[str] = None
+    check_in: Optional[str] = None
+    check_out: Optional[str] = None
+    number_of_people: Optional[int] = None
+
+# ALIASES for backward compatibility with services that haven't been updated.
+ExtractedListingData = ExtractedData
+class RawExtractedData(BaseModel):
+    listing_url: Optional[str] = None
+    property_type: Optional[str] = None
+    address: Optional[str] = None
+    general_overview: Optional[str] = None
+    amenities: Optional[List[str]] = None
+    notable_features: Optional[List[str]] = None
+    area_description: Optional[str] = None
+    rules_and_restrictions: Optional[List[str]] = None
+    suspicious_notes: Optional[List[str]] = None
+    image_urls: Optional[List[str]] = None
+    communication_text: Optional[str] = None
+    host_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    base_price_text: Optional[str] = None
+    cleaning_fee: Optional[str] = None
+    service_fee: Optional[str] = None
+    security_deposit: Optional[str] = None
+    taxes: Optional[str] = None
+    discounts_text: Optional[str] = None
+    payment_terms_text: Optional[str] = None
+    reviews: Optional[List[Dict[str, Any]]] = None
+    host_profile: Optional[Dict[str, Any]] = None
+
+
+class ExtractDataResponse(BaseModel):
+    extracted_data: ExtractedData
+    
+class FraudCheckRequest(ExtractedData):
+    session_id: str
+
 class JobResponse(BaseModel):
-    """Generic response for starting a background job."""
     job_id: str
 
+class FinalReport(BaseModel):
+    authenticity_score: int
+    quality_score: int
+    sidebar_summary: str
+    chat_explanation: str
+    suggested_actions: List[str]
+    flags: List[Dict[str, str]]
+
 class JobStatusResponse(BaseModel):
-    """The response for the analysis status polling endpoint."""
+    """
+    This is the Pydantic representation of a single analysis record (FraudCheck).
+    """
     id: uuid.UUID
     status: JobStatus
     input_data: dict
@@ -73,7 +93,26 @@ class JobStatusResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        from_attributes = True
+        from_attributes = True # This allows it to read from a database object
+
+class HistoryItem(BaseModel):
+    id: str
+    status: str
+    created_at: datetime
+    final_report: Optional[FinalReport] = None
+    input_data: ExtractedData
+    chat_id: Optional[str] = None
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
 
 class HistoryResponse(BaseModel):
+    """
+
+    The response for the history endpoint.
+    FIX: The list should contain JobStatusResponse objects.
+    """
     history: List[JobStatusResponse] = []
+

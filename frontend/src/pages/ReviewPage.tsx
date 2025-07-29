@@ -1,26 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Edit3, MapPin, User, Home, Image, DollarSign, MessageSquare, Plus, X } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
-import { submitAnalysisAsync } from '../store/appSlice';
+import { startAnalysisAsync, } from '../store/appSlice';
 import { ExtractedData } from '../types';
 import MapComponent from '../components/UI/MapComponent';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
 import { gsap } from 'gsap';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { useNavigate } from 'react-router-dom';
 
 
 const ReviewPage: React.FC = () => {
-  const { currentAnalysis, loading, loadingMessage, theme } = useAppSelector((state) => state.app);
+  const { extractedData, isLoading, loadingMessage, theme } = useAppSelector((state) => state.app);
   const dispatch = useAppDispatch();
 
+  const navigate = useNavigate();
   // --- Main state for all form data ---
   const [editableData, setEditableData] = useState<ExtractedData>(
-    currentAnalysis?.extractedData || {}
+    extractedData || {}
   );
 
   // --- Local UI state for better UX ---
-  const [addressInputValue, setAddressInputValue] = useState(currentAnalysis?.extractedData?.address || '');
+  const [addressInputValue, setAddressInputValue] = useState(extractedData?.address || '');
   const [newImageUrl, setNewImageUrl] = useState('');
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [startDate, endDate] = dateRange;
@@ -38,10 +40,10 @@ const ReviewPage: React.FC = () => {
 
   // Sync state if Redux data changes
   useEffect(() => {
-    if (currentAnalysis?.extractedData) {
-      setEditableData(currentAnalysis.extractedData);
+    if (extractedData) {
+      setEditableData(extractedData);
     }
-  }, [currentAnalysis]);
+  }, [extractedData]);
 
   // Entrance animation
   useEffect(() => {
@@ -84,21 +86,16 @@ const ReviewPage: React.FC = () => {
     setAddressInputValue(newLocation.address);
   };
 
-  const handleSubmit = () => {
-    dispatch(submitAnalysisAsync(editableData));
-  };
+  const handleSubmit = async () => {
+  try {
+    const payload = await dispatch(startAnalysisAsync(editableData)).unwrap();
+    
+    navigate(`/results/${payload.analysisId}`);
 
-  if (!currentAnalysis) {
-    return (
-      <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} flex items-center justify-center`}>
-        <div className="text-center">
-          <p className={`text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            No analysis data found
-          </p>
-        </div>
-      </div>
-    );
+  } catch (error) {
+    console.error('Failed to start analysis:', error);
   }
+};
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} p-6`}>
@@ -414,10 +411,10 @@ const ReviewPage: React.FC = () => {
               {/* Submit Button */}
               <button
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={isLoading}
                 className="w-full bg-yellow-400 hover:bg-yellow-500 disabled:bg-gray-400 disabled:cursor-not-allowed text-gray-900 font-semibold py-4 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 transform hover:scale-[1.02] active:scale-[0.98]"
               >
-                {loading ? (
+                {isLoading ? (
                   <>
                     <LoadingSpinner size="sm" color="text-gray-900" />
                     <span>{loadingMessage}</span>

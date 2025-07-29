@@ -9,26 +9,42 @@ def format_extracted_data(raw_data: RawExtractedData) -> dict:
     Takes the simple, raw data from the AI and formats it into the final
     structure that the frontend expects.
     """
-    # Combine all description parts into a single markdown string
+    # --- Combine all description parts into a single markdown string ---
     desc_parts = []
     if raw_data.general_overview:
         desc_parts.append(f"### General Overview\n{raw_data.general_overview}")
     if raw_data.amenities:
         items = "\n".join([f"- {item}" for item in raw_data.amenities])
         desc_parts.append(f"### Amenities\n{items}")
-    # ... (add other description parts like notable_features, area_description, etc.)
+    if raw_data.notable_features:
+        items = "\n".join([f"- {item}" for item in raw_data.notable_features])
+        desc_parts.append(f"### Notable Features\n{items}")
+    if raw_data.area_description:
+        desc_parts.append(f"### Area Description\n{raw_data.area_description}")
+    if raw_data.rules_and_restrictions:
+        items = "\n".join([f"- {item}" for item in raw_data.rules_and_restrictions])
+        desc_parts.append(f"### Rules & Restrictions\n{items}")
+    if raw_data.suspicious_notes:
+        items = "\n".join([f"- {item}" for item in raw_data.suspicious_notes])
+        desc_parts.append(f"### Suspicious Notes\n{items}")
+    
     final_description = "\n\n".join(desc_parts) if desc_parts else None
 
-    # Combine all price parts into a single string
-    # This can be changed later to a structured object if the frontend needs it
+    # --- Combine all price parts into a single string ---
     price_parts = []
-    if raw_data.base_price_text: price_parts.append(f"Base Price: {raw_data.base_price_text}")
-    if raw_data.cleaning_fee: price_parts.append(f"Cleaning Fee: {raw_data.cleaning_fee}")
-    if raw_data.service_fee: price_parts.append(f"Service Fee: {raw_data.service_fee}")
-    if raw_data.security_deposit: price_parts.append(f"Security Deposit: {raw_data.security_deposit}")
+    if raw_data.base_price_text:
+        price_parts.append(f"Base Price: {raw_data.base_price_text}")
+    if raw_data.cleaning_fee:
+        price_parts.append(f"Cleaning Fee: {raw_data.cleaning_fee}")
+    if raw_data.service_fee:
+        price_parts.append(f"Service Fee: {raw_data.service_fee}")
+    if raw_data.security_deposit:
+        price_parts.append(f"Security Deposit: {raw_data.security_deposit}")
+    # You can add taxes, discounts, etc. here as well
+
     final_price_details = ", ".join(price_parts) if price_parts else None
 
-    # Build the final dictionary, which matches your ExtractedListingData schema
+    # --- Build the final dictionary ---
     final_data = {
         "listing_url": raw_data.listing_url,
         "address": raw_data.address,

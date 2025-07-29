@@ -124,39 +124,6 @@ def get_analysis_status(
         
     return check_result
 
-@router.put("/analysis/{check_id}", response_model=JobResponse, status_code=202)
-@limiter.limit("5/hour")
-def rerun_analysis(
-    request: Request,
-    check_id: str,
-    fraud_request: FraudCheckRequest,
-    db: Session = Depends(get_db)
-):
-    """Updates an existing analysis with new data and reruns the full pipeline."""
-    from app.workers.orchestrator import start_full_analysis
-    from app.utils.helpers import generate_hash
-
-    job_uuid = uuid.UUID(check_id)
-    existing_check = db.query(models.FraudCheck).filter(models.FraudCheck.id == job_uuid).first()
-    if not existing_check:
-        raise HTTPException(status_code=404, detail="Analysis not found.")
-    
-    # Security check
-    if existing_check.session_id != fraud_request.session_id:
-        raise HTTPException(status_code=403, detail="Not authorized.")
-
-    # Update the record
-    updated_data = fraud_request.model_dump(exclude_unset=True, exclude={'session_id'})
-    existing_check.input_data = updated_data
-    existing_check.input_hash = generate_hash(updated_data)
-    existing_check.status = models.JobStatus.PENDING
-    existing_check.final_report = None
-    db.commit()
-
-    # Re-enqueue the orchestrator job
-    analysis_fast_queue.enqueue(start_full_analysis, existing_check.id)
-    return {"job_id": str(existing_check.id)}
-# Add this new endpoint
 @router.get("/chat/{chat_id}/messages", response_model=List[Message])
 @limiter.limit("60/minute")
 def get_chat_messages(
@@ -175,16 +142,18 @@ def get_chat_messages(
         raise HTTPException(status_code=403, detail="Not authorized.")
         
     return chat.messages
-@router.get("/analysis/history", response_model=HistoryResponse) 
+@router.get("/analysis/history/{url_session_id}", response_model=HistoryResponse) 
 @limiter.limit("20/minute")
 def get_session_history(
     request: Request,
-    session_id: str = Query(...), 
+    url_session_id: str,
+    session_id: str = Header(..., alias="session_id"),
     db: Session = Depends(get_db)
 ):
     """Gets the analysis history for a given session_id."""
+    print(f"Fetching history for session_id: {url_session_id}")
     reports = db.query(models.FraudCheck).filter(
-        models.FraudCheck.session_id == session_id,
+        models.FraudCheck.session_id == url_session_id,
         models.FraudCheck.status == models.JobStatus.COMPLETED 
     ).order_by(models.FraudCheck.created_at.desc()).all()
     
