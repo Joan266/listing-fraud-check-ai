@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 def job_aggregate_and_conclude(check_id_arg):
     """
-    Collects all analysis results, calls the final Gemini model for a full
-    synthesis, and saves the complete report to the database.
+    Collects a list of all AnalysisStep results, calls the final Gemini model
+    for synthesis, and saves both the steps and the final report to the database.
     """
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -36,27 +36,32 @@ def job_aggregate_and_conclude(check_id_arg):
             logger.error(f"Error: No cached results found for Check ID: {check_id}")
             return
 
-        all_job_results = {key.decode('utf-8'): json.loads(value) for key, value in cached_results.items()}
+        # This creates a list of all the AnalysisStep objects from the cache
+        all_job_steps = [json.loads(value) for value in cached_results.values()]
         
         full_context = {
             "user_provided_data": check.input_data,
-            "analysis_results": all_job_results
+            "analysis_steps": all_job_steps
         }
 
-        # Always use the advanced model for the final, most important step
-        final_report = gemini_analysis.synthesize_advanced_report(full_context)
+        # Call the advanced model for the final synthesis
+        synthesis_report = gemini_analysis.synthesize_advanced_report(full_context)
         
-        if "error" in final_report:
+        if "error" in synthesis_report:
             check.status = JobStatus.FAILED
-            logger.error(f"Final synthesis failed for job_id: {check_id}. Reason: {final_report.get('error')}")
+            check.final_report = synthesis_report # Save the error report
+            logger.error(f"Final synthesis failed for job_id: {check_id}.")
         else:
             check.status = JobStatus.COMPLETED
-            logger.info(f"✅ Completed fraud check for job_id: {check_id}. Verdict: {final_report.get('final_verdict')}")
+            # Save the raw steps and the final synthesized report to their own columns
+            check.analysis_steps = all_job_steps
+            check.final_report = synthesis_report
+            logger.info(f"✅ Completed fraud check for job_id: {check_id}.")
             
-        check.final_report = final_report
         db.commit()
 
-        return final_report
+        # The job's return value is the final synthesized report
+        return synthesis_report
 
     except Exception as e:
         logger.error(f"An unexpected critical error occurred in the finalizer for job_id: {check_id}", exc_info=True)

@@ -8,10 +8,10 @@ from app.workers.queues import redis_conn
 from app.services import google_search, image_analysis, gemini_analysis, google_apis, url_analysis
 from app.db.session import SessionLocal 
 from urllib.parse import urlparse
-
+import rq
 # --- Constants for Input Limits ---
 MAX_REVIEWS_TO_ANALYZE = 10
-MAX_IMAGES_TO_ANALYZE = 10
+MAX_IMAGES_TO_ANALYZE = 5
 # --- The Caching Helper ---
 def _run_cached_job(check_id: str, job_name: str, inputs: dict, task_function):
     """A helper to abstract away the caching logic for each job."""
@@ -29,33 +29,188 @@ def _run_cached_job(check_id: str, job_name: str, inputs: dict, task_function):
     redis_conn.hset(redis_main_key, cache_field_key, json.dumps(result))
     return result
 
-def job_geocode_places(check_id_arg):
-    """Validates address and gets place details from Google Maps."""
+def job_geocode(check_id_arg):
+    """
+    Validates address with Google Maps and returns a standardized AnalysisStep result.
+    """
+    # --- 1. Define Job Metadata ---
+    job_name = "geocode"
+    job_description = "Validates the property address using Google Maps Geocode API and gathers location details."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
     else:
         check_id = check_id_arg 
 
+    # --- 2. Get Inputs from Database ---
     db = SessionLocal()
     try:
         check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
-        if not check: return {"error": "Check not found"}
+        if not check:
+            return {"error": f"FraudCheck with ID {check_id} not found."}
+        
         inputs = {"address": check.input_data.get("address")}
     finally:
         db.close()
 
+    # --- 3. Handle SKIPPED Case ---
     if not inputs["address"]:
-        return {"error": "Address not found, skipping geocode."}
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No address was provided."}
+        }
 
-    def task(data):
-        return google_apis.validate_address_and_get_place_details(data["address"])
+    # --- 4. Handle COMPLETED and ERROR Cases ---
+    try:
+        def task(data):
+            return google_apis.geocode_address(data["address"])
+            
+        task_result = _run_cached_job(str(check_id), job_name, inputs, task)
+
+        if task_result.get("error"):
+            raise Exception(task_result.get("error"))
+
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
         
-    return _run_cached_job(check_id, "geocode", inputs, task)
+def job_place_details(check_id_arg: str):
+    """
+    Worker job that fetches Place Details. It depends on job_geocode.
+    """
+    # --- 1. Define Job Metadata ---
+    job_name = "place_details"
+    job_description = "Fetches rich details (ratings, reviews, etc.) for a verified location from the Google Places API."
+    
+    try:
+        current_job = rq.get_current_job()
+        geocode_result = current_job.dependency.result
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": {"dependency_error": str(e)},
+            "result": {"reason": "Could not get result from geocode dependency."}
+        }
 
+    place_id = get_nested(geocode_result, ["result", "place_id"])
+    inputs = {"place_id": place_id} 
+
+    if not place_id:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No Place ID found in geocode result."}
+        }
+    
+    try:
+        def task(data):
+            return google_apis.get_place_details(data["place_id"])
+
+        task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task)
+        
+        if task_result.get("error"):
+            raise Exception(task_result.get("error"))
+
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
+   
+def job_neighborhood_analysis(check_id_arg):
+    """
+    Runs a neighborhood analysis and returns a standardized AnalysisStep result.
+    """
+    # --- 1. Define Job Metadata ---
+    job_name = "neighborhood_analysis"
+    job_description = "Searches for nearby points of interest (supermarkets, parks, etc.) to analyze the area's character."
+
+    try:
+        current_job = rq.get_current_job()
+        geocode_result = current_job.dependency.result
+        coordinates = get_nested(geocode_result, ["result", "coordinates"])
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": {"dependency_error": str(e)},
+            "result": {"reason": "Could not get result from geocode dependency."}
+        }
+    
+    inputs = {"coordinates": coordinates}
+
+    # --- 3. Handle SKIPPED Case ---
+    if not coordinates:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No coordinates were found in the geocode result."}
+        }
+
+    # --- 4. Handle COMPLETED and ERROR Cases ---
+    try:
+        def task(data):
+            return google_apis.get_neighborhood_analysis(data["coordinates"])
+
+        task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task)
+        
+        if task_result.get("error"):
+            raise Exception(task_result.get("error"))
+
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
 
 def job_reputation_check(check_id_arg):
-    """Checks reputation by running parallel Google searches for host identifiers."""
+    """
+    Checks host reputation and returns a standardized AnalysisStep result.
+    """
+    job_name = "reputation_check"
+    job_description = "Searches the web for reports or reviews linked to the host's contact information."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -64,49 +219,87 @@ def job_reputation_check(check_id_arg):
 
     db = SessionLocal()
     try:
-        check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
-        if not check: return {"error": "Check not found"}
-        
-        address = check.input_data.get("address")
-        if not address:
-            return {"status": "No address to get country_code."}
+        # Get country_code from the geocode job dependency
+        current_job = rq.get_current_job()
+        geocode_result = current_job.dependency.result
+        country_code = get_nested(geocode_result, ["result", "country_code"], default='us')
 
-        geocode_inputs = {"address": address}
-        geocode_cache_key = generate_hash({"job_name": "geocode", "inputs": geocode_inputs})
-        cached_data = redis_conn.hget(f"cache:{check_id}", geocode_cache_key)
-        google_places_data = json.loads(cached_data) if cached_data else {}
-        country_code = google_places_data.get("country_code", "us")
+        # Get host details from the database
+        db = SessionLocal()
+        check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
+        if not check: raise Exception("FraudCheck not found")
 
         inputs = {
             "host_email": check.input_data.get("host_email"),
             "host_phone": check.input_data.get("host_phone"),
             "country_code": country_code
         }
+    except Exception as e:
+        # This will catch failures in getting the dependency or the DB record
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": {"error": str(e)},
+            "result": {"reason": "Failed to gather necessary inputs for the job."}
+        }
     finally:
         db.close()
 
-    def task(data):
-        queries_to_run = google_search.prepare_reputation_queries(data)
-        if not queries_to_run:
-            return {"search_results_text": ""}
+    # SKIPPED Case
+    if not inputs["host_email"] and not inputs["host_phone"]:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No host email and phone provided."}
+        }
+    try:
+        def task(data):
+            queries_to_run = google_search.prepare_reputation_queries(data)
+            if not queries_to_run:
+                return {"search_results_text": ""}
 
-        all_results_text = ""
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_to_query = {executor.submit(google_search.search_web, query): query for query in queries_to_run}
-            for future in concurrent.futures.as_completed(future_to_query):
-                try:
-                    search_results = future.result()
-                    for item in search_results:
-                        all_results_text += f"Title: {item.get('title')}\nSnippet: {item.get('snippet')}\n\n"
-                except Exception as e:
-                    logging.error(f"A reputation search query failed: {e}")
-        
-        return {"search_results_text": all_results_text.strip()}
+            all_results_text = ""
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future_to_query = {executor.submit(google_search.search_web, query): query for query in queries_to_run}
+                for future in concurrent.futures.as_completed(future_to_query):
+                    try:
+                        search_results = future.result()
+                        for item in search_results:
+                            all_results_text += f"Title: {item.get('title')}\nSnippet: {item.get('snippet')}\n\n"
+                    except Exception as e:
+                        logging.error(f"A reputation search query failed: {e}")
+            
+            if all_results_text:
+                return {
+                    "summary": "Results found in the internet liking the host email or phone to key words related to fraud in the local language.",
+                    "search_results_text": all_results_text.strip()
+                }
+            return {"summary": "No results found in the internet liking the host email or phone to key words related to fraud in the local language."}
 
-    return _run_cached_job(check_id, "reputation_check", inputs, task)
+        task_result = _run_cached_job(check_id, "reputation_check", inputs, task)
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
 
 def job_description_plagiarism_check(check_id_arg):
-    """Checks for plagiarism in the listing description."""
+    """Checks for description plagiarism and returns a standardized AnalysisStep result."""
+    job_name = "description_plagiarism_check"
+    job_description = "Performs an exact-match web search to see if the listing description has been copied from other sites."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -120,28 +313,280 @@ def job_description_plagiarism_check(check_id_arg):
         inputs = {"description": check.input_data.get("description")}
     finally:
         db.close()
+    description = inputs.get("description")
+    if not description or len(description) < 150:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "Description was missing or too short to check."}
+        }
+    
+    try:
+        def task(data):
+            snippet_to_check = description[:150]
 
-    def task(data):
-        description = data.get("description")
-        if not description or len(description) < 150:
-            return {"plagiarized": False, "summary": "Description too short to check."}
+            search_results = google_search.search_web(snippet_to_check, exact_match=True)
 
-        snippet_to_check = description[:150]
+            is_plagiarized = len(search_results) > 1
 
-        search_results = google_search.search_web(snippet_to_check, exact_match=True)
-
-        if len(search_results) > 1:
             return {
-                "plagiarized": True,
-                "summary": "Description found on other websites.",
-                "found_urls": [result.get('link') for result in search_results]
+                "plagiarized": is_plagiarized,
+                "summary": "Description found on other websites." if is_plagiarized else "No description duplicates found.",
+                "found_urls": [result.get('link') for result in search_results] if is_plagiarized else []
             }
-        return {"plagiarized": False, "summary": "No description duplicates found."}
 
-    return _run_cached_job(check_id, "description_plagiarism", inputs, task)
+        task_result = _run_cached_job(check_id, "description_plagiarism", inputs, task)
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
+
+def job_url_forensics(check_id_arg):
+    """
+    Performs domain age, blacklist, and archive checks on the listing URL in parallel.
+    """
+    job_name = "url_forensics"
+    job_description = "Performs domain age, blacklist, and archive checks on the listing URL."
+    
+    if isinstance(check_id_arg, str):
+        check_id = uuid.UUID(check_id_arg)
+    else:
+        check_id = check_id_arg
+
+    db = SessionLocal()
+    try:
+        check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
+        if not check: return {"error": "Check not found"}
+        inputs = {"listing_url": check.input_data.get("listing_url")}
+    finally:
+        db.close()
+        
+    if not inputs["listing_url"]:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No listing URL was provided."}
+        }
+    try:
+        def task(data):
+            url = data["listing_url"]
+            domain_name = urlparse(url).netloc
+            results = {}
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                future_age = executor.submit(url_analysis.check_domain_age, domain_name)
+                future_blacklist = executor.submit(url_analysis.check_url_blacklist, url)
+                future_archive = executor.submit(url_analysis.check_archive_history, url)
+
+                results["domain_age"] = future_age.result()
+                results["blacklist_check"] = future_blacklist.result()
+                results["archive_check"] = future_archive.result()
+                
+            return results
+
+        task_result = _run_cached_job(str(check_id), job_name, inputs, task)
+        
+        if isinstance(task_result, dict) and task_result.get("error"):
+            raise Exception(task_result.get("error"))
+
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
+
+def job_description_analysis(check_id_arg):
+    """
+    Analyzes description.
+    """
+    # --- 1. Define Job Metadata ---
+    job_name = "description_analysis"
+    job_description = "Analyzes the listing description for red flags like pressure tactics or vague details."
+    
+    if isinstance(check_id_arg, str):
+        check_id = uuid.UUID(check_id_arg)
+    else:
+        check_id = check_id_arg
+
+    db = SessionLocal()
+    try:
+        check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
+        if not check: return {"error": "Check not found"}
+        inputs = {
+            "description": check.input_data.get("description"),
+        }
+    finally:
+        db.close()
+    if not inputs["description"]:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No description provided."}
+        }
+        
+    try:
+        def task(data):
+            return gemini_analysis.analyze_description(data["description"])
+        
+        task_result = _run_cached_job(str(check_id), job_name, inputs, task)
+
+        if task_result.get("error"):
+            raise Exception(task_result.get("error"))
+
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
+
+def job_communication_analysis(check_id_arg):
+    """
+    Analyzes communication text in parallel.
+    """
+    # --- 1. Define Job Metadata ---
+    job_name = "communication_analysis"
+    job_description = "Analyzes communication text for fraudulent themes like risky payment requests."
+    
+    if isinstance(check_id_arg, str):
+        check_id = uuid.UUID(check_id_arg)
+    else:
+        check_id = check_id_arg
+
+    db = SessionLocal()
+    try:
+        check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
+        if not check: return {"error": "Check not found"}
+        inputs = {
+            "communication_text": check.input_data.get("communication_text"),
+        }
+    finally:
+        db.close()
+    if not inputs["communication_text"] :
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No communication_text provided."}
+        }
+        
+    try:
+        def task(data):
+            return gemini_analysis.analyze_communication(data["communication_text"])
+
+        task_result = _run_cached_job(str(check_id), job_name, inputs, task)
+
+        if task_result.get("error"):
+            raise Exception(task_result.get("error"))
+
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
+
+def job_listing_reviews_analysis(check_id_arg):
+    """Analyzes a limited number of the listing's own reviews."""
+    job_name = "listing_reviews_analysis"
+    job_description = "Analyzes user-provided reviews for sentiment and potential red flags."
+    
+    if isinstance(check_id_arg, str):
+        check_id = uuid.UUID(check_id_arg)
+    else:
+        check_id = check_id_arg 
+
+    db = SessionLocal()
+    try:
+        check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
+        if not check: return {"error": "Check not found"}
+        reviews = (check.input_data.get("reviews") or [])[:MAX_REVIEWS_TO_ANALYZE]
+        inputs = {"reviews": reviews}
+    finally:
+        db.close()
+    if not inputs["reviews"]:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No reviews were provided."}
+        }
+    try:
+        def task(data):
+            return gemini_analysis.analyze_listing_reviews(data["reviews"])
+        
+        task_result = _run_cached_job(str(check_id), job_name, inputs, task)
+
+        if task_result.get("error"):
+            raise Exception(task_result.get("error"))
+
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
 
 def job_reverse_image_search(check_id_arg):
     """Performs reverse image search on a limited number of images."""
+    job_name = "reverse_image_search"
+    job_description = "Searches the web for each image to detect if they have been stolen or reused from other listings, which is a common scam tactic."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -158,122 +603,113 @@ def job_reverse_image_search(check_id_arg):
         db.close()
 
     if not inputs["image_urls"]:
-        return {"status": "No images provided, skipping."}
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No image URLs were provided."}
+        }
+    try:
+        def task(data):
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                results = list(executor.map(image_analysis.reverse_image_search, data["image_urls"]))
+            return {"reverse_search_results": results}
 
-    def task(data):
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            results = list(executor.map(image_analysis.reverse_image_search, data["image_urls"]))
-        return {"reverse_search_results": results}
+        task_result = _run_cached_job(str(check_id), job_name, inputs, task)
 
-    return _run_cached_job(check_id, "reverse_image_search", inputs, task)
+        if task_result.get("error"):
+            raise Exception(task_result.get("error"))
 
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
 
 def job_ai_image_detection(check_id_arg):
-    """Checks for AI artifacts on images not already flagged as reused."""
+    """
+    Checks for AI artifacts on images not already flagged as reused.
+    """
+    job_name = "ai_image_detection"
+    job_description = "Uses an advanced AI model to analyze unique images for signs of AI generation."
     
-    if isinstance(check_id_arg, str):
-        check_id = uuid.UUID(check_id_arg)
-    else:
-        check_id = check_id_arg 
-
-    db = SessionLocal()
     try:
-        check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
-        if not check: return {"error": "Check not found"}
-        initial_urls = (check.input_data.get("image_urls") or [])[:MAX_IMAGES_TO_ANALYZE]
-    finally:
-        db.close()
+        # 1. Get the result from the dependency job (reverse_image_search)
+        current_job = rq.get_current_job()
+        reverse_search_result = current_job.dependency.result
+        
+        # Safely get the list of result objects
+        reverse_search_items = get_nested(reverse_search_result, ["result", "reverse_search_results"], default=[])
 
-    if not initial_urls:
-        return {"status": "No images to process."}
+        # 2. Filter for images that were NOT flagged as reused
+        images_to_check = [
+            item['url'] for item in reverse_search_items 
+            if isinstance(item, dict) and not item.get('is_reused') and 'url' in item
+        ]
+        
+        inputs = {"image_urls": images_to_check}
 
-    # FIX: Correctly regenerate the cache key for the dependency job
-    reverse_search_inputs = {"image_urls": initial_urls}
-    reverse_search_cache_key = generate_hash({
-        "job_name": "reverse_image_search",
-        "inputs": reverse_search_inputs
-    })
-    cached_data = redis_conn.hget(f"cache:{check_id}", reverse_search_cache_key)
-    reverse_search_results = json.loads(cached_data).get("reverse_search_results" or []) if cached_data else []
-
-    images_to_check = [res['url'] for res in reverse_search_results if not res.get('is_reused')]
-    if not images_to_check:
-        return {"status": "No unique images to check for AI artifacts."}
-
-    inputs = {"image_urls": images_to_check}
-
-    def task(data):
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            results = list(executor.map(image_analysis.check_for_ai_artifacts, data["image_urls"]))
-        return {"ai_detection_results": results}
-
-    return _run_cached_job(check_id, "ai_image_detection", inputs, task)
-
-def job_text_analysis(check_id_arg):
-    """Analyzes description and communication text in parallel."""
-    
-    if isinstance(check_id_arg, str):
-        check_id = uuid.UUID(check_id_arg)
-    else:
-        check_id = check_id_arg
-
-    db = SessionLocal()
-    try:
-        check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
-        if not check: return {"error": "Check not found"}
-        inputs = {
-            "description": check.input_data.get("description"),
-            "communication_text": check.input_data.get("communication_text"),
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": {"dependency_error": str(e)},
+            "result": {"reason": "Failed to get or parse dependency result."}
         }
-    finally:
-        db.close()
 
-    def task(data):
-        results = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            futures = {}
-            if data.get("description"):
-                futures[executor.submit(gemini_analysis.analyze_description, data["description"])] = "description_analysis"
-            if data.get("communication_text"):
-                futures[executor.submit(gemini_analysis.analyze_communication, data["communication_text"])] = "communication_analysis"
-            
-            for future in concurrent.futures.as_completed(futures):
-                analysis_type = futures[future]
-                results[analysis_type] = future.result()
-
-        if not results:
-            return {"status": "Skipped due to missing description and communication data."}
-
-        return results
+    # SKIPPED Case: No unique images left to analyze
+    if not images_to_check:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No unique images to check after reverse image search."}
+        }
     
-    return _run_cached_job(str(check_id), "text_analysis", inputs, task)
-
-def job_listing_reviews_analysis(check_id_arg):
-    """Analyzes a limited number of the listing's own reviews."""
-    
-    if isinstance(check_id_arg, str):
-        check_id = uuid.UUID(check_id_arg)
-    else:
-        check_id = check_id_arg 
-
-    db = SessionLocal()
     try:
-        check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
-        if not check: return {"error": "Check not found"}
-        reviews = (check.input_data.get("reviews") or [])[:MAX_REVIEWS_TO_ANALYZE]
-        inputs = {"reviews": reviews}
-    finally:
-        db.close()
+        def task(data):
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                results = list(executor.map(image_analysis.check_for_ai_artifacts, data["image_urls"]))
+            return {"ai_detection_results": results}
 
-    def task(data):
-        if not data["reviews"]:
-            return {"status": "No listing reviews to analyze."}
-        return gemini_analysis.analyze_listing_reviews(data["reviews"])
+        task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task)
 
-    return _run_cached_job(check_id, "listing_reviews_analysis", inputs, task)
+        if isinstance(task_result, dict) and task_result.get("error"):
+            raise Exception(task_result.get("error"))
 
-def job_price_and_host_check(check_id_arg):
-    """Performs price sanity and host profile analysis in parallel."""
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
+
+def job_price_sanity_check(check_id_arg):
+    """Performs a price sanity check using Gemini."""
+    job_name = "price_sanity_check"
+    job_description = "Analyzes the listing price in the context of its location, type, and description to detect if it's suspiciously high or low."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -281,6 +717,7 @@ def job_price_and_host_check(check_id_arg):
         check_id = check_id_arg 
 
     db = SessionLocal()
+    
     try:
         check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
         if not check: return {"error": "Check not found"}
@@ -288,71 +725,116 @@ def job_price_and_host_check(check_id_arg):
             "price_details": check.input_data.get("price_details"),
             "property_type": check.input_data.get("property_type"),
             "address": check.input_data.get("address"),
-            "host_profile": check.input_data.get("host_profile"),
             "description": check.input_data.get("description") 
         }
     finally:
         db.close()
-
-    def task(data):
-        results = {}
-
-        # --- 1. Rule-Based Host Profile Check (Fast & Cheap) ---
-        host_profile = data.get("host_profile")
-        if host_profile:
-            host_themes = []
-            if not host_profile.get("is_verified"):
-                host_themes.append("Host profile is not verified.")
-            results["host_analysis"] = {"themes": host_themes}
-
-        # --- 2. AI-Powered Price Sanity Check ---
-        if all([data.get("price_details"), data.get("property_type"), data.get("address"), data.get("description")]):
-            results["price_analysis"] = gemini_analysis.check_price_sanity(
+    if not all([inputs["price_details"], inputs["property_type"], inputs["address"],inputs["description"]]):
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "Missing price, type, description or address for analysis."}
+        }
+    
+    try:
+        def task(data):
+            return gemini_analysis.check_price_sanity(
                 data["price_details"], 
                 data["property_type"], 
                 data["description"],
                 data["address"]
             )
         
-        if not results:
-            return {"status": "Skipped due to missing price and host data."}
-            
-        return results
+        task_result = _run_cached_job(str(check_id), job_name, inputs, task)
+
+        if task_result.get("error"):
+            raise Exception(task_result.get("error"))
+
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
+
+def job_online_presence_analysis(check_id_arg):
+    """
+    Synthesizes the host profile, reputation, and image search results into a
+    single online presence verdict using an advanced AI model.
+    """
+    job_name = "online_presence_analysis"
+    job_description = "Synthesizes multiple data points (host profile, web reputation, image reuse) into a single verdict on the listing's online presence."
     
-    return _run_cached_job(str(check_id), "price_and_host_check", inputs, task)
+    if isinstance(check_id_arg, str):
+        check_id = uuid.UUID(check_id_arg)
+    else:
+        check_id = check_id_arg
 
-def job_neighborhood_analysis(check_id_arg):
-    """
-    Fetches the geocode result and runs a neighborhood analysis.
-    """
-    # ... (code to get check_id and db session) ...
-    db = SessionLocal()
     try:
-        # ... (code to get the check object and address) ...
-
-        # Fetch the geocode result from the cache
-        geocode_inputs = {"address": address}
-        geocode_cache_key = generate_hash({"job_name": "geocode", "inputs": geocode_inputs})
-        cached_data = redis_conn.hget(f"cache:{str(check_id)}", geocode_cache_key)
-        google_places_data = json.loads(cached_data) if cached_data else {}
+        current_job = rq.get_current_job()
+        # RQ provides dependencies in the order they were enqueued
+        dependency_results = [dep.result for dep in current_job.dependencies]
         
-        # Guard clause
-        if not google_places_data or not google_places_data.get("coordinates"):
-            return {"status": "Skipping due to missing coordinates."}
+        # We expect three dependencies: host_profile, reputation_check, and reverse_image_search
+        if len(dependency_results) < 3:
+            raise Exception("Missing one or more dependencies for online presence analysis.")
 
-        inputs = {"coordinates": google_places_data.get("coordinates")}
-    finally:
-        db.close()
+        inputs = {
+            "host_profile_result": dependency_results[0].get("result", {}),
+            "reputation_check_result": dependency_results[1].get("result", {}),
+            "reverse_image_search_result": dependency_results[2].get("result", {})
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": {"dependency_error": str(e)},
+            "result": {"reason": "Failed to gather dependency results."}
+        }
 
-    def task(data):
-        return google_apis.get_neighborhood_analysis(data["coordinates"])
+    try:
+        def task(data):
+            return gemini_analysis.synthesize_online_presence(data)
 
-    return _run_cached_job(str(check_id), "neighborhood_analysis", inputs, task)
+        task_result = _run_cached_job(str(check_id), job_name, inputs, task)
 
-def job_url_forensics(check_id_arg):
+        if isinstance(task_result, dict) and task_result.get("error"):
+            raise Exception(task_result.get("error"))
+
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
+def job_host_profile_check(check_id_arg):
     """
-    Performs domain age, blacklist, and archive checks on the listing URL in parallel.
+    Performs a simple, rule-based check on the host's profile data.
     """
+    job_name = "host_profile_check"
+    job_description = "Checks the host's profile for red flags like being unverified or very new."
+    
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
     else:
@@ -362,27 +844,43 @@ def job_url_forensics(check_id_arg):
     try:
         check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
         if not check: return {"error": "Check not found"}
-        inputs = {"listing_url": check.input_data.get("listing_url")}
+        inputs = {"host_profile": check.input_data.get("host_profile")}
     finally:
         db.close()
+        
+    # SKIPPED Case
+    if not inputs["host_profile"]:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No host profile data was provided."}
+        }
+    
+    try:
+        host_profile = inputs.get("host_profile", {})
+        themes = []
+        
+        if not host_profile.get("is_verified"):
+            themes.append("Host profile is not verified.")
+        if host_profile.get("member_since") and "2025" in str(host_profile.get("member_since")):
+             themes.append("Host account is very new (created this year).")
 
-    if not inputs.get("listing_url"):
-        return {"status": "No listing URL provided, skipping."}
+        task_result = {"themes": themes}
 
-    def task(data):
-        url = data["listing_url"]
-        domain_name = urlparse(url).netloc
-        results = {}
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            future_age = executor.submit(url_analysis.check_domain_age, domain_name)
-            future_blacklist = executor.submit(url_analysis.check_url_blacklist, url)
-            future_archive = executor.submit(url_analysis.check_archive_history, url)
-
-            results["domain_age"] = future_age.result()
-            results["blacklist_check"] = future_blacklist.result()
-            results["archive_check"] = future_archive.result()
-            
-        return results
-
-    return _run_cached_job(str(check_id), "url_forensics", inputs, task)
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)}
+        }
