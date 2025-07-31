@@ -153,12 +153,12 @@ export const LandingPage: React.FC = () => {
             )}
           </button>
         </form>
-
-        <div className="text-center">
-          <Link to="/review" className="text-sm text-gray-500 hover:text-yellow-400 transition-colors">
-            or skip and fill the form manually
-          </Link>
-        </div>
+        {!isExtracting &&
+          <div className="text-center">
+            <Link to="/review" className="text-sm text-gray-500 hover:text-yellow-400 transition-colors">
+              or skip and fill the form manually
+            </Link>
+          </div>}
       </div>
     </div>
   );

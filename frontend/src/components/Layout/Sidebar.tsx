@@ -10,7 +10,7 @@ const Sidebar: React.FC = () => {
     sessionHistory,
     currentAnalysisId,
     theme,
-    sessionId
+    sessionId, isLoading
   } = useAppSelector((state) => state.app);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -65,17 +65,24 @@ const Sidebar: React.FC = () => {
           )}
         </div>
       </div>
-
       <div className="p-4">
+
         <button
           onClick={handleNewAnalysis}
-          className={`w-full py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg font-semibold transition-all duration-200 flex items-center transform hover:scale-105 ${sidebarCollapsed ? 'justify-center px-2' : 'px-4 space-x-2'
-            }`}
+          disabled={isLoading} 
+          className={`
+            w-full py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 
+            rounded-lg font-semibold transition-all flex items-center 
+            transform hover:scale-105 
+            ${sidebarCollapsed ? 'justify-center px-2' : 'px-4 space-x-2'}
+            disabled:bg-gray-400 disabled:cursor-not-allowed // <-- These styles will apply when disabled
+          `}
         >
           <Plus size={20} />
           {!sidebarCollapsed && <span>New Analysis</span>}
         </button>
       </div>
+
 
       <div className="flex-1 overflow-hidden flex flex-col">
         {!sidebarCollapsed && (

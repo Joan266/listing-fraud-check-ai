@@ -26,6 +26,7 @@ class FraudCheck(Base):
     input_hash = Column(String(64), nullable=False, unique=True, index=True)
     status = Column(SQLAlchemyEnum(JobStatus), nullable=False, default=JobStatus.PENDING)
     input_data = Column(JSON, nullable=False)
+    analysis_steps = Column(JSON, nullable=True) 
     final_report = Column(JSON, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     chat = relationship("Chat", back_populates="fraud_check", uselist=False)

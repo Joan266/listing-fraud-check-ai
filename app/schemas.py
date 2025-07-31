@@ -110,3 +110,9 @@ class HistoryResponse(BaseModel):
     """
     history: List[JobStatusResponse] = []
 
+class AnalysisStep(BaseModel):
+    job_name: str
+    description: str      
+    status: str          
+    inputs_used: dict     
+    result: dict         
