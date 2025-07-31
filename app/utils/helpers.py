@@ -29,3 +29,13 @@ def generate_hash(data: dict) -> str:
     
     # Hash the string using SHA-256 to get a unique and fixed-length identifier.
     return hashlib.sha256(canonical_string.encode('utf-8')).hexdigest()
+def get_nested(data: dict, keys: list, default=None):
+    """
+    Safely retrieves a nested value from a dictionary.
+    """
+    for key in keys:
+        if isinstance(data, dict):
+            data = data.get(key)
+        else:
+            return default
+    return data if data is not None else default

@@ -52,12 +52,12 @@ def prepare_reputation_queries(inputs: dict, query_limit: int = 8) -> list[str]:
     """
     # --- Localized Keyword Map ---
     keyword_map = {
-        'en': ['scam', 'fraud', 'complaint', 'review'],
-        'es': ['estafa', 'fraude', 'queja', 'opiniones'],
-        'fr': ['arnaque', 'fraude', 'plainte', 'avis'],
-        'pt': ['fraude', 'golpe', 'queixa', 'reclamação'],
-        'de': ['betrug', 'beschwerde', 'erfahrungen'],
-        'it': ['truffa', 'frode', 'lamentela', 'recensioni'],
+        'en': ['scam', 'fraud'],
+        'es': ['estafa', 'fraude'],
+        'fr': ['arnaque', 'fraude'],
+        'pt': ['fraude', 'golpe'],
+        'de': ['betrug', 'beschwerde'],
+        'it': ['truffa', 'frode'],
     }
     
     # --- Get Languages for the Country ---
@@ -80,7 +80,7 @@ def prepare_reputation_queries(inputs: dict, query_limit: int = 8) -> list[str]:
     # --- Generate Queries ---
     queries = []
     # Prioritize unique identifiers
-    search_terms = [inputs.get("email"), inputs.get("phone"), inputs.get("host_name")]
+    search_terms = [inputs.get("host_email"), inputs.get("host_phone")]
 
     for term in search_terms:
         if term:

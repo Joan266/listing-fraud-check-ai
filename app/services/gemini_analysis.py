@@ -74,9 +74,10 @@ def analyze_listing_reviews(reviews: list) -> dict:
     review_text = "\n".join([f"- {r.get('text')}" for r in reviews])
     return _call_gemini_with_json_response(fast_model, prompt, review_text)
 
-def check_price_sanity(price_details: dict, property_type: str, address: str) -> dict:
+def check_price_sanity(price_details: str, property_type: str,description:str, address: str) -> dict:
     prompt = load_prompt("check_price_sanity_prompt")
-    context = f"Address: {address}\nType: {property_type}\nPrice: {price_details}"
+    context = f"Address: {address}\nType: {property_type}\nPrice: {price_details}\nListing Description: {description}"
+    print(f"Checking price sanity with context: {context}")  
     return _call_gemini_with_json_response(fast_model, prompt, context)
 
 def analyze_host_profile(host_data: dict) -> dict:
@@ -102,12 +103,14 @@ def synthesize_advanced_report(full_context: dict) -> dict:
     prompt = load_prompt("synthesize_final_report_prompt")
     prompt = prompt.replace("[LANGUAGE_CODE]", "en") 
     context_str = json.dumps(full_context, indent=2)
+    print(f"Checking price sanity with context: {context_str}")  
     return _call_gemini_with_json_response(advanced_model, prompt, context_str)
 def extract_data_from_text(raw_text: str) -> dict:
     """Extracts structured data from a raw text paste of a listing."""
     prompt = load_prompt("data_extraction_prompt")
-    # Limit the text to avoid exceeding token limits
-    return _call_gemini_with_json_response(fast_model, prompt, raw_text[:12000])
+    context = f"\n{raw_text[:10000]}"
+    
+    return _call_gemini_with_json_response(advanced_model, prompt, context)
 
 def process_q_and_a(full_context: dict) -> dict:
     """
@@ -117,3 +120,14 @@ def process_q_and_a(full_context: dict) -> dict:
     context_str = json.dumps(full_context, indent=2)
     # Use the advanced_model for high-quality, nuanced answers
     return _call_gemini_with_json_response(advanced_model, prompt, context_str)
+def filter_suspicious_urls(url_data: list) -> dict:
+    """
+    Uses Gemini to analyze a list of URLs and page titles to determine
+    which are suspicious.
+    """
+    prompt = load_prompt("filter_urls_prompt")
+    # Format the data for the prompt
+    context = "\n".join([f"- URL: {item['url']}, Title: {item['title']}" for item in url_data])
+    
+    # Use the fast_model for this quick classification task
+    return _call_gemini_with_json_response(fast_model, prompt, context)

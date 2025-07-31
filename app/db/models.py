@@ -1,6 +1,6 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, JSON, Enum as SQLAlchemyEnum, func, text, TIMESTAMP, ForeignKey, Integer
+from sqlalchemy import Column, String, JSON, Enum as SQLAlchemyEnum, func, TIMESTAMP, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from .session import Base
@@ -17,8 +17,7 @@ class User(Base):
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    # You could add subscription fields here later
-    # subscription_status = Column(String, default="free")
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     
 class FraudCheck(Base):
     __tablename__ = "fraud_checks"
@@ -29,9 +28,11 @@ class FraudCheck(Base):
     input_data = Column(JSON, nullable=False)
     final_report = Column(JSON, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
-    # user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)  
-    session_id = Column(String, index=True, nullable=False) 
+    chat = relationship("Chat", back_populates="fraud_check", uselist=False)
+    updated_at = Column(TIMESTAMP(timezone=True), 
+                     server_default=func.now(), 
+                     onupdate=func.now())
+    session_id = Column(String(36), index=True, nullable=False)  
 
 class Chat(Base):
     __tablename__ = "chats"
@@ -41,19 +42,18 @@ class Chat(Base):
     fraud_check_id = Column(PG_UUID(as_uuid=True), ForeignKey("fraud_checks.id"), nullable=True)
     message_count = Column(Integer, default=0)
     extracted_data = Column(JSON, nullable=True)
-    
-    messages = relationship("ChatMessage", back_populates="chat", cascade="all, delete-orphan")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    # user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)  
-    session_id = Column(String, index=True, nullable=False) 
+    session_id = Column(String(36), index=True, nullable=False)  
+    fraud_check = relationship("FraudCheck", back_populates="chat")
+    messages = relationship("ChatMessage", back_populates="chat", cascade="all, delete-orphan")
 
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
     
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     chat_id = Column(PG_UUID(as_uuid=True), ForeignKey("chats.id"), nullable=False)
-    role = Column(String, nullable=False)
-    content = Column(String, nullable=False)
+    role = Column(String(50), nullable=False)  # Added length limit
+    content = Column(String, nullable=False)  # Consider TEXT for large messages
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     
     chat = relationship("Chat", back_populates="messages")
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
