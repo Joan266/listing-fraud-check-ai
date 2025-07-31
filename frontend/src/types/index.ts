@@ -1,76 +1,73 @@
+// src/types/index.ts
+
+// --- Reusable Core Types ---
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+// --- API Response Types ---
+export interface JobCreationResponse {
+  job_id: string;
+}
+
+export interface HistoryResponse {
+  history: Analysis[];
+}
+
+export interface ChatResponse {
+  chat_id: string;
+  response: ChatMessage;
+}
+
+
+// --- Data Structures ---
 export interface ExtractedData {
   listing_url?: string;
   address?: string;
   description?: string;
   image_urls?: string[];
   communication_text?: string;
-  host_name?: string;
-  email?: string;
-  phone?: string;
+  host_email?: string;
+  host_phone?: string;
   reviews?: Array<{ [key: string]: any }>;
-  price_details?: { [key: string]: any };
+  price_details?: string;
   host_profile?: { [key: string]: any };
   property_type?: string;
+  check_in?: string | null;
+  check_out?: string | null;
+  number_of_people?: number | null;
 }
 
 export interface FinalReport {
-  authenticityScore: number;
-  qualityScore: number;
+  authenticity_score: number;
+  quality_score: number;
   sidebar_summary: string;
-  chat_explanation: string;
+  explanation: string;
   suggested_actions: string[];
+  flags: Array<{ category: string; description: string; }>;
 }
-
-export interface JobStatus {
+export interface ChatHistory {
   id: string;
-  status: 'pending' | 'running' | 'finished' | 'failed';
-  result?: any;
-  error?: string;
+  messages: ChatMessage[];
 }
-
 export interface Analysis {
   id: string;
-  sessionId: string;
-  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
-  extractedData: ExtractedData;
-  finalReport?: FinalReport;
-  geocodeResult?: {
-    latitude: number;
-    longitude: number;
-    formatted_address: string;
-  };
-  createdAt: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  input_data: ExtractedData;
+  final_report: FinalReport | null;
+  created_at: string;
+  chat: ChatHistory | null; // This should be an object, not just an array
 }
-
+// --- Frontend Redux State ---
 export interface AppState {
-  currentSessionId: string;
-  currentAnalysis: Analysis | null;
-  analysisHistory: Analysis[];
-  loading: boolean;
+  sessionId: string;
+  currentAnalysisId: string | null;
+  sessionHistory: Analysis[]; // The history list is global
+  isLoading: boolean;
   loadingMessage: string;
   error: string | null;
   theme: 'light' | 'dark';
   sidebarCollapsed: boolean;
-}
-
-export interface ApiResponse<T> {
-  data: T;
-  message?: string;
-}
-
-export interface ExtractDataResponse {
-  extracted_data: ExtractedData;
-  geocode_job_id: string;
-}
-
-export interface AnalysisResponse {
-  check_id: string;
-  status: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  type: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
+  isPolling: boolean;
 }

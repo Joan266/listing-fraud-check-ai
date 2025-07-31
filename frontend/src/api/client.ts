@@ -1,93 +1,65 @@
-import toast from 'react-hot-toast';
+// src/api/client.ts
+import { ExtractedData, Analysis, JobCreationResponse, HistoryResponse, ChatResponse, ChatMessage } from '../types';
 
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 class ApiClient {
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
     try {
-      const response = await fetch(url, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        ...options,
-      });
-
+      const response = await fetch(url, { ...options, headers });
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
-
       return await response.json();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Network error occurred';
-      toast.error(`API Error: ${message}`);
+      console.error('API request failed:', error);
       throw error;
     }
   }
 
-  async extractData(listingText: string, sessionId: string) {
-    return this.request<{
-      extracted_data: any;
-      geocode_job_id: string;
-    }>('/extract-data', {
+  async extractData(sessionId: string, listingContent: string): Promise<ExtractedData> {
+    const payload = { session_id: sessionId, listing_content: listingContent };
+
+    const response = await this.request<{ extracted_data: ExtractedData }>('/extract-data', {
       method: 'POST',
-      body: JSON.stringify({
-        listing_text: listingText,
-        session_id: sessionId,
-      }),
+      body: JSON.stringify(payload),
     });
+
+    return response.extracted_data;
   }
 
-  async getJobStatus(jobId: string) {
-    return this.request<{
-      id: string;
-      status: string;
-      result?: any;
-      error?: string;
-    }>(`/jobs/${jobId}`);
-  }
-
-  async submitAnalysis(extractedData: any, sessionId: string) {
-    return this.request<{
-      check_id: string;
-      status: string;
-    }>('/analysis', {
+  async startAnalysis(sessionId: string, data: ExtractedData): Promise<JobCreationResponse> {
+    const payload = { session_id: sessionId, ...data };
+    return this.request<JobCreationResponse>('/analysis', {
       method: 'POST',
-      headers: {
-        'X-Session-ID': sessionId,
-      },
-      body: JSON.stringify(extractedData),
+      body: JSON.stringify(payload),
     });
   }
 
-  async getAnalysisStatus(checkId: string, sessionId: string) {
-    return this.request<{
-      id: string;
-      status: string;
-      final_report?: any;
-    }>(`/analysis/${checkId}`, {
-      headers: {
-        'X-Session-ID': sessionId,
-      },
+  async getAnalysisStatus(checkId: string, sessionId: string): Promise<Analysis> {
+    return this.request<Analysis>(`/analysis/${checkId}`, {
+      headers: { 'session_id': sessionId },
     });
   }
 
-  async updateAnalysis(checkId: string, extractedData: any, sessionId: string) {
-    return this.request<{
-      check_id: string;
-      status: string;
-    }>(`/analysis/${checkId}`, {
-      method: 'PUT',
-      headers: {
-        'X-Session-ID': sessionId,
-      },
-      body: JSON.stringify(extractedData),
+  async getSessionHistory(sessionId: string): Promise<HistoryResponse> {
+    return this.request<HistoryResponse>(`/analysis/history/${sessionId}`, {
+      headers: { 'session_id': sessionId },
+    });
+  }
+
+  async sendChatMessage(chatId: string, sessionId: string, message: string): Promise<ChatResponse> {
+    const payload = { chat_id: chatId, session_id: sessionId, message: { role: 'user', content: message } };
+    return this.request<ChatResponse>('/chat', {
+      method: 'POST',
+      body: JSON.stringify(payload)
     });
   }
 }
