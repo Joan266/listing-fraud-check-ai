@@ -2,6 +2,7 @@
 from googleapiclient.discovery import build
 from app.core.config import settings
 import logging
+import pycountry
 
 # Create the service client once to be reused. This is more efficient.
 try:
@@ -43,8 +44,6 @@ def search_web(query: str, exact_match: bool = False) -> list[dict]:
         logging.error(f"Google Search API call failed for query '{search_query}': {e}")
         return []
 
-# in app/services/Google Search.py
-import pycountry
 
 def prepare_reputation_queries(inputs: dict, query_limit: int = 8) -> list[str]:
     """
