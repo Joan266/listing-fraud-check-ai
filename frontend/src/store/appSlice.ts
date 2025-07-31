@@ -39,12 +39,15 @@ export const fetchHistoryAsync = createAsyncThunk(
 
 export const startAnalysisAsync = createAsyncThunk(
   'app/startAnalysis',
-  async (extractedData: ExtractedData, { getState }) => {
-    const { sessionId } = (getState() as RootState).app;
+  async (extractedData: ExtractedData, { getState, dispatch }) => {
+    const { sessionId, sessionHistory } = (getState() as RootState).app;
     if (!sessionId) throw new Error('Session ID is missing.');
 
     const response = await apiClient.startAnalysis(sessionId, extractedData);
-
+    const existingAnalysis = sessionHistory.find(a => a.id === response.job_id);
+    if (existingAnalysis && (existingAnalysis.status === 'COMPLETED' || existingAnalysis.status === 'FAILED')) {
+      dispatch(setError("This analysis has already been completed."))
+    }
     const pendingAnalysis: Analysis = {
       id: response.job_id,
       status: 'PENDING',
@@ -148,15 +151,12 @@ const appSlice = createSlice({
         state.loadingMessage = 'Running full analysis...';
       })
       .addCase(startAnalysisAsync.fulfilled, (state, action: PayloadAction<Analysis>) => {
-        const newAnalysis = action.payload;
-
-        const existingIndex = state.sessionHistory.findIndex(a => a.id === newAnalysis.id);
+        const returnedAnalysis = action.payload;
+        const existingIndex = state.sessionHistory.findIndex(a => a.id === returnedAnalysis.id);
 
         if (existingIndex === -1) {
-          state.sessionHistory.unshift(newAnalysis);
+          state.sessionHistory.unshift(returnedAnalysis);
         }
-
-        state.currentAnalysisId = newAnalysis.id;
       })
       .addCase(startAnalysisAsync.rejected, (state, action) => {
         state.isLoading = false;
