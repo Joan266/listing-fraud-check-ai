@@ -28,10 +28,11 @@ class FraudCheck(Base):
     input_data = Column(JSON, nullable=False)
     final_report = Column(JSON, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    chat = relationship("Chat", back_populates="fraud_check", uselist=False)
     updated_at = Column(TIMESTAMP(timezone=True), 
                      server_default=func.now(), 
                      onupdate=func.now())
-    session_id = Column(String(36), index=True, nullable=False)  # Changed to String(36)
+    session_id = Column(String(36), index=True, nullable=False)  
 
 class Chat(Base):
     __tablename__ = "chats"
@@ -42,8 +43,8 @@ class Chat(Base):
     message_count = Column(Integer, default=0)
     extracted_data = Column(JSON, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    session_id = Column(String(36), index=True, nullable=False)  # Changed to String(36)
-    
+    session_id = Column(String(36), index=True, nullable=False)  
+    fraud_check = relationship("FraudCheck", back_populates="chat")
     messages = relationship("ChatMessage", back_populates="chat", cascade="all, delete-orphan")
 
 class ChatMessage(Base):

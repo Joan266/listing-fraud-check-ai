@@ -26,10 +26,12 @@ class ApiClient {
 
   async extractData(sessionId: string, listingContent: string): Promise<ExtractedData> {
     const payload = { session_id: sessionId, listing_content: listingContent };
+
     const response = await this.request<{ extracted_data: ExtractedData }>('/extract-data', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+
     return response.extracted_data;
   }
 

@@ -42,7 +42,8 @@ def process_q_and_a(session_id: str, chat_id: uuid.UUID, user_message: dict, db:
  
     # Prepare the context for the Gemini model
     full_context = {
-        "FINAL REPORT": fraud_check.final_report,
+        "INPUTS USED FOR THE ANALYSIS": fraud_check.input_data,
+        "FINAL ANALYSIS REPORT": fraud_check.final_report,
         "CHAT HISTORY": chat_history_text
     }
   

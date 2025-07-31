@@ -28,9 +28,8 @@ export interface ExtractedData {
   description?: string;
   image_urls?: string[];
   communication_text?: string;
-  host_name?: string;
-  email?: string;
-  phone?: string;
+  host_email?: string;
+  host_phone?: string;
   reviews?: Array<{ [key: string]: any }>;
   price_details?: string;
   host_profile?: { [key: string]: any };
@@ -44,35 +43,31 @@ export interface FinalReport {
   authenticity_score: number;
   quality_score: number;
   sidebar_summary: string;
-  chat_explanation: string;
+  explanation: string;
   suggested_actions: string[];
   flags: Array<{ category: string; description: string; }>;
 }
-
-// Represents a single, complete analysis record from the backend
+export interface ChatHistory {
+  id: string;
+  messages: ChatMessage[];
+}
 export interface Analysis {
   id: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
   input_data: ExtractedData;
   final_report: FinalReport | null;
   created_at: string;
-  chat_id?: string;
+  chat: ChatHistory | null; // This should be an object, not just an array
 }
-
 // --- Frontend Redux State ---
 export interface AppState {
   sessionId: string;
-  // --- Data for the current workflow ---
   currentAnalysisId: string | null;
-  extractedData: ExtractedData | null;
-  finalReport: FinalReport | null;
-  // --- Global App State ---
-  sessionHistory: Analysis[];
+  sessionHistory: Analysis[]; // The history list is global
   isLoading: boolean;
   loadingMessage: string;
   error: string | null;
-  chatMessages: ChatMessage[];
-  // --- UI State ---
   theme: 'light' | 'dark';
   sidebarCollapsed: boolean;
+  isPolling: boolean;
 }

@@ -3,29 +3,31 @@ import { Edit3, MapPin, User, Home, Image, DollarSign, MessageSquare, Plus, X } 
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { startAnalysisAsync, } from '../store/appSlice';
 import { ExtractedData } from '../types';
+import { toast } from 'react-hot-toast';
 import MapComponent from '../components/UI/MapComponent';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
 import { gsap } from 'gsap';
-import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { LoadingScreen } from '../components/UI/LoadingScreen';
 
+const MAX_IMAGE_URLS = 3;
 
 const ReviewPage: React.FC = () => {
-  const { extractedData, isLoading, loadingMessage, theme } = useAppSelector((state) => state.app);
-  const dispatch = useAppDispatch();
-
   const navigate = useNavigate();
-  // --- Main state for all form data ---
-  const [editableData, setEditableData] = useState<ExtractedData>(
-    extractedData || {}
-  );
+  const dispatch = useAppDispatch();
+  const location = useLocation();
+  const { theme, isLoading: isGlobalLoading } = useAppSelector((state) => state.app);
+
+  const initialData = location.state?.extractedData || {};
+
+  const [editableData, setEditableData] = useState<ExtractedData>(initialData);
+
 
   // --- Local UI state for better UX ---
-  const [addressInputValue, setAddressInputValue] = useState(extractedData?.address || '');
+  const [addressInputValue, setAddressInputValue] = useState(editableData?.address || '');
   const [newImageUrl, setNewImageUrl] = useState('');
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
-  const [startDate, endDate] = dateRange;
+  const [isStartingAnalysis, setIsStartingAnalysis] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -38,12 +40,6 @@ const ReviewPage: React.FC = () => {
     return () => clearTimeout(debounceTimer);
   }, [addressInputValue, editableData.address]);
 
-  // Sync state if Redux data changes
-  useEffect(() => {
-    if (extractedData) {
-      setEditableData(extractedData);
-    }
-  }, [extractedData]);
 
   // Entrance animation
   useEffect(() => {
@@ -60,18 +56,18 @@ const ReviewPage: React.FC = () => {
     setEditableData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleDateChange = (update: [Date | null, Date | null]) => {
-  const [start, end] = update;
-  setDateRange(update);
-
-  handleInputChange('check_in', start ? start.toISOString() : null);
-  handleInputChange('check_out', end ? end.toISOString() : null);
-};
   const handleAddImageUrl = () => {
     const trimmedUrl = newImageUrl.trim();
-    if (trimmedUrl && (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) && !(editableData.image_urls || []).includes(trimmedUrl)) {
-      const updatedUrls = [...(editableData.image_urls || []), trimmedUrl];
-      handleInputChange('image_urls', updatedUrls);
+    const currentUrls = editableData.image_urls || [];
+
+    // 3. Limit the number of image URLs
+    if (currentUrls.length >= MAX_IMAGE_URLS) {
+      toast.error(`You can add a maximum of ${MAX_IMAGE_URLS} images.`);
+      return;
+    }
+
+    if (trimmedUrl && !currentUrls.includes(trimmedUrl)) {
+      handleInputChange('image_urls', [...currentUrls, trimmedUrl]);
       setNewImageUrl('');
     }
   };
@@ -87,15 +83,27 @@ const ReviewPage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-  try {
-    const payload = await dispatch(startAnalysisAsync(editableData)).unwrap();
-    
-    navigate(`/results/${payload.analysisId}`);
-
-  } catch (error) {
-    console.error('Failed to start analysis:', error);
+    const isDataSufficient = editableData.address && editableData.description && editableData.price_details;
+    if (!isDataSufficient) {
+      toast.error("Please provide at least an address, description, and price for a better analysis.");
+      return;
+    }
+    setIsStartingAnalysis(true);
+    console.log('Starting analysis with data:', editableData);
+    try {
+      const newAnalysis = await dispatch(startAnalysisAsync(editableData)).unwrap();
+      navigate(`/results/${newAnalysis.id}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start analysis.';
+      toast.error(errorMessage);
+    } finally {
+      setIsStartingAnalysis(false);
+    }
+  };
+  if (isGlobalLoading) {
+    return <LoadingScreen />;
   }
-};
+  const isDataSufficient = editableData.address && editableData.description && editableData.price_details;
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} p-6`}>
@@ -202,30 +210,15 @@ const ReviewPage: React.FC = () => {
                 </h2>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Host Name
-                  </label>
-                  <input
-                    type="text"
-                    value={editableData.host_name || ''}
-                    onChange={(e) => handleInputChange('host_name', e.target.value)}
-                    placeholder="e.g., John D."
-                    className={`w-full p-3 border rounded-lg ${theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                      }`}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Email
+                    Host email
                   </label>
                   <input
                     type="email"
-                    value={editableData.email || ''}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    value={editableData.host_email || ''}
+                    onChange={(e) => handleInputChange('host_email', e.target.value)}
                     placeholder="e.g., host@example.com"
                     className={`w-full p-3 border rounded-lg ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
@@ -235,12 +228,12 @@ const ReviewPage: React.FC = () => {
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Phone
+                    Host phone
                   </label>
                   <input
                     type="tel"
-                    value={editableData.phone || ''}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    value={editableData.host_phone || ''}
+                    onChange={(e) => handleInputChange('host_phone', e.target.value)}
                     placeholder="e.g., +1 555-123-4567"
                     className={`w-full p-3 border rounded-lg ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
@@ -353,45 +346,6 @@ const ReviewPage: React.FC = () => {
           <div className="sticky top-6 lg:col-span-1 space-y-6">
             <div className="sticky top-6 space-y-6">
 
-              {/* --- Trip Details Card --- */}
-              <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
-                <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Trip Details
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Check-in / Check-out Dates
-                    </label>
-                    <div className={theme}> {/* This wrapper helps the calendar inherit the theme */}
-                      <DatePicker
-                        selectsRange={true}
-                        startDate={startDate}
-                        endDate={endDate}
-                        onChange={handleDateChange}
-                        isClearable={true}
-                        minDate={new Date()}
-                        placeholderText="Select your trip dates"
-                        className={`w-full p-3 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Number of People
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="e.g., 2"
-                      value={editableData.number_of_people || ''}
-                      onChange={(e) => handleInputChange('number_of_people', e.target.value ? parseInt(e.target.value) : null)}
-                      className={`w-full p-3 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
-                    />
-                  </div>
-                </div>
-              </div>
-
               {/* Map Container */}
               <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
                 <div className="flex items-center space-x-2 mb-4">
@@ -406,18 +360,22 @@ const ReviewPage: React.FC = () => {
                   className="h-64"
                   onLocationChange={handleMapUpdate}
                 />
-              </div>
-
+              </div> 
+              {!isDataSufficient && (
+                <div className={`${theme === 'dark' ? 'bg-yellow-900/20 text-yellow-200' : 'bg-yellow-100/50 text-yellow-800'} text-center p-4  rounded-lg text-sm`}>
+                  For the best results, please provide at least an address, description, and price.
+                </div>
+              )}
               {/* Submit Button */}
               <button
                 onClick={handleSubmit}
-                disabled={isLoading}
+                disabled={isStartingAnalysis}
                 className="w-full bg-yellow-400 hover:bg-yellow-500 disabled:bg-gray-400 disabled:cursor-not-allowed text-gray-900 font-semibold py-4 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 transform hover:scale-[1.02] active:scale-[0.98]"
               >
-                {isLoading ? (
+                {isStartingAnalysis ? (
                   <>
                     <LoadingSpinner size="sm" color="text-gray-900" />
-                    <span>{loadingMessage}</span>
+                    <span>Starting Analysis...</span>
                   </>
                 ) : (
                   <span>Start Full Analysis</span>

@@ -1,17 +1,27 @@
-import React from 'react';
-import { History, Plus, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { History, Plus, ShieldCheck, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
-import { toggleSidebar, setCurrentAnalysisId } from '../../store/appSlice';
+import { toggleSidebar, fetchHistoryAsync } from '../../store/appSlice';
 
 const Sidebar: React.FC = () => {
-  const { sidebarCollapsed, sessionHistory, currentAnalysisId, theme } = useAppSelector((state) => state.app);
+  const {
+    sidebarCollapsed,
+    sessionHistory,
+    currentAnalysisId,
+    theme,
+    sessionId
+  } = useAppSelector((state) => state.app);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  useEffect(() => {
+    if (sessionId) {
+      dispatch(fetchHistoryAsync());
+    }
+  }, [sessionId, dispatch]);
 
   const handleNewAnalysis = () => {
-    dispatch(setCurrentAnalysisId(null));
-    navigate('/new');
+    navigate('/');
   };
 
   const formatDate = (dateString: string) => {
@@ -30,15 +40,13 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <div className={`${sidebarCollapsed ? 'w-20' : 'w-80'} transition-all duration-300 ${
-      theme === 'dark' ? 'bg-gray-900 border-r border-gray-800' : 'bg-white border-r'
-    } flex flex-col h-screen relative shadow-md`}>
-      
+    <div className={`${sidebarCollapsed ? 'w-20' : 'w-80'} transition-all duration-300 ${theme === 'dark' ? 'bg-gray-900 border-r border-gray-800' : 'bg-white border-r'
+      } flex flex-col h-screen relative shadow-md`}>
+
       <button
         onClick={() => dispatch(toggleSidebar())}
-        className={`absolute -right-3 top-8 w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-lg border ${
-          theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 border-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100 border-gray-300'
-        }`}
+        className={`absolute -right-3 top-8 w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-lg border ${theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 border-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100 border-gray-300'
+          }`}
       >
         {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
@@ -61,9 +69,8 @@ const Sidebar: React.FC = () => {
       <div className="p-4">
         <button
           onClick={handleNewAnalysis}
-          className={`w-full py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg font-semibold transition-all duration-200 flex items-center transform hover:scale-105 ${
-            sidebarCollapsed ? 'justify-center px-2' : 'px-4 space-x-2'
-          }`}
+          className={`w-full py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg font-semibold transition-all duration-200 flex items-center transform hover:scale-105 ${sidebarCollapsed ? 'justify-center px-2' : 'px-4 space-x-2'
+            }`}
         >
           <Plus size={20} />
           {!sidebarCollapsed && <span>New Analysis</span>}
@@ -79,58 +86,76 @@ const Sidebar: React.FC = () => {
             </h2>
           </div>
         )}
-        
+
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {sessionHistory.map((analysis) => (
-            <Link
-              key={analysis.id}
-              to={`/results/${analysis.id}`}
-              className={`block w-full p-3 rounded-lg border text-left transition-all ${
-                currentAnalysisId === analysis.id
-                  ? theme === 'dark' 
-                    ? 'bg-yellow-400/10 border-yellow-400/30'
-                    : 'bg-yellow-100 border-yellow-300'
-                  : theme === 'dark'
-                    ? 'bg-gray-800/50 border-gray-700/50 hover:bg-gray-700/70 text-gray-300'
-                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-700'
-              }`}
-            >
-              {!sidebarCollapsed ? (
-                <>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs opacity-75">
-                      {formatDate(analysis.created_at)}
-                    </span>
-                    {analysis.final_report && (
+          {sessionHistory.map((analysis) => {
+            const isRunning = analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS';
+            const isFailed = analysis.status === 'FAILED';
+            const isCurrent = currentAnalysisId === analysis.id;
+
+            return (
+              <Link
+                key={analysis.id}
+                to={`/results/${analysis.id}`}
+                className={`
+                  block w-full p-3 rounded-lg border text-left transition-all 
+                  ${isFailed ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}
+                  ${isCurrent
+                    ? (theme === 'dark' ? 'text-white bg-yellow-400/10 border-yellow-400/30' : 'text-gray-900 bg-yellow-100 border-yellow-300')
+                    : (theme === 'dark' ? 'text-gray-200 bg-gray-800/50 border-gray-700/50 hover:bg-gray-700/70' : 'text-gray-900 bg-white border-gray-200 hover:bg-gray-100')
+                  }
+                `}
+              >
+                {!sidebarCollapsed ? (
+                  <>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs opacity-75">
+                        {formatDate(analysis.created_at)}
+                      </span>
                       <div className="flex space-x-1.5">
-                        <span className={`text-xs font-bold ${getScoreColor(analysis.final_report.authenticity_score)}`}>
-                          A:{analysis.final_report.authenticity_score}
-                        </span>
-                        <span className={`text-xs font-bold ${getScoreColor(analysis.final_report.quality_score)}`}>
-                          Q:{analysis.final_report.quality_score}
-                        </span>
+                        {analysis.status === 'COMPLETED' && analysis.final_report && (
+                          <>
+                            <span className={`text-xs font-bold ${getScoreColor(analysis.final_report.authenticity_score)}`}>
+                              A:{analysis.final_report.authenticity_score}
+                            </span>
+                            <span className={`text-xs font-bold ${getScoreColor(analysis.final_report.quality_score)}`}>
+                              Q:{analysis.final_report.quality_score}
+                            </span>
+                          </>
+                        )}
+                        {isRunning && (
+                          <span className="text-xs font-medium text-blue-400 flex items-center">
+                            <Loader2 size={12} className="animate-spin mr-1" />
+                            In Progress
+                          </span>
+                        )}
+                        {isFailed && (
+                          <span className="text-xs font-medium text-red-400 flex items-center">
+                            <AlertTriangle size={12} className="mr-1" />
+                            Failed
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div className="text-sm font-medium truncate">
-                    {analysis.input_data.address || 'Unknown Address'}
-                  </div>
-                  <div className="text-xs opacity-75 truncate">
-                    {analysis.input_data.property_type || 'Property'}
-                  </div>
-                </>
-              ) : (
-                 <div className="flex items-center justify-center">
+                    </div>
+                    <div className="text-sm font-medium truncate">
+                      {analysis.input_data.address || 'Unknown Address'}
+                    </div>
+                    <div className="text-xs opacity-75 truncate">
+                      {analysis.input_data.property_type || 'Property'}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center">
                     {analysis.final_report ? (
-                        <span className={`text-sm font-bold ${getScoreColor(analysis.final_report.authenticity_score)}`}>
-                            {analysis.final_report.authenticity_score}
-                        </span>
+                      <span className={`text-sm font-bold ${getScoreColor(analysis.final_report.authenticity_score)}`}>
+                        {analysis.final_report.authenticity_score}
+                      </span>
                     ) : <History size={18} />}
-                 </div>
-              )}
-            </Link>
-          ))}
-          
+                  </div>
+                )}
+              </Link>
+            );
+          })}
           {sessionHistory.length === 0 && !sidebarCollapsed && (
             <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
               <History size={32} className="mx-auto mb-2 opacity-50" />
