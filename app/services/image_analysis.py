@@ -5,6 +5,7 @@ import requests
 import io
 from PIL import Image
 from app.core.config import settings
+from app.services import gemini_analysis
 from app.utils.helpers import load_prompt
 from google.cloud import vision
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 try:
     vision_client = vision.ImageAnnotatorClient()
     genai.configure(api_key=settings.GOOGLE_GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    gemini_model = genai.GenerativeModel('gemini-1.5-pro-latest')
 except Exception as e:
     logger.error(f"Failed to initialize Google clients in image_analysis: {e}")
     vision_client = None
@@ -22,18 +23,11 @@ except Exception as e:
 
 def reverse_image_search(image_url: str) -> dict:
     """
-    Performs an intelligent reverse image search by analyzing the URLs
-    of the pages where matching images are found.
+    Performs an intelligent reverse image search by using an AI to classify
+    the pages where matching images are found.
     """
     if not vision_client:
         return {"error": "Vision client not initialized."}
-
-    LEGITIMATE_RENTAL_DOMAINS = [
-        'airbnb.com', 'airbnb.es', 'airbnb.co.uk', 'airbnb.fr', 'airbnb.it', 'airbnb.de',
-        'booking.com', 'vrbo.com', 'expedia.com', 'tripadvisor.com', 
-        'homeaway.com', 'agoda.com', 'idealista.com', 'fotocasa.es',
-        'muscache.com'
-    ]
 
     try:
         image = vision.Image()
@@ -41,52 +35,46 @@ def reverse_image_search(image_url: str) -> dict:
         response = vision_client.web_detection(image=image)
         detection = response.web_detection
 
-        suspicious_urls = []
-        syndicated_urls = []
+        if not detection.pages_with_matching_images:
+            return {
+                "is_reused": False,
+                "reason": "Image appears to be unique.",
+                "url": image_url
+            }
 
-        for page in detection.pages_with_matching_images:
-            if any(domain in page.url for domain in LEGITIMATE_RENTAL_DOMAINS):
-                syndicated_urls.append(page.url)
-            else:
-                suspicious_urls.append(page.url)
+        # 1. Gather the context for all matching pages
+        url_data_to_filter = [
+            {"url": page.url, "title": page.page_title}
+            for page in detection.pages_with_matching_images
+        ]
 
+        # 2. Call the AI to classify the URLs
+        classification_result = gemini_analysis.filter_suspicious_urls(url_data_to_filter)
+        
+        suspicious_urls = classification_result.get("suspicious_urls", [])
+
+        # 3. Base the verdict on the AI's classification
         if suspicious_urls:
             return {
                 "is_reused": True,
-                "reason": f"Image found on {len(suspicious_urls)} suspicious or unrelated page(s).",
-                "severity": "High",
-                "url": image_url,
-                "suspicious_urls": suspicious_urls
+                "reason": f"Image found on {len(suspicious_urls)} potentially suspicious or unrelated page(s).",
+                "suspicious_urls": suspicious_urls,
+                "url": image_url
             }
         
-        for entity in detection.web_entities:
-            if "stock photo" in entity.description.lower() or "getty images" in entity.description.lower():
-                return {
-                    "is_reused": True,
-                    "reason": f"Image is associated with the term '{entity.description}'.",
-                    "severity": "High",
-                    "url": image_url,
-                }
-
         return {
-            "is_reused": False, 
-            "reason": "Image appears unique or only syndicated on known rental sites.",
-            "severity": "Low",
-            "url": image_url,
-            "syndicated_urls": syndicated_urls
+            "is_reused": False,
+            "reason": "Image was found on other sites, but they appear to be legitimate rental or travel platforms.",
+            "url": image_url
         }
-
     except Exception as e:
         logger.error(f"Cloud Vision API call failed for url {image_url}: {e}")
         return {"is_reused": False, "reason": "Error during reverse image search.", "url": image_url}
-
+    
 def check_for_ai_artifacts(image_url: str) -> dict:
     """
-    Downloads, resizes, and then analyzes an image for AI artifacts to control costs.
+    Downloads, resizes, and then calls the Gemini service to analyze an image.
     """
-    if not gemini_model:
-        return {"error": "Gemini client not initialized."}
-    
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -109,13 +97,8 @@ def check_for_ai_artifacts(image_url: str) -> dict:
             "data": resized_image_bytes
         }
 
-        prompt = load_prompt("ai_image_detection_prompt")
+        result = gemini_analysis.analyze_image_for_ai(image_data)
         
-        # FIX: Reuse the 'gemini_model' client initialized at the top of the file.
-        response = gemini_model.generate_content([prompt, image_data])
-        
-        cleaned_text = response.text.strip().replace('```json', '').replace('```', '')
-        result = json.loads(cleaned_text)
         result['url'] = image_url
         return result
 
