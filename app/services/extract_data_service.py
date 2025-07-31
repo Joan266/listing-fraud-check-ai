@@ -21,7 +21,6 @@ def extract_and_format_data(content: str) -> dict:
     raw_data_dict = gemini_analysis.extract_data_from_text(content)
     if "error" in raw_data_dict:
         raise HTTPException(status_code=500, detail=f"AI data extraction failed: {raw_data_dict['error']}")
-    
     # 2. Validate and format the data
     # raw_data_validated = RawExtractedData.model_validate(raw_data_dict)
     # final_formatted_data = data_formatter.format_extracted_data(raw_data_validated)

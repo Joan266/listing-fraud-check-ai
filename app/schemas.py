@@ -26,9 +26,8 @@ class ExtractedData(BaseModel):
     description: Optional[str] = None
     image_urls: Optional[List[str]] = None
     communication_text: Optional[str] = None
-    host_name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
+    host_email: Optional[str] = None
+    host_phone: Optional[str] = None
     reviews: Optional[List[Dict[str, Any]]] = None
     price_details: Optional[str] = None
     host_profile: Optional[Dict[str, Any]] = None
@@ -43,17 +42,11 @@ class RawExtractedData(BaseModel):
     listing_url: Optional[str] = None
     property_type: Optional[str] = None
     address: Optional[str] = None
-    general_overview: Optional[str] = None
-    amenities: Optional[List[str]] = None
-    notable_features: Optional[List[str]] = None
-    area_description: Optional[str] = None
-    rules_and_restrictions: Optional[List[str]] = None
-    suspicious_notes: Optional[List[str]] = None
+    description: Optional[str] = None
     image_urls: Optional[List[str]] = None
     communication_text: Optional[str] = None
-    host_name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
+    host_email: Optional[str] = None
+    host_phone: Optional[str] = None
     base_price_text: Optional[str] = None
     cleaning_fee: Optional[str] = None
     service_fee: Optional[str] = None
@@ -67,10 +60,8 @@ class RawExtractedData(BaseModel):
 
 class ExtractDataResponse(BaseModel):
     extracted_data: ExtractedData
-    
 class FraudCheckRequest(ExtractedData):
     session_id: str
-
 class JobResponse(BaseModel):
     job_id: str
 
@@ -78,22 +69,25 @@ class FinalReport(BaseModel):
     authenticity_score: int
     quality_score: int
     sidebar_summary: str
-    chat_explanation: str
+    explanation: str
     suggested_actions: List[str]
     flags: List[Dict[str, str]]
+class ChatHistoryItem(BaseModel):
+    id: uuid.UUID
+    messages: List[Message]
+    class Config:
+        from_attributes = True
 
 class JobStatusResponse(BaseModel):
-    """
-    This is the Pydantic representation of a single analysis record (FraudCheck).
-    """
     id: uuid.UUID
     status: JobStatus
     input_data: dict
     final_report: Optional[FinalReport] = None
     created_at: datetime
+    chat: Optional[ChatHistoryItem] = None # <-- Add this line
 
     class Config:
-        from_attributes = True # This allows it to read from a database object
+        from_attributes = True
 
 class HistoryItem(BaseModel):
     id: str

@@ -18,8 +18,8 @@ const ProgressBar: React.FC<{ progress: number; theme: 'light' | 'dark' }> = ({ 
   }, [progress]);
 
   return (
-    <div className="w-full">
-      <div className={`w-full bg-opacity-20 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2.5`}>
+    <div className="w-full justify-center flex items-center mb-8">
+      <div className={`w-64 md:w-96 bg-opacity-20 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2.5`}>
         <div
           ref={progressRef}
           className="bg-yellow-400 h-2.5 rounded-full"
@@ -33,18 +33,9 @@ const ProgressBar: React.FC<{ progress: number; theme: 'light' | 'dark' }> = ({ 
 // --- Main Loading Screen Component ---
 export const LoadingScreen: React.FC = () => {
   const [progress, setProgress] = useState(0);
-  const { theme } = useAppSelector((state) => state.app);
-  const [stageText, setStageText] = useState('Initializing analysis...');
+  const { theme, loadingMessage } = useAppSelector((state) => state.app);
   const [tip, setTip] = useState('');
 
-  const stages = [
-    'Verifying address...',
-    'Analyzing images for authenticity...',
-    'Checking host reputation online...',
-    'Analyzing description and reviews...',
-    'Performing price sanity check...',
-    'Compiling final report...',
-  ];
 
   const tips = [
     'Always verify the property owner\'s identity before making any payments.',
@@ -54,8 +45,8 @@ export const LoadingScreen: React.FC = () => {
   ];
 
   useEffect(() => {
-    let progressInterval: NodeJS.Timeout;
-    let tipInterval: NodeJS.Timeout;
+    let progressInterval: ReturnType<typeof setInterval>;
+    let tipInterval: ReturnType<typeof setInterval>;
 
     // Reset progress when loading starts
     setProgress(0);
@@ -63,7 +54,7 @@ export const LoadingScreen: React.FC = () => {
 
     // Simulate a progress bar that moves but never quite reaches 100%
     progressInterval = setInterval(() => {
-      setProgress(prev => Math.min(prev + Math.random() * 5, 95));
+      setProgress(prev => Math.min(prev + Math.random() * 2, 95));
     }, 800);
 
     // Cycle through tips
@@ -73,7 +64,7 @@ export const LoadingScreen: React.FC = () => {
         const nextIndex = (currentIndex + 1) % tips.length;
         return tips[nextIndex];
       });
-    }, 5000); // Change tip every 5 seconds
+    }, 7000); // Change tip every 5 seconds
 
 
     return () => {
@@ -92,8 +83,7 @@ export const LoadingScreen: React.FC = () => {
           <ShieldCheck className="w-12 h-12 text-yellow-400" />
         </div>
 
-        <h2 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-700'} mb-3`}>Analysis in Progress</h2>
-        <p className={`text-lg mb-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{stageText}</p>
+        <h2 className={`text-3xl mb-10 font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-700'} mb-3`}>{loadingMessage ? loadingMessage :"Loading..."}</h2>
 
         <ProgressBar progress={progress} theme={theme} />
         

@@ -11,19 +11,39 @@ import {
 import ScoreGauge from '../components/UI/ScoreGauge';
 import { gsap } from 'gsap';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
-import { useAppSelector, useAppDispatch } from '../hooks/redux';
-import { sendChatMessageAsync, addChatMessage } from '../store/appSlice';
 import MapComponent from '../components/UI/MapComponent';
+import { useAppSelector, useAppDispatch } from '../hooks/redux';
+import { pollAnalysisStatus, sendChatMessageAsync, setCurrentAnalysisId } from '../store/appSlice';
+import { ChatMessage } from '../types/index';
+import { toast } from 'react-hot-toast';
+import { LoadingScreen } from '../components/UI/LoadingScreen';
+import ReactMarkdown from 'react-markdown';
+import Markdown from 'react-markdown';
+import { FlagsCard } from '../components/Results/FlagsCard';
 
 const ResultsPage: React.FC = () => {
   const { analysisId } = useParams<{ analysisId: string }>();
-  const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { theme, finalReport, extractedData, chatMessages, isLoading: isSendingMessage } = useAppSelector(state => state.app);
+  const navigate = useNavigate();
+  const analysis = useAppSelector(state =>
+    state.app.sessionHistory.find(a => a.id === analysisId)
+  );
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(analysis?.chat?.messages || []);
 
+  const { theme, isPolling } = useAppSelector(state => state.app);
+  const [isSending, setIsSending] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (analysisId) {
+      dispatch(setCurrentAnalysisId(analysisId));
+      console.log(analysis)
+      if (!isPolling && analysis && (analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS')) {
+        dispatch(pollAnalysisStatus(analysisId));
+      }
+    }
+  }, [analysisId, analysis, isPolling, dispatch]);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -39,20 +59,42 @@ const ResultsPage: React.FC = () => {
   }, [chatMessages]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !analysisId) return;
-    dispatch(sendChatMessageAsync(newMessage.trim()));
-    setNewMessage('');
-  };
+    if (!newMessage.trim() || !analysis?.chat?.id) return;
 
-  const handleRerunAnalysis = () => {
-    if (analysisId) {
-      navigate(`/review/${analysisId}`);
+    const userMessage: ChatMessage = { role: 'user', content: newMessage };
+    setChatMessages(prev => [...prev, userMessage]);
+    setNewMessage('');
+    setIsSending(true);
+
+    try {
+      const aiMessage = await dispatch(sendChatMessageAsync({
+        chatId: analysis.chat.id,
+        message: newMessage
+      })).unwrap();
+      setChatMessages(prev => [...prev, aiMessage]);
+    } catch (err) {
+      toast.error("Failed to send message.");
+    } finally {
+      setIsSending(false);
     }
   };
 
-  if (!finalReport || !extractedData) {
-    return <div>Loading results...</div>; // Or a more sophisticated loading state
+
+  const handleRerunAnalysis = () => {
+    if (analysis) {
+      // Navigate to the review page and pass the input_data for that analysis
+      navigate('/review', { state: { extractedData: analysis.input_data } });
+    }
+  };
+  // 5. If the analysis is pending, show the main loading screen
+  if (!analysis || analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS') {
+    return <LoadingScreen />;
   }
+  if (analysis.status === 'FAILED' || !analysis.final_report) {
+    return <div>Error: Analysis failed or report not found.</div>;
+  }
+
+  const { final_report } = analysis;
 
   return (
     <div className={`min-h-full ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} p-6`}>
@@ -78,9 +120,8 @@ const ResultsPage: React.FC = () => {
             </div>
           </div>
         </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Results Panel - Left Side */}
           <div className="lg:col-span-2 space-y-6">
             {/* Summary Card */}
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
@@ -88,15 +129,15 @@ const ResultsPage: React.FC = () => {
                 Overall Assessment
               </h2>
               <div className="flex flex-wrap justify-center gap-x-12 gap-y-6 mb-6">
-                <ScoreGauge score={finalReport.authenticity_score} title="Authenticity Score" theme={theme} />
-                <ScoreGauge score={finalReport.quality_score} title="Quality Score" theme={theme} />
+                <ScoreGauge score={final_report.authenticity_score} title="Authenticity Score" theme={theme} />
+                <ScoreGauge score={final_report.quality_score} title="Quality Score" theme={theme} />
               </div>
               <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
                 <h3 className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Summary
                 </h3>
-                <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {finalReport.sidebar_summary}
+                <p className={`${theme === 'dark' ? 'text-gray-100' : 'text-gray-700'}`}>
+                  {final_report.sidebar_summary}
                 </p>
               </div>
             </div>
@@ -109,41 +150,16 @@ const ResultsPage: React.FC = () => {
                   Location Verification
                 </h2>
               </div>
-               <MapComponent
-                  address={extractedData.address}
-                  theme={theme}
-                  className="h-80"
-                  onLocationChange={() => {}} // Read-only map on results page
-                />
+              <MapComponent
+                address={analysis.input_data.address}
+                theme={theme}
+                className="h-80"
+                onLocationChange={() => { }} // Read-only map on results page
+              />
             </div>
 
-            {/* Detailed Analysis Sections */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Image Analysis */}
-              <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
-                <div className="flex items-center space-x-2 mb-4">
-                  <Camera size={20} className="text-yellow-400" />
-                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Image Analysis
-                  </h3>
-                </div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Analyzed {extractedData.image_urls?.length || 0} images for authenticity and quality.
-                </p>
-              </div>
-              {/* Host Reputation */}
-              <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
-                <div className="flex items-center space-x-2 mb-4">
-                  <User size={20} className="text-yellow-400" />
-                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Host Reputation
-                  </h3>
-                </div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Verified host information and profile authenticity.
-                </p>
-              </div>
-            </div>
+            <FlagsCard flags={final_report.flags} />
+
 
             {/* Suggested Actions */}
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
@@ -151,7 +167,7 @@ const ResultsPage: React.FC = () => {
                 Recommended Actions
               </h2>
               <div className="space-y-3">
-                {finalReport.suggested_actions.map((action, index) => (
+                {final_report.suggested_actions.map((action, index) => (
                   <div key={index} className="flex items-start space-x-3">
                     <div className="w-6 h-6 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-sm font-bold mt-0.5 flex-shrink-0">
                       {index + 1}
@@ -163,12 +179,21 @@ const ResultsPage: React.FC = () => {
                 ))}
               </div>
             </div>
+            <div className={`${theme === 'dark' ? 'text-gray-300 bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
+              <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Reasoning
+              </h2>
+              <p>
+                 {final_report.explanation}
+              </p>
+            </div>
           </div>
 
           {/* Chat Interface - Right Side */}
-          <div className="lg:col-span-1">
-            <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg h-[calc(100vh-12rem)] flex flex-col`}>
-              {/* Chat Header */}
+          <div className="lg:col-span-1 sticky top-6">
+            <div className={` ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg min-h-80 flex flex-col`}>
+
+
               <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                 <div className="flex items-center space-x-2">
                   <MessageCircle size={20} className="text-yellow-400" />
@@ -199,7 +224,7 @@ const ResultsPage: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                {isSendingMessage && chatMessages[chatMessages.length-1].role === 'user' && (
+                {isSending && chatMessages[chatMessages.length - 1].role === 'user' && (
                   <div className="flex justify-start">
                     <div className={`max-w-[80%] p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
                       <LoadingSpinner size="sm" />
@@ -215,23 +240,24 @@ const ResultsPage: React.FC = () => {
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && !isSendingMessage && handleSendMessage()}
+                    onKeyPress={(e) => e.key === 'Enter' && !isSending && handleSendMessage()}
                     placeholder="Ask about the analysis..."
                     className={`flex-1 p-2 border rounded-lg text-sm ${theme === 'dark'
-                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
                       }`}
-                    disabled={isSendingMessage}
+                    disabled={isSending}
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={!newMessage.trim() || isSendingMessage}
+                    disabled={!newMessage.trim() || isSending}
                     className="px-3 py-2 bg-yellow-400 hover:bg-yellow-500 disabled:bg-gray-400 disabled:cursor-not-allowed text-gray-900 rounded-lg transition-colors text-sm font-medium"
                   >
                     Send
                   </button>
                 </div>
               </div>
+
             </div>
           </div>
         </div>

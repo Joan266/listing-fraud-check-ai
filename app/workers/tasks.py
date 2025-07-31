@@ -3,7 +3,7 @@ import json
 import logging
 import uuid
 from app.db.models import FraudCheck
-from app.utils.helpers import generate_hash
+from app.utils.helpers import generate_hash, get_nested
 from app.workers.queues import redis_conn
 from app.services import google_search, image_analysis, gemini_analysis, google_apis, url_analysis
 from app.db.session import SessionLocal 
@@ -78,9 +78,8 @@ def job_reputation_check(check_id_arg):
         country_code = google_places_data.get("country_code", "us")
 
         inputs = {
-            "host_name": check.input_data.get("host_name"),
-            "email": check.input_data.get("email"),
-            "phone": check.input_data.get("phone"),
+            "host_email": check.input_data.get("host_email"),
+            "host_phone": check.input_data.get("host_phone"),
             "country_code": country_code
         }
     finally:
@@ -127,7 +126,7 @@ def job_description_plagiarism_check(check_id_arg):
         if not description or len(description) < 150:
             return {"plagiarized": False, "summary": "Description too short to check."}
 
-        snippet_to_check = description[:200]
+        snippet_to_check = description[:150]
 
         search_results = google_search.search_web(snippet_to_check, exact_match=True)
 
@@ -195,7 +194,7 @@ def job_ai_image_detection(check_id_arg):
         "inputs": reverse_search_inputs
     })
     cached_data = redis_conn.hget(f"cache:{check_id}", reverse_search_cache_key)
-    reverse_search_results = json.loads(cached_data).get("reverse_search_results", []) if cached_data else []
+    reverse_search_results = json.loads(cached_data).get("reverse_search_results" or []) if cached_data else []
 
     images_to_check = [res['url'] for res in reverse_search_results if not res.get('is_reused')]
     if not images_to_check:
@@ -261,7 +260,7 @@ def job_listing_reviews_analysis(check_id_arg):
     try:
         check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
         if not check: return {"error": "Check not found"}
-        reviews = check.input_data.get("reviews", [])[:MAX_REVIEWS_TO_ANALYZE]
+        reviews = (check.input_data.get("reviews") or [])[:MAX_REVIEWS_TO_ANALYZE]
         inputs = {"reviews": reviews}
     finally:
         db.close()
@@ -297,78 +296,58 @@ def job_price_and_host_check(check_id_arg):
 
     def task(data):
         results = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            futures = {}
-            
-            # Update the condition to check for description as well
-            if all([data.get("price_details"), data.get("property_type"), data.get("address"), data.get("description")]):
-                futures[executor.submit(
-                    gemini_analysis.check_price_sanity, 
-                    data["price_details"], 
-                    data["property_type"], 
-                    data["address"],
-                    data["description"]
-                )] = "price_analysis"
-            
-            if data.get("host_profile"):
-                futures[executor.submit(gemini_analysis.analyze_host_profile, data["host_profile"])] = "host_analysis"
-            
-            for future in concurrent.futures.as_completed(futures):
-                analysis_type = futures[future]
-                results[analysis_type] = future.result()
+
+        # --- 1. Rule-Based Host Profile Check (Fast & Cheap) ---
+        host_profile = data.get("host_profile")
+        if host_profile:
+            host_themes = []
+            if not host_profile.get("is_verified"):
+                host_themes.append("Host profile is not verified.")
+            results["host_analysis"] = {"themes": host_themes}
+
+        # --- 2. AI-Powered Price Sanity Check ---
+        if all([data.get("price_details"), data.get("property_type"), data.get("address"), data.get("description")]):
+            results["price_analysis"] = gemini_analysis.check_price_sanity(
+                data["price_details"], 
+                data["property_type"], 
+                data["description"],
+                data["address"]
+            )
         
         if not results:
             return {"status": "Skipped due to missing price and host data."}
             
         return results
     
-    # Use str(check_id) for caching key consistency
     return _run_cached_job(str(check_id), "price_and_host_check", inputs, task)
-def job_google_places_analysis(check_id_arg):
-    """Compares listing data against verified Google Places data."""
-    
-    if isinstance(check_id_arg, str):
-        check_id = uuid.UUID(check_id_arg)
-    else:
-        check_id = check_id_arg 
 
+def job_neighborhood_analysis(check_id_arg):
+    """
+    Fetches the geocode result and runs a neighborhood analysis.
+    """
+    # ... (code to get check_id and db session) ...
     db = SessionLocal()
     try:
-        check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
-        if not check: return {"error": "Check not found"}
-        
-        address = check.input_data.get("address")
-        if not address:
-            return {"status": "No address to perform Google Places analysis."}
+        # ... (code to get the check object and address) ...
 
+        # Fetch the geocode result from the cache
         geocode_inputs = {"address": address}
         geocode_cache_key = generate_hash({"job_name": "geocode", "inputs": geocode_inputs})
-        cached_data = redis_conn.hget(f"cache:{check_id}", geocode_cache_key)
+        cached_data = redis_conn.hget(f"cache:{str(check_id)}", geocode_cache_key)
         google_places_data = json.loads(cached_data) if cached_data else {}
+        
+        # Guard clause
+        if not google_places_data or not google_places_data.get("coordinates"):
+            return {"status": "Skipping due to missing coordinates."}
 
-        if not google_places_data or google_places_data.get("error"):
-            return {"status": "Skipping due to invalid geocode result."}
-
-        inputs = {
-            "listing_data": {
-                # Add the description to the data being passed
-                "description": check.input_data.get("description"), 
-                "reviews": check.input_data.get("reviews", [])[:MAX_REVIEWS_TO_ANALYZE]
-            },
-            "google_places_data": {
-                "description": google_places_data.get("editorial_summary", {}).get("overview"), # Get Google's description
-                "reviews": google_places_data.get("reviews", [])
-            }
-        }
+        inputs = {"coordinates": google_places_data.get("coordinates")}
     finally:
         db.close()
 
     def task(data):
-         return gemini_analysis.check_data_consistency(
-            data["listing_data"], data["google_places_data"]
-        )
+        return google_apis.get_neighborhood_analysis(data["coordinates"])
 
-    return _run_cached_job(check_id, "google_places_analysis", inputs, task)
+    return _run_cached_job(str(check_id), "neighborhood_analysis", inputs, task)
 
 def job_url_forensics(check_id_arg):
     """
