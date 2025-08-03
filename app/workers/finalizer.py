@@ -1,17 +1,17 @@
 import uuid
 import json
 import logging
+import rq
 from app.db.session import SessionLocal
 from app.db.models import FraudCheck, JobStatus
-from .queues import redis_conn
 from app.services import gemini_analysis
 
 logger = logging.getLogger(__name__)
 
 def job_aggregate_and_conclude(check_id_arg):
     """
-    Collects a list of all AnalysisStep results, calls the final Gemini model
-    for synthesis, and saves both the steps and the final report to the database.
+    Collects the full AnalysisStep results from all dependencies, calls the
+    final AI model for synthesis, and saves the complete report.
     """
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -22,52 +22,36 @@ def job_aggregate_and_conclude(check_id_arg):
     
     db = SessionLocal()
     try:
+        current_job = rq.get_current_job()
+        dependencies = current_job.fetch_dependencies()
+        
+        all_job_steps = [dep.result for dep in dependencies]
+        
         check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
         if not check:
-            logger.error(f"Error: FraudCheck ID {check_id} not found in finalizer.")
-            return
+            raise Exception(f"FraudCheck ID {check_id} not found in finalizer.")
 
-        redis_main_key = f"cache:{str(check_id)}"
-        cached_results = redis_conn.hgetall(redis_main_key)
-        if not cached_results:
-            check.status = JobStatus.FAILED
-            check.final_report = {"error": "No analysis results found in cache."}
-            db.commit()
-            logger.error(f"Error: No cached results found for Check ID: {check_id}")
-            return
-
-        # This creates a list of all the AnalysisStep objects from the cache
-        all_job_steps = [json.loads(value) for value in cached_results.values()]
-        
         full_context = {
             "user_provided_data": check.input_data,
             "analysis_steps": all_job_steps
         }
 
-        # Call the advanced model for the final synthesis
         synthesis_report = gemini_analysis.synthesize_advanced_report(full_context)
         
-        if "error" in synthesis_report:
-            check.status = JobStatus.FAILED
-            check.final_report = synthesis_report # Save the error report
-            logger.error(f"Final synthesis failed for job_id: {check_id}.")
-        else:
-            check.status = JobStatus.COMPLETED
-            # Save the raw steps and the final synthesized report to their own columns
-            check.analysis_steps = all_job_steps
-            check.final_report = synthesis_report
-            logger.info(f"✅ Completed fraud check for job_id: {check_id}.")
-            
+        check.analysis_steps = all_job_steps
+        check.final_report = synthesis_report
+        check.status = JobStatus.COMPLETED if "error" not in synthesis_report else JobStatus.FAILED
         db.commit()
 
-        # The job's return value is the final synthesized report
+        logger.info(f"✅ Completed fraud check for job_id: {check_id}.")
         return synthesis_report
 
     except Exception as e:
         logger.error(f"An unexpected critical error occurred in the finalizer for job_id: {check_id}", exc_info=True)
-        if 'check' in locals() and check:
-            check.status = JobStatus.FAILED
-            check.final_report = {"error": f"An unexpected error occurred: {str(e)}"}
+        check_to_fail = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
+        if check_to_fail:
+            check_to_fail.status = JobStatus.FAILED
+            check_to_fail.final_report = {"error": f"Finalizer failed: {str(e)}"}
             db.commit()
         raise e
     finally:

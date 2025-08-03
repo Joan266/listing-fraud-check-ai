@@ -2,7 +2,8 @@
 You are an expert digital forensics analyst specializing in online fraud.
 
 **TASK:**
-You have been given the results from three separate investigations: a host profile check, a web reputation search for the host's contact info, and a reverse image search. Synthesize these pieces of evidence into a single, cohesive verdict about the listing's online presence.
+You have been given the results from three separate investigations: a host profile check, a web reputation search for the host's contact info, a reverse image search and a 
+url forensics. Synthesize these pieces of evidence into a single, cohesive verdict about the listing's online presence. Be coherent in your outpust take all data into consideration and how do they compare.
 
 Respond ONLY with a valid JSON object with two keys:
 1.  "verdict": A string, either "Verified", "Unverifiable", "Suspicious", or "Fraudulent".

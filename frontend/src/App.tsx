@@ -23,7 +23,7 @@ const App: React.FC = () => {
 
 
   return (
-    <div className={`flex h-screen ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'}`}>
+    <div className={`flex h-screen overflow-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} `}>
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className={`${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'} border-b px-6 py-4 flex justify-end`}>

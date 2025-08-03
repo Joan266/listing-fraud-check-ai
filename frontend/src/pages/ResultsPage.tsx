@@ -5,21 +5,21 @@ import {
   MessageCircle,
   RotateCcw,
   MapPin,
-  Camera,
-  User
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import ScoreGauge from '../components/UI/ScoreGauge';
 import { gsap } from 'gsap';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
-import MapComponent from '../components/UI/MapComponent';
+import MapComponent from '../components/UI/MapComponent/EnhancedMapComponent';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { pollAnalysisStatus, sendChatMessageAsync, setCurrentAnalysisId } from '../store/appSlice';
 import { ChatMessage } from '../types/index';
 import { toast } from 'react-hot-toast';
 import { LoadingScreen } from '../components/UI/LoadingScreen';
-import ReactMarkdown from 'react-markdown';
-import Markdown from 'react-markdown';
 import { FlagsCard } from '../components/Results/FlagsCard';
+import { AnalysisRunbook } from '../components/Results/AnalysisRubook';
+import EnhancedMapComponent from '../components/UI/MapComponent/EnhancedMapComponent';
 
 const ResultsPage: React.FC = () => {
   const { analysisId } = useParams<{ analysisId: string }>();
@@ -28,6 +28,9 @@ const ResultsPage: React.FC = () => {
   const analysis = useAppSelector(state =>
     state.app.sessionHistory.find(a => a.id === analysisId)
   );
+  const neighborhoodData = analysis?.analysis_steps?.find(
+    step => step.job_name === 'neighborhood_analysis'
+  )?.result;
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(analysis?.chat?.messages || []);
 
   const { theme, isPolling } = useAppSelector(state => state.app);
@@ -36,6 +39,7 @@ const ResultsPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    console.log(analysis)
     if (analysisId) {
       dispatch(setCurrentAnalysisId(analysisId));
       console.log(analysis)
@@ -46,20 +50,25 @@ const ResultsPage: React.FC = () => {
   }, [analysisId, analysis, isPolling, dispatch]);
 
   useEffect(() => {
+    if (analysis?.chat?.messages) {
+      setChatMessages(analysis.chat.messages);
+    } else {
+      setChatMessages([]);
+    }
     if (containerRef.current) {
       gsap.fromTo(containerRef.current,
         { opacity: 0, y: 20 },
         { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }
       );
     }
-  }, [analysisId]); // Rerun animation if the ID changes
+  }, [analysisId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !analysis?.chat?.id) return;
+    if (!newMessage.trim() || !analysis?.chat?.id || !analysisId) return;
 
     const userMessage: ChatMessage = { role: 'user', content: newMessage };
     setChatMessages(prev => [...prev, userMessage]);
@@ -67,18 +76,20 @@ const ResultsPage: React.FC = () => {
     setIsSending(true);
 
     try {
-      const aiMessage = await dispatch(sendChatMessageAsync({
+      const { aiMessage } = await dispatch(sendChatMessageAsync({
+        analysisId: analysisId,
         chatId: analysis.chat.id,
         message: newMessage
       })).unwrap();
+
       setChatMessages(prev => [...prev, aiMessage]);
+
     } catch (err) {
       toast.error("Failed to send message.");
     } finally {
       setIsSending(false);
     }
   };
-
 
   const handleRerunAnalysis = () => {
     if (analysis) {
@@ -94,7 +105,7 @@ const ResultsPage: React.FC = () => {
     return <div>Error: Analysis failed or report not found.</div>;
   }
 
-  const { final_report } = analysis;
+  const { final_report, analysis_steps } = analysis;
 
   return (
     <div className={`min-h-full ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} p-6`}>
@@ -143,7 +154,7 @@ const ResultsPage: React.FC = () => {
             </div>
 
             {/* Map Card */}
-            <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
+            <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg  p-6`}>
               <div className="flex items-center space-x-2 mb-4">
                 <MapPin size={20} className="text-yellow-400" />
                 <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -153,9 +164,10 @@ const ResultsPage: React.FC = () => {
               <MapComponent
                 address={analysis.input_data.address}
                 theme={theme}
-                className="h-80"
-                onLocationChange={() => { }} // Read-only map on results page
+                neighborhoodData={neighborhoodData}
+                onLocationChange={() => { }}
               />
+
             </div>
 
             <FlagsCard flags={final_report.flags} />
@@ -181,12 +193,15 @@ const ResultsPage: React.FC = () => {
             </div>
             <div className={`${theme === 'dark' ? 'text-gray-300 bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Reasoning
+                Detailed Explanation
               </h2>
               <p>
-                 {final_report.explanation}
+                {final_report.explanation}
               </p>
             </div>
+
+            <AnalysisRunbook steps={analysis_steps} theme={theme}/>
+
           </div>
 
           {/* Chat Interface - Right Side */}

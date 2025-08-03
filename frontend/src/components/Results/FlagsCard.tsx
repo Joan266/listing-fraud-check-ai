@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAppSelector } from '../../hooks/redux'; // Assuming you have this for theme
 
 interface Flag {
-  category: 'Critical' | 'Medium' | 'Positive' | string;
+  category: 'High' | 'Medium' | 'Positive' | string;
   description: string;
 }
 
@@ -17,7 +17,7 @@ export const FlagsCard: React.FC<FlagsCardProps> = ({ flags }) => {
   // Helper to map category to icon and color
   const getFlagStyle = (category: Flag['category']) => {
     switch (category) {
-      case 'Critical':
+      case 'High':
         return {
           Icon: AlertTriangle,
           color: 'text-red-500 dark:text-red-400',

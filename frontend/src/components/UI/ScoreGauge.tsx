@@ -8,9 +8,9 @@ interface ScoreGaugeProps {
 
 const ScoreGauge: React.FC<ScoreGaugeProps> = ({ score, title, theme }) => {
   const getScoreColor = (score: number) => {
-    if (score >= 80) return '#10B981'; // green-500
-    if (score >= 60) return '#F59E0B'; // yellow-500
-    return '#EF4444'; // red-500
+    if (score >= 70) return '#10B981'; 
+    if (score >= 50) return '#F59E0B'; 
+    return '#EF4444'; 
   };
 
   const getScoreText = (score: number) => {

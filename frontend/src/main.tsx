@@ -6,14 +6,13 @@ import { store } from './store';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 
-// The root of the application is wrapped with the Redux Provider and the BrowserRouter.
-// This makes the Redux store and routing capabilities available to all components.
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <Provider store={store}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </Provider>
-  </React.StrictMode>
+      <Provider store={store}>
+        <BrowserRouter> 
+          <App />
+        </BrowserRouter>
+      </Provider>
+  </React.StrictMode>,
 );

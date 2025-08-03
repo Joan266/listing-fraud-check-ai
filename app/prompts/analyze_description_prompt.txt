@@ -1,6 +1,7 @@
 As a fraud analyst, analyze the following rental listing description.
 Respond ONLY with a JSON object with two keys:
 - "sentiment": A string, either "Positive", "Neutral", or "Negative".
+- "reason": A brief, one-sentence explanation for your sentiment.
 - "themes": A list of strings describing any of the following red flags:
   - "Urgency Pressure"
   - "Unprofessional Language"

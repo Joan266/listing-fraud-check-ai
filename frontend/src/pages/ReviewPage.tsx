@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Edit3, MapPin, User, Home, Image, DollarSign, MessageSquare, Plus, X } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
-import { startAnalysisAsync, } from '../store/appSlice';
+import { setCurrentAnalysisId, startAnalysisAsync, } from '../store/appSlice';
 import { ExtractedData } from '../types';
 import { toast } from 'react-hot-toast';
 import MapComponent from '../components/UI/MapComponent';
@@ -43,6 +43,7 @@ const ReviewPage: React.FC = () => {
 
   // Entrance animation
   useEffect(() => {
+    dispatch(setCurrentAnalysisId(null))
     if (containerRef.current) {
       gsap.fromTo(containerRef.current,
         { opacity: 0, y: 20 },

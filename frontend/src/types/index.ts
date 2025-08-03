@@ -51,13 +51,26 @@ export interface ChatHistory {
   id: string;
   messages: ChatMessage[];
 }
+export interface ErrorReport {
+  error: string;
+}
+
+export interface AnalysisStep {
+  job_name: string;
+  description: string;
+  status: string;
+  inputs_used: Record<string, any>;
+  result: Record<string, any>;
+}
+
 export interface Analysis {
   id: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
   input_data: ExtractedData;
-  final_report: FinalReport | null;
+  final_report: FinalReport | ErrorReport | null;
   created_at: string;
-  chat: ChatHistory | null; // This should be an object, not just an array
+  analysis_steps: AnalysisStep[] | null;
+  chat: ChatHistory | null;
 }
 // --- Frontend Redux State ---
 export interface AppState {
