@@ -92,15 +92,12 @@ export const pollAnalysisStatus = createAsyncThunk<Analysis, string, { state: Ro
 );
 export const sendChatMessageAsync = createAsyncThunk(
   'app/sendChatMessage',
-  async ({ chatId, message }: { chatId: string; message: string }, { getState }) => {
+  async ({ analysisId, chatId, message }: { analysisId: string, chatId: string; message: string }, { getState }) => {
     const { sessionId } = (getState() as RootState).app;
-
-    if (!sessionId || !chatId) {
-      throw new Error("Cannot send message: Missing session or chat ID.");
-    }
+    if (!sessionId || !chatId) throw new Error("Missing session ID.");
 
     const response = await apiClient.sendChatMessage(chatId, sessionId, message);
-    return response.response; // Return the AI's message object
+    return { aiMessage: response.response, analysisId };
   }
 );
 // --- The Slice ---
@@ -143,6 +140,21 @@ const appSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(sendChatMessageAsync.pending, (state, action) => {
+        const { analysisId, message } = action.meta.arg;
+        const analysis = state.sessionHistory.find(a => a.id === analysisId);
+        if (analysis && analysis.chat) {
+          analysis.chat.messages.push({ role: 'user', content: message });
+        }
+      })
+      .addCase(sendChatMessageAsync.fulfilled, (state, action) => {
+        // Add the AI's response message to the history
+        const { analysisId, aiMessage } = action.payload;
+        const analysis = state.sessionHistory.find(a => a.id === analysisId);
+        if (analysis && analysis.chat) {
+          analysis.chat.messages.push(aiMessage);
+        }
+      })
       .addCase(fetchHistoryAsync.fulfilled, (state, action: PayloadAction<Analysis[]>) => {
         state.sessionHistory = action.payload;
       })

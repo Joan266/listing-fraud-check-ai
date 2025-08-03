@@ -498,7 +498,7 @@ def job_communication_analysis(check_id_arg):
         }
     finally:
         db.close()
-    if not inputs["communication_text"] :
+    if not inputs["communication_text"] or  inputs["communication_text"].length < 150:
         return {
             "job_name": job_name,
             "description": job_description,
@@ -597,7 +597,7 @@ def job_reverse_image_search(check_id_arg):
     try:
         check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
         if not check: return {"error": "Check not found"}
-        image_urls = (check.input_data.get("image_urls") or [])[:MAX_IMAGES_TO_ANALYZE]
+        image_urls = (check.input_data.get("image_urls")[:MAX_REVIEWS_TO_ANALYZE] or [])
         inputs = {"image_urls": image_urls}
     finally:
         db.close()
@@ -783,17 +783,18 @@ def job_online_presence_analysis(check_id_arg):
 
     try:
         current_job = rq.get_current_job()
-        # RQ provides dependencies in the order they were enqueued
-        dependency_results = [dep.result for dep in current_job.dependencies]
+        dependencies = current_job.fetch_dependencies()
+        dependency_results = [dep.result for dep in dependencies]
         
         # We expect three dependencies: host_profile, reputation_check, and reverse_image_search
-        if len(dependency_results) < 3:
+        if len(dependency_results) < 4:
             raise Exception("Missing one or more dependencies for online presence analysis.")
 
         inputs = {
             "host_profile_result": dependency_results[0].get("result", {}),
             "reputation_check_result": dependency_results[1].get("result", {}),
-            "reverse_image_search_result": dependency_results[2].get("result", {})
+            "reverse_image_search_result": dependency_results[2].get("result", {}),
+            "reverse_image_search_result": dependency_results[3].get("result", {}),
         }
     except Exception as e:
         return {
@@ -810,7 +811,7 @@ def job_online_presence_analysis(check_id_arg):
 
         task_result = _run_cached_job(str(check_id), job_name, inputs, task)
 
-        if isinstance(task_result, dict) and task_result.get("error"):
+        if task_result.get("error"):
             raise Exception(task_result.get("error"))
 
         return {

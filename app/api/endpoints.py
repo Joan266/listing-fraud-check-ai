@@ -21,7 +21,6 @@ def extract_data_from_text(request: Request, extract_request: ExtractRequest):
         raise HTTPException(status_code=400, detail="Listing content cannot be empty.")
    
     formatted_data = extract_data_service.extract_and_format_data(extract_request.listing_content)
-    print(f"Extracted data: {formatted_data}")  # Log the extracted data for debugging
     return {"extracted_data": formatted_data}
 
 
@@ -109,11 +108,9 @@ def get_analysis_status(
         raise HTTPException(status_code=400, detail="Invalid check_id format.")
 
     check_result = db.query(models.FraudCheck).filter(models.FraudCheck.id == job_uuid).first()
-    
     if not check_result:
         raise HTTPException(status_code=404, detail="Analysis not found.")
     
-    # Security check: Only the original session can view the results
     if check_result.session_id != session_id:
         raise HTTPException(status_code=403, detail="Not authorized to view this analysis.")
         

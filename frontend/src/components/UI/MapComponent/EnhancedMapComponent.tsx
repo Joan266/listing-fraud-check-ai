@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, MarkerF, CircleF } from '@react-google-maps/api';
+import { LocationType, MapFilters } from '../../../types/PlaceTypes';
+import MapControls from '../MapComponent/MapControls';
 
 // --- Google Maps Styling for Dark Mode ---
 const mapStylesDark = [
@@ -26,8 +28,9 @@ const mapStylesDark = [
 interface MapComponentProps {
   address?: string;
   theme: 'light' | 'dark';
-  className?: string;
+  neighborhoodData?: any;
   onLocationChange: (location: { lat: number; lng: number; address: string }) => void;
+  isDraggable: boolean;
 }
 
 const containerStyle = {
@@ -41,9 +44,56 @@ const defaultCenter = {
   lng: -3.703790
 };
 
-const MapComponent: React.FC<MapComponentProps> = ({ address, theme, className = '', onLocationChange }) => {
+const MapComponent: React.FC<MapComponentProps> = ({ address, theme, onLocationChange, neighborhoodData, isDraggable = false }) => {
   const apiKey = import.meta.env.VITE_Maps_API_KEY;
+  const markerColors = {
+    parks: '#059669',
+    restaurants: '#ea580c',
+    supermarkets: '#2563eb',
+    transit_stations: '#7c3aed'
+  };
 
+  const [mapType, setMapType] = useState<'roadmap' | 'satellite'>('roadmap');
+  const [filters, setFilters] = useState<MapFilters>({
+    parks: true,
+    restaurants: true,
+    supermarkets: true,
+    transit_stations: true
+  });
+
+  const renderLocationMarkers = () => {
+    const markers: JSX.Element[] = [];
+
+    (Object.keys(neighborhoodData) as LocationType[]).forEach((type) => {
+      if (filters[type]) {
+        neighborhoodData[type].places.forEach((place, index) => {
+          markers.push(
+            <MarkerF
+              key={`${type}-${index}`}
+              position={place.location}
+              title={place.name}
+              icon={{
+                url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="8" fill="${markerColors[type]}" stroke="white" stroke-width="2"/>
+                    <circle cx="12" cy="12" r="4" fill="white"/>
+                  </svg>
+                `)}`,
+                scaledSize: new window.google.maps.Size(24, 24),
+                anchor: new window.google.maps.Point(12, 12)
+              }}
+              onClick={() => {
+                // In a real app, you'd fetch place details here
+                console.log(`Clicked on ${place.name}`);
+              }}
+            />
+          );
+        });
+      }
+    });
+
+    return markers;
+  };
 
   if (!apiKey) {
     return <div>Error: Google Maps API key is missing.</div>;
@@ -101,31 +151,70 @@ const MapComponent: React.FC<MapComponentProps> = ({ address, theme, className =
   const onUnmount = useCallback(() => {
     setMap(null);
   }, []);
+  const handleFilterChange = (type: LocationType) => {
+    setFilters(prev => ({
+      ...prev,
+      [type]: !prev[type]
+    }));
+  };
+  return ( 
+    <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border overflow-hidden h-full w-full rounded-lg`}>
+      <MapControls
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        theme={theme}
+        mapType={mapType}
+        onMapTypeChange={setMapType}
+      />
+      <div className='h-96'>
+        {isLoaded ? (
+          <GoogleMap
+            mapContainerStyle={containerStyle}
+            center={markerPosition}
+            zoom={15}
+            onLoad={onLoad}
+            onUnmount={onUnmount}
+            options={{
+              styles: theme === 'dark' ? mapStylesDark : [],
+              disableDefaultUI: true,
+              zoomControl: true,
+              streetViewControl: false,
+              mapTypeControl: false,
+              fullscreenControl: true,
+              mapTypeId: mapType,
+              gestureHandling: 'greedy'
+            }}
+          >
+            <MarkerF
+              position={markerPosition}
+              draggable={isDraggable}
+              onDragEnd={handleMarkerDragEnd}
+            />
+            {neighborhoodData && renderLocationMarkers()}
+            <CircleF
+              center={markerPosition}
+              radius={1000} // 1km in meters
+              options={{
+                fillColor: '#e9bf0d',
+                fillOpacity: 0.05,
+                strokeColor: '#e9bf0d',
+                strokeOpacity: 0.5,
+                strokeWeight: 2,
+                clickable: false,
+                draggable: false,
+                editable: false,
+                visible: true,
+                zIndex: 0
+              }}
+            />
 
-  return (
-    <div className={`${className} overflow-hidden rounded-lg`}>
-      {isLoaded ? (
-        <GoogleMap
-          mapContainerStyle={containerStyle}
-          center={markerPosition}
-          zoom={15}
-          onLoad={onLoad}
-          onUnmount={onUnmount}
-          options={{
-            styles: theme === 'dark' ? mapStylesDark : [],
-            disableDefaultUI: true,
-            zoomControl: true,
-          }}
-        >
-          <MarkerF
-            position={markerPosition}
-            draggable={true}
-            onDragEnd={handleMarkerDragEnd}
-          />
-        </GoogleMap>
-      ) : (
-        <div>Loading Map...</div>
-      )}
+          </GoogleMap>
+        ) : (
+          <div>Loading Map...</div>
+        )}
+
+      </div>
+
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
-import { setError } from '../store/appSlice';
+import { setCurrentAnalysisId, setError } from '../store/appSlice';
 import { apiClient } from '../api/client';
 import { Search, Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -20,7 +20,7 @@ export const LandingPage: React.FC = () => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [listingText, setListingText] = useState('');
   useEffect(() => {
-
+    dispatch(setCurrentAnalysisId(null))
     if (headerRef.current && formRef.current) {
 
       gsap.fromTo(headerRef.current,

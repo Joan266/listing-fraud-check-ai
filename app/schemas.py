@@ -1,7 +1,7 @@
 from datetime import datetime
 import uuid
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from app.db.models import JobStatus
 class Message(BaseModel):
     role: str
@@ -72,22 +72,36 @@ class FinalReport(BaseModel):
     explanation: str
     suggested_actions: List[str]
     flags: List[Dict[str, str]]
+    
+
+class ErrorReport(BaseModel):
+    error: str
+ 
 class ChatHistoryItem(BaseModel):
     id: uuid.UUID
     messages: List[Message]
     class Config:
         from_attributes = True
 
+# --- Add this new schema ---
+class AnalysisStep(BaseModel):
+    job_name: str
+    description: str
+    status: str
+    inputs_used: dict
+    result: dict
+
+# --- Update this schema ---
 class JobStatusResponse(BaseModel):
     id: uuid.UUID
     status: JobStatus
     input_data: dict
-    final_report: Optional[FinalReport] = None
+    final_report: Optional[Union[FinalReport, ErrorReport]] = None
     created_at: datetime
-    chat: Optional[ChatHistoryItem] = None # <-- Add this line
+    chat: Optional[ChatHistoryItem] = None
+    analysis_steps: Optional[List[Dict[str, Any]]] = None 
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class HistoryItem(BaseModel):
     id: str
