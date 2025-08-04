@@ -20,7 +20,7 @@ import { LoadingScreen } from '../components/UI/LoadingScreen';
 import { FlagsCard } from '../components/Results/FlagsCard';
 import { AnalysisRunbook } from '../components/Results/AnalysisRubook';
 import EnhancedMapComponent from '../components/UI/MapComponent/EnhancedMapComponent';
-
+import { FailedAnalysis } from '../components/UI/FailedAnalysis';
 const ResultsPage: React.FC = () => {
   const { analysisId } = useParams<{ analysisId: string }>();
   const dispatch = useAppDispatch();
@@ -101,8 +101,8 @@ const ResultsPage: React.FC = () => {
   if (!analysis || analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS') {
     return <LoadingScreen />;
   }
-  if (analysis.status === 'FAILED' || !analysis.final_report) {
-    return <div>Error: Analysis failed or report not found.</div>;
+  if (analysis.status === 'FAILED') {
+    return <FailedAnalysis analysis={analysis} onRerun={handleRerunAnalysis} />;
   }
 
   const { final_report, analysis_steps } = analysis;
@@ -200,7 +200,7 @@ const ResultsPage: React.FC = () => {
               </p>
             </div>
 
-            <AnalysisRunbook steps={analysis_steps} theme={theme}/>
+            <AnalysisRunbook steps={analysis_steps} theme={theme} />
 
           </div>
 
