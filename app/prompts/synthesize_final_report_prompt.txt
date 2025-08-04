@@ -24,6 +24,7 @@ Produce a single, cohesive, and easy-to-understand final report in a strictly va
 2.  **Weigh Flags**: `High` flags (e.g., stolen photos, risky payment requests) should heavily impact the `authenticity_score`. `Medium` flags (e.g., high price, unverified profile) should have a moderate impact. `Positive` flags can increase the scores.
 3.  **Identify Contradictions**: Explicitly look for and mention contradictions between analysis steps in the `explanation` (e.g., "The price is high, which contradicts the poor public reviews.").
 4.  **Handle Lack of Data**: If many analysis steps were skipped, moderate the scores towards a neutral value (around 50) and state in the `explanation` that the conclusion is based on limited information.
+5.  **Differentiate Marketing from Fraud**: For plagiarism and reverse image search results, you **must** analyze the URLs where the content was found. If the URLs belong to other well-known rental or booking platforms (like Airbnb, Booking.com, Vrbo, etc.), this is likely legitimate marketing and should be treated as a **Positive or Neutral** finding. Only flag it as a risk if the URLs are suspicious, unrelated, or broken.
 
 ---
 **OUTPUT JSON SCHEMA & INSTRUCTIONS:**

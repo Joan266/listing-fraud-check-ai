@@ -498,7 +498,9 @@ def job_communication_analysis(check_id_arg):
         }
     finally:
         db.close()
-    if not inputs["communication_text"] or  inputs["communication_text"].length < 150:
+    communication_text = inputs.get("communication_text")
+
+    if not communication_text or len(communication_text) < 50:
         return {
             "job_name": job_name,
             "description": job_description,
@@ -597,7 +599,7 @@ def job_reverse_image_search(check_id_arg):
     try:
         check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
         if not check: return {"error": "Check not found"}
-        image_urls = (check.input_data.get("image_urls")[:MAX_REVIEWS_TO_ANALYZE] or [])
+        image_urls = (check.input_data.get("image_urls") or [])[:MAX_IMAGES_TO_ANALYZE]
         inputs = {"image_urls": image_urls}
     finally:
         db.close()
