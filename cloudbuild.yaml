@@ -1,0 +1,50 @@
+# cloudbuild.yaml para el despliegue automatizado
+
+steps:
+  # Paso 1: Construir la imagen de la API para Cloud Run
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/listing-fraud-repo/listing-fraud-check-api:latest'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+    id: 'Build API'
+
+  # Paso 2: Subir la imagen de la API
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/listing-fraud-repo/listing-fraud-check-api:latest']
+    id: 'Push API'
+
+  # Paso 3: Construir la imagen del Worker para Compute Engine
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/listing-fraud-repo/listing-fraud-worker:latest'
+      - '-f'
+      - 'worker.Dockerfile'
+      - '.'
+    id: 'Build Worker'
+
+  # Paso 4: Subir la imagen del Worker
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/listing-fraud-repo/listing-fraud-worker:latest']
+    id: 'Push Worker'
+
+  # Paso 5: Desplegar la imagen de la API en Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'listing-fraud-check-api'
+      - '--image'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/listing-fraud-repo/listing-fraud-check-api:latest'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+    id: 'Deploy API'
