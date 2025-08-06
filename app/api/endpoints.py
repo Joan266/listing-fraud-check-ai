@@ -13,6 +13,7 @@ from app.services import chat_service, extract_data_service
 router = APIRouter()
 
 @router.post("/extract-data", response_model=ExtractDataResponse)
+@limiter.limit("2/minute")
 def extract_data_from_text(request: Request, extract_request: ExtractRequest):
     """
     Handles the initial data-gathering step.
@@ -25,6 +26,7 @@ def extract_data_from_text(request: Request, extract_request: ExtractRequest):
 
 
 @router.post("/chat", response_model=ChatResponse)
+@limiter.limit("10/minute")
 def handle_post_analysis_chat(request: Request, chat_request: ChatRequest, db: Session = Depends(get_db)):
     """
     Handles follow-up questions from the user after the analysis is complete.
@@ -50,6 +52,7 @@ def handle_post_analysis_chat(request: Request, chat_request: ChatRequest, db: S
 
 
 @router.post("/analysis", response_model=JobResponse, status_code=202)
+@limiter.limit("10/hour")
 def create_analysis(request: Request, fraud_request: FraudCheckRequest, db: Session = Depends(get_db)):
     """
     Starts a new full analysis based on the verified data from the frontend.
@@ -92,6 +95,7 @@ def create_analysis(request: Request, fraud_request: FraudCheckRequest, db: Sess
 
 
 @router.get("/analysis/{check_id}", response_model=JobStatusResponse)
+@limiter.limit("60/minute")
 def get_analysis_status(
     request: Request,
     check_id: str,
@@ -117,6 +121,7 @@ def get_analysis_status(
     return check_result
 
 @router.get("/chat/{chat_id}/messages", response_model=List[Message])
+@limiter.limit("20/minute")
 def get_chat_messages(
     request: Request,
     chat_id: str,
@@ -134,6 +139,7 @@ def get_chat_messages(
         
     return chat.messages
 @router.get("/analysis/history/{url_session_id}", response_model=HistoryResponse) 
+@limiter.limit("20/minute")
 def get_session_history(
     request: Request,
     url_session_id: str,

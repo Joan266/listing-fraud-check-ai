@@ -1,11 +1,15 @@
-// src/api/client.ts
-import { ExtractedData, Analysis, JobCreationResponse, HistoryResponse, ChatResponse, ChatMessage } from '../types';
+// frontend/src/api/client.ts
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+import { ExtractedData, Analysis, JobCreationResponse, HistoryResponse, ChatResponse } from '../types';
+
+// Obtiene la URL base de las variables de entorno de Vite.
+// import.meta.env.VITE_API_BASE_URL será reemplazada por la URL de producción durante el build.
+// Si no existe, usa la URL de desarrollo local como fallback.
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const url = `${baseURL}/api/v1${endpoint}`;
     const headers = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -17,7 +21,9 @@ class ApiClient {
         const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+      // Maneja casos donde la respuesta puede estar vacía (p. ej., 204 Sin Contenido)
+      const text = await response.text();
+      return text ? JSON.parse(text) : ({} as T);
     } catch (error) {
       console.error('API request failed:', error);
       throw error;

@@ -1,32 +1,33 @@
-# --- Web Framework & Server ---
+# FastAPI and related
 fastapi
-uvicorn[standard]
+gunicorn
+
+# Rate limiting
 slowapi
 
-# --- Database ---
+# Database
 sqlalchemy
 psycopg2-binary
+alembic
 
-# --- Task Queue ---
+# Task Queue
 rq
 redis
 rq-dashboard
 
-# --- Google Cloud Services ---
+# Google Cloud Services
 google-api-python-client
 google-cloud-vision
 google-generativeai
 googlemaps
 
-# --- Authentication ---
-passlib[bcrypt]
-python-jose[cryptography]
-
-# --- Utilities ---
+# Other utilities
+pydantic
 pydantic-settings
 python-dotenv
 requests
 Pillow
 python-whois
 pycountry
-langdetect
+pg8000
+uvicorn
