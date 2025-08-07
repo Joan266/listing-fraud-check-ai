@@ -17,8 +17,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copia el código de tu aplicación y los archivos de Alembic.
 COPY ./app /app/app
-COPY ./alembic.ini /app/alembic.ini
-COPY ./alembic /app/alembic
 
 # Define el comando para ejecutar la aplicación usando gunicorn.
 # Esta es la forma "shell" que permite que la variable $PORT se reemplace correctamente.

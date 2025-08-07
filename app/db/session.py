@@ -6,7 +6,13 @@ from app.core.config import settings
 connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
 
 # The database engine is the entry point to your database.
-engine = create_engine(settings.DATABASE_URL, connect_args=connect_args)
+# MODIFICATION: Added pool_size and max_overflow for production readiness.
+engine = create_engine(
+    settings.DATABASE_URL,
+    connect_args=connect_args,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+)
 
 # SessionLocal is a factory for creating new database sessions.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -33,7 +33,7 @@ steps:
     args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/listing-fraud-repo/listing-fraud-worker:latest']
     id: 'Push Worker'
 
-  # Paso 5: Desplegar la imagen de la API en Cloud Run
+# Paso 5: Desplegar la imagen de la API en Cloud Run (versión corregida)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
@@ -46,5 +46,10 @@ steps:
       - 'us-central1'
       - '--platform'
       - 'managed'
+      - '--vpc-connector'
+      - 'safelease-connector'
       - '--allow-unauthenticated'
+      - '--service-account=api-service-account@${PROJECT_ID}.iam.gserviceaccount.com' 
+      - '--set-secrets=DATABASE_URL=db-url:latest,GOOGLE_API_KEY=google-api-key:latest,GOOGLE_GEMINI_API_KEY=google-gemini-api-key:latest,GOOGLE_SEARCH_ENGINE_ID=google-search-engine-id:latest,JWT_SECRET=jwt-secret:latest'
+      - '--set-env-vars=ENVIRONMENT=production'
     id: 'Deploy API'

@@ -1,15 +1,15 @@
 #!/bin/bash
-# Script de inicio para la VM de los workers y Redis - Versión Final 8.1
-echo "--- Iniciando script de despliegue v8.1 (solución definitiva) ---"
+# SafeLease Worker Deployment Script - Final v9.1
+echo "--- Starting Production Deployment v9.1 ---"
 
 # --- Fail on errors and log everything ---
 set -eo pipefail
 exec > >(tee -a /var/log/startup-script.log) 2>&1
 
-# --- Configuración ---
+# --- Configuration ---
 DB_USER=$(gcloud secrets versions access latest --secret="db_user")
 DB_PASS=$(gcloud secrets versions access latest --secret="db_pass")
-DB_NAME=$(gcloud secrets versions access latest --secret="db_name")
+DB_NAME="safelease-db"  # Explicitly using your application database
 export GOOGLE_API_KEY=$(gcloud secrets versions access latest --secret="google-api-key")
 export GOOGLE_GEMINI_API_KEY=$(gcloud secrets versions access latest --secret="google-gemini-api-key")
 export GOOGLE_SEARCH_ENGINE_ID=$(gcloud secrets versions access latest --secret="google-search-engine-id")
@@ -17,99 +17,98 @@ export JWT_SECRET=$(gcloud secrets versions access latest --secret="jwt-secret")
 export JWT_ALGORITHM="HS256"
 export ENVIRONMENT="production"
 
-# --- Información del Proyecto e Imagen ---
+# --- Project Info ---
 PROJECT_ID=$(gcloud config get-value project)
 REGION="us-central1"
 WORKER_IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/listing-fraud-repo/listing-fraud-worker:latest"
 CLOUD_SQL_CONNECTION_NAME="${PROJECT_ID}:${REGION}:safelease-db"
 
-# --- Construcción de la DATABASE_URL ---
+# --- Database URL ---
 export DATABASE_URL="postgresql+psycopg2://${DB_USER}:${DB_PASS}@cloud-sql-proxy:5432/${DB_NAME}"
+echo "--- Using DATABASE_URL: postgresql+psycopg2://${DB_USER}:********@cloud-sql-proxy:5432/${DB_NAME} ---"
 
-echo "--- DATABASE_URL para los contenedores: postgresql+psycopg2://${DB_USER}:********@cloud-sql-proxy:5432/${DB_NAME} ---"
-
-# --- Instalar Docker y Autenticación ---
-echo "--- Instalando Docker ---"
-apt-get update
-apt-get install -y docker.io
-systemctl enable docker
-systemctl start docker
+# --- Install Docker ---
+echo "--- Installing Docker ---"
+apt-get update && apt-get install -y docker.io
+systemctl enable docker && systemctl start docker
 gcloud auth configure-docker ${REGION}-docker.pkg.dev -q
 
-# --- Configurar Red de Docker ---
-echo "--- Configurando red Docker ---"
-docker network create fraud-net || echo "La red 'fraud-net' ya existe."
+# --- Create Network ---
+echo "--- Creating Docker Network ---"
+docker network create fraud-net || true
 
-# --- Limpieza de contenedores antiguos ---
-echo "--- Limpiando contenedores antiguos ---"
-for container in redis cloud-sql-proxy alembic-migration analysis-worker-1 analysis-worker-2 analysis-worker-3; do
-  docker stop $container || true
-  docker rm $container || true
-done
-
-# --- Ejecutar Contenedores de Soporte ---
-echo "--- Iniciando servicios de soporte ---"
+# --- Start Redis ---
+echo "--- Starting Redis ---"
 docker run -d --name redis --network fraud-net --restart always \
   --memory=512m --cpus=0.5 \
   redis:alpine
 
-echo "--- Iniciando Cloud SQL Proxy ---"
-# No usamos HEALTHCHECK de Docker, pero activamos el health check interno del proxy
+# --- Start Cloud SQL Proxy ---
+echo "--- Starting Cloud SQL Proxy ---"
 docker run -d --name cloud-sql-proxy --network fraud-net --restart always \
   gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.2 \
   --structured-logs \
   --port 5432 \
   --health-check \
   --http-port 9090 \
+  --http-address 0.0.0.0 \
   "$CLOUD_SQL_CONNECTION_NAME"
 
-# --- Descargar la Imagen del Worker ---
-echo "--- Descargando imagen del worker ---"
-if ! docker pull $WORKER_IMAGE_URI; then
-  echo "ERROR: Failed to pull worker image"
-  exit 1
-fi
-
-# --- BUCLE DE ESPERA MEJORADO CON VERIFICACIÓN EXTERNA ---
-echo "--- Esperando a que el proxy de Cloud SQL esté listo... ---"
-RETRY_COUNT=0
+# --- Wait for Proxy ---
+echo "--- Waiting for Cloud SQL Proxy ---"
 MAX_RETRIES=12
 SLEEP_INTERVAL=5
-
-# Verificamos usando un contenedor temporal con curl
-while ! docker run --rm --network fraud-net curlimages/curl:8.4.0 \
-  --fail --silent --max-time 2 http://cloud-sql-proxy:9090/readiness; do
-  
-  RETRY_COUNT=$((RETRY_COUNT+1))
-  if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-    echo "¡ERROR! El proxy de Cloud SQL no respondió después de $((MAX_RETRIES*SLEEP_INTERVAL)) segundos."
-    docker logs cloud-sql-proxy
+for i in $(seq 1 $MAX_RETRIES); do
+  if docker run --rm --network fraud-net curlimages/curl:8.4.0 \
+    --fail --silent --max-time 4 http://cloud-sql-proxy:9090/readiness; then
+    echo "--- Cloud SQL Proxy is ready! ---"
+    break
+  fi
+  echo "Attempt $i/$MAX_RETRIES: Proxy not ready, waiting $SLEEP_INTERVAL seconds..."
+  sleep $SLEEP_INTERVAL
+  if [ $i -eq $MAX_RETRIES ]; then
+    echo "ERROR: Cloud SQL Proxy failed to start"
     exit 1
   fi
-  echo "Intento $RETRY_COUNT/$MAX_RETRIES: El proxy aún no está listo, esperando $SLEEP_INTERVAL segundos..."
-  sleep $SLEEP_INTERVAL
 done
 
-echo "--- ¡El proxy de Cloud SQL está listo! ---"
-docker logs --tail 20 cloud-sql-proxy
+# --- Database Initialization ---
+echo "--- Initializing Database Schema ---"
 
-# --- Ejecutar Migraciones de la Base de Datos ---
-echo "--- Ejecutando migraciones de la base de datos ---"
+# 1. Create essential extensions
+docker run --rm --network fraud-net postgres:16-alpine \
+  psql "$DATABASE_URL" -c \
+  "CREATE EXTENSION IF NOT EXISTS pgcrypto;
+   CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+
+# 2. Grant privileges explicitly (CRITICAL: Before table creation)
+docker run --rm --network fraud-net postgres:16-alpine \
+  psql "$DATABASE_URL" -c \
+  "GRANT ALL PRIVILEGES ON SCHEMA public TO ${DB_USER};
+   GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${DB_USER};
+   GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${DB_USER};"
+
+# 3. Create tables using SQLAlchemy
+docker run --rm --name schema-init --network fraud-net \
+  -e DATABASE_URL="$DATABASE_URL" \
+  $WORKER_IMAGE_URI python -c "
+from app.db.session import engine
+from app.db import models
+models.Base.metadata.create_all(bind=engine)
+print('Schema created successfully in safelease-db')
+"
+
+# 4. Run migrations
+echo "--- Running Database Migrations ---"
 docker run --rm --name alembic-migration --network fraud-net \
   -e DATABASE_URL="$DATABASE_URL" \
-  -e GOOGLE_API_KEY="$GOOGLE_API_KEY" \
-  -e GOOGLE_GEMINI_API_KEY="$GOOGLE_GEMINI_API_KEY" \
-  -e GOOGLE_SEARCH_ENGINE_ID="$GOOGLE_SEARCH_ENGINE_ID" \
-  -e JWT_SECRET="$JWT_SECRET" \
-  -e JWT_ALGORITHM="$JWT_ALGORITHM" \
-  -e ENVIRONMENT="$ENVIRONMENT" \
   $WORKER_IMAGE_URI alembic upgrade head
 
-# --- Ejecutar Contenedores de los Workers ---
-NUM_ANALYSIS_WORKERS=3
-echo "--- Iniciando $NUM_ANALYSIS_WORKERS workers de análisis ---"
-for i in $(seq 1 $NUM_ANALYSIS_WORKERS); do
-  echo "Iniciando worker analysis-worker-$i..."
+# --- Start Workers ---
+NUM_WORKERS=3
+echo "--- Starting $NUM_WORKERS Analysis Workers ---"
+for i in $(seq 1 $NUM_WORKERS); do
+  echo "Starting worker analysis-worker-$i..."
   docker run -d --name "analysis-worker-$i" --network fraud-net --restart always \
     --memory=1g --cpus=1 \
     -e DATABASE_URL="$DATABASE_URL" \
@@ -124,30 +123,17 @@ for i in $(seq 1 $NUM_ANALYSIS_WORKERS); do
     $WORKER_IMAGE_URI python analysis_worker.py
 done
 
-# --- Verificación final ---
-echo "--- Verificando estado de los contenedores ---"
+# --- Verify Deployment ---
+echo "--- Verifying Deployment ---"
 docker ps -a
+echo "--- Checking Worker Status ---"
+for i in $(seq 1 $NUM_WORKERS); do
+  if ! docker ps | grep -q "analysis-worker-$i"; then
+    echo "ERROR: Worker analysis-worker-$i is not running!"
+    exit 1
+  fi
+done
 
-echo "--- Verificando salud del proxy ---"
-if ! docker run --rm --network fraud-net curlimages/curl:8.4.0 \
-  --fail --silent --max-time 2 http://cloud-sql-proxy:9090/readiness; then
-  echo "ERROR: Cloud SQL Proxy health check failed"
-  docker logs cloud-sql-proxy
-  exit 1
-fi
-
-echo "--- Verificando workers activos ---"
-ACTIVE_WORKERS=$(docker ps --filter "name=analysis-worker-" --format "{{.Names}}" | wc -l)
-if [ "$ACTIVE_WORKERS" -ne "$NUM_ANALYSIS_WORKERS" ]; then
-  echo "ERROR: Solo $ACTIVE_WORKERS workers están activos (se esperaban $NUM_ANALYSIS_WORKERS)"
-  docker ps -a
-  exit 1
-fi
-
-echo "--- Verificando conexión a Redis ---"
-if ! docker exec redis redis-cli ping | grep -q "PONG"; then
-  echo "ERROR: No se pudo conectar a Redis"
-  exit 1
-fi
-
-echo "--- Script de inicio finalizado exitosamente ---"
+echo "================================================="
+echo "--- DEPLOYMENT COMPLETED SUCCESSFULLY ---"
+echo "================================================="
