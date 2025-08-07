@@ -50,6 +50,6 @@ steps:
       - 'safelease-connector'
       - '--allow-unauthenticated'
       - '--service-account=api-service-account@${PROJECT_ID}.iam.gserviceaccount.com' 
-      - '--set-secrets=DATABASE_URL=db-url:latest,GOOGLE_API_KEY=google-api-key:latest,GOOGLE_GEMINI_API_KEY=google-gemini-api-key:latest,GOOGLE_SEARCH_ENGINE_ID=google-search-engine-id:latest,JWT_SECRET=jwt-secret:latest'
-      - '--set-env-vars=ENVIRONMENT=production'
+      - '--set-secrets=DATABASE_URL=db-url:latest,GOOGLE_API_KEY=google-api-key:latest,GOOGLE_GEMINI_API_KEY=google-gemini-api-key:latest,GOOGLE_SEARCH_ENGINE_ID=google-search-engine-id:latest,JWT_SECRET=jwt-secret:latest,REDIS_HOST=redis-host:latest'
+      - '--set-env-vars=ENVIRONMENT=production,BACKEND_CORS_ORIGINS=https://safelease-23cf0.web.app'
     id: 'Deploy API'
