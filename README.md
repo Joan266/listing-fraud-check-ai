@@ -1,104 +1,81 @@
 # FraudCheck.ai MVP 🕵️‍♂️
 
-An AI-powered web application to help travelers detect and avoid online rental fraud.
+An AI-powered web application to help travelers detect and avoid online rental fraud, built for the Google Maps Platform Awards hackathon.
+
+---
+
+## 🚀 Live Demo & Video Walkthrough
+
+* **Live Application**: [https://safelease-23cf0.web.app/](https://safelease-23cf0.web.app/)
+
+---
 
 ## About The Project
 
-This project is the backend service for the FraudCheck.ai MVP. Its purpose is to provide an API that can analyze rental listing details to identify potential red flags associated with common scams. The core value is to provide travelers with a quick, AI-powered "second opinion" for peace of mind.
+FraudCheck.ai is an intelligent tool designed to give travelers peace of mind. By pasting a rental listing, users can initiate a comprehensive forensic analysis that leverages AI and Google Maps Platform services to identify common red flags associated with online scams. Our mission is to make the online rental market safer by providing a powerful, easy-to-use "second opinion" on any listing.
 
-### Built With
+### How It Works
 
-* [Python](https://www.python.org/)
-* [FastAPI](https://fastapi.tiangolo.com/)
-* [Redis](https://redis.io/) & [RQ (Redis Queue)](https://python-rq.org/)
-* [SQLAlchemy](https://www.sqlalchemy.org/)
-* [Google Maps Platform APIs](https://mapsplatform.google.com/)
-* [Google Cloud Vision](https://cloud.google.com/vision)
-* [Google Generative AI (Gemini)](https://ai.google.dev/)
+The user's journey is simple, but powered by a sophisticated backend:
 
----
-
-## Getting Started
-
-Follow these steps to get your local development environment running.
-
-### Prerequisites
-
-* Python 3.10+
-* Docker (for running Redis easily)
-* A Google Cloud Platform account with the required APIs enabled.
-
-### Installation & Setup
-
-1.  **Clone the repository**
-    ```sh
-    git clone [https://github.com/your_username/your_repository_name.git](https://github.com/your_username/your_repository_name.git)
-    cd your_repository_name
-    ```
-
-2.  **Create and activate a virtual environment**
-    ```sh
-    python -m venv venv
-    source venv/bin/activate
-    ```
-
-3.  **Install dependencies**
-    ```sh
-    pip install -r requirements.txt
-    ```
-
-4.  **Set up your environment variables**
-    * Copy the example file:
-        ```sh
-        cp .env.example .env
-        ```
-    * Edit the `.env` file and add your `GOOGLE_API_KEY` and other credentials.
+1.  **Paste & Extract**: A user pastes the full text of a rental listing. An AI model then intelligently extracts key data points like the address, price, and host details.
+2.  **Verify & Edit**: The user is presented with the extracted information and an interactive map to verify the address. They can drag the pin on the map to correct the location, which uses the **Geocoding API** to get the precise address.
+3.  **Full Analysis**: Once confirmed, a series of parallel background jobs perform a deep analysis, including:
+    * **Location Analysis**: Using the **Places API** and **Geocoding API** to validate the address and analyze the neighborhood.
+    * **Image Forensics**: Reverse image searches and AI detection to check for stolen or AI-generated photos.
+    * **Price Sanity Check**: An AI model evaluates if the price is reasonable for the location.
+    * **Reputation Analysis**: Searching the web for negative feedback associated with the host.
+4.  **View Results**: The user receives a comprehensive report with an **Authenticity Score**, a detailed explanation of all findings, and an interactive map displaying the verified location.
+5.  **Ask Questions**: The user can ask follow-up questions about the report in a chat interface.
 
 ---
 
-### Running the Application
+## Google Maps Platform Integration
 
-For a full development environment, you will need to run the services in separate terminals.
+The Google Maps Platform is the backbone of our location intelligence and a critical component of our fraud detection capabilities.
 
-1.  **Terminal 1: Start Redis**
-    This command starts a Redis container in the background.
-    ```sh
-    docker run -d -p 6379:6379 --name fraudcheck-redis redis
-    ```
+* **Geocoding API**: This is the first and most critical step. We use it to:
+    * **Validate the Address**: Confirm that the listing's address is a real, locatable place.
+    * **Correct User Input**: Allow users to visually confirm and correct the location on a map, with reverse geocoding providing the updated, accurate address.
+    * **Standardize Location Data**: Convert any address into a standardized format with coordinates for other analysis steps.
 
-2.  **Terminal 2: Start the FastAPI Server**
-    This runs the main web application. The database will be created automatically the first time you run this.
-    ```sh
-    uvicorn app.main:app --reload
-    ```
-    The API will be available at `http://127.0.0.1:8000`.
+* **Places API**: We use this to enrich our understanding of the listing's location by:
+    * **Gathering Neighborhood Context**: Performing "Nearby Searches" for essential amenities like supermarkets, parks, and transit stations.
+    * **Fetching Place Details**: Retrieving rich details like public ratings and reviews, which are compared against the listing for inconsistencies.
 
-3.  **Terminal 3 & 4: Start the RQ Workers**
-    These processes will listen for and execute background jobs.
-    ```sh
-    # In Terminal 3
-    python analysis_worker.py
-
-    # In Terminal 4
-    python chat_worker.py
-    ```
-
-4.  **Terminal 5: Start the Monitoring Dashboard (Optional)**
-    This allows you to see the status of your jobs in a web browser.
-    ```sh
-    rq-dashboard
-    ```
-    The dashboard will be available at `http://localhost:9181`.
+* **Maps JavaScript API**: This provides the interactive map experience central to the user's verification process. We use it to:
+    * **Visualize the Location**: Display a clear, interactive map with a draggable marker.
+    * **Display Neighborhood Data**: Show the locations of nearby amenities found with the Places API.
+    * **Enhance User Experience**: Provide a dark mode map style to match the application's theme.
 
 ---
 
-## API Endpoints
+## Architecture and Technology Stack
 
-The primary endpoints are:
 
-* `POST /extract-data`: Handles the initial text paste to extract listing data.
-* `POST /analysis`: Starts the full fraud analysis pipeline.
-* `GET /analysis/{check_id}`: Polls for the status and result of an analysis.
-* `POST /chat`: Handles post-analysis follow-up questions.
 
-You can interact with all endpoints via the interactive docs at **`http://127.0.0.1:8000/docs`**.
+* **Frontend**: React, Redux, Tailwind CSS
+* **Backend**: FastAPI (Python)
+* **Database**: PostgreSQL (on Google Cloud SQL)
+* **Task Queue**: Redis & RQ (Redis Queue)
+* **AI & Machine Learning**: Google Generative AI (Gemini)
+* **Deployment**:
+    * **API**: Google Cloud Run
+    * **Workers**: Google Compute Engine
+    * **Frontend**: Firebase Hosting
+
+---
+
+## Setup Instructions
+
+For detailed local setup and installation instructions, please see the **[INSTALL.md](INSTALL.md)** file.
+
+---
+
+## Key Features
+
+* **AI-Powered Data Extraction**: Intelligently parses unstructured listing text.
+* **Interactive Location Verification**: Allows users to visually confirm and correct the property's address.
+* **Multi-Layered Fraud Analysis**: A comprehensive suite of checks that go beyond a simple web search.
+* **Interactive and Detailed Reporting**: Presents results in an easy-to-understand dashboard with scores and actionable recommendations.
+* **Conversational Q&A**: An AI-powered chat assistant to help users understand their results.

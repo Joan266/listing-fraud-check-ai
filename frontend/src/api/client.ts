@@ -16,6 +16,7 @@ class ApiClient {
     };
 
     try {
+      console.log(`url;${url} headers${headers}`)
       const response = await fetch(url, { ...options, headers });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
@@ -51,13 +52,13 @@ class ApiClient {
 
   async getAnalysisStatus(checkId: string, sessionId: string): Promise<Analysis> {
     return this.request<Analysis>(`/analysis/${checkId}`, {
-      headers: { 'session_id': sessionId },
+      headers: { 'session-id': sessionId },
     });
   }
 
   async getSessionHistory(sessionId: string): Promise<HistoryResponse> {
     return this.request<HistoryResponse>(`/analysis/history/${sessionId}`, {
-      headers: { 'session_id': sessionId },
+      headers: { 'session-id': sessionId },
     });
   }
 
