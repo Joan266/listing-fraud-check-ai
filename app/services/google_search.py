@@ -20,7 +20,7 @@ def search_web(query: str, exact_match: bool = False) -> list[dict]:
         return []
     
     search_query = f'"{query}"' if exact_match else query
-    print("Query: ",search_query)
+    logging.debug(f"Query: {search_query}")
     try:
         res = search_service.cse().list(
             q=search_query,

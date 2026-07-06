@@ -86,5 +86,14 @@ JSON
 [LANGUAGE_CODE]
 
 ---
+**PRE-CALCULATED RISK SCORING:**
+The system has already calculated a structured risk score based on weighted analysis of all checks. You will find a `scoring_summary` object in the data with:
+- `calculated_risk_score`: A number 0-100 representing the algorithmic risk assessment.
+- `high_risk_signals`: List of job names that triggered high risk.
+- `compound_rules_triggered`: List of compound risk patterns detected.
+
+Use this as a strong baseline for your `authenticity_score`. You may adjust it up or down by up to 15 points based on your qualitative analysis, but explain any significant deviation in the `explanation` field.
+
+---
 **STRUCTURED ANALYSIS DATA:**
 

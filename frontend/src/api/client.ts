@@ -1,6 +1,6 @@
 // frontend/src/api/client.ts
 
-import { ExtractedData, Analysis, JobCreationResponse, HistoryResponse, ChatResponse } from '../types';
+import { ExtractedData, Analysis, JobCreationResponse, HistoryResponse, ChatResponse, AnalysisStep } from '../types';
 
 // Obtiene la URL base de las variables de entorno de Vite.
 // import.meta.env.VITE_API_BASE_URL será reemplazada por la URL de producción durante el build.
@@ -16,7 +16,6 @@ class ApiClient {
     };
 
     try {
-      console.log(`url;${url} headers${headers}`)
       const response = await fetch(url, { ...options, headers });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
@@ -40,6 +39,15 @@ class ApiClient {
     });
 
     return response.extracted_data;
+  }
+
+  async extractFromUrl(sessionId: string, listingUrl: string): Promise<{ extracted_data: ExtractedData; screenshot_url: string | null }> {
+    const payload = { session_id: sessionId, listing_url: listingUrl };
+
+    return this.request<{ extracted_data: ExtractedData; screenshot_url: string | null }>('/extract-from-url', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 
   async startAnalysis(sessionId: string, data: ExtractedData): Promise<JobCreationResponse> {
@@ -68,6 +76,10 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(payload)
     });
+  }
+
+  getStreamUrl(checkId: string, sessionId: string): string {
+    return `${baseURL}/api/v1/analysis/${checkId}/stream?session_id=${sessionId}`;
   }
 }
 

@@ -20,20 +20,48 @@ def check_domain_age(domain_name: str) -> dict:
         return {"is_new": False, "reason": f"Whois lookup failed: {e}"}
 
 def check_url_blacklist(url: str) -> dict:
-    """Checks a URL against the Google Safe Browse API (requires an API key)."""
-    # Placeholder: In a real implementation, you would call the Safe Browse API.
-    # For now, we'll simulate a clean result.
-    is_blacklisted = "badsite.com" in url # Simple simulation
-    return {
-        "is_blacklisted": is_blacklisted,
-        "reason": "URL is on a known blacklist." if is_blacklisted else "URL not found on blacklists."
-    }
+    """
+    Checks a URL against the Google Safe Browsing API.
+    Requires GOOGLE_SAFE_BROWSING_API_KEY env var.
+    Falls back to SKIPPED if key is not configured.
+    """
+    import os
+    api_key = os.environ.get("GOOGLE_SAFE_BROWSING_API_KEY")
+    if not api_key:
+        return {
+            "is_blacklisted": False,
+            "reason": "Safe Browsing check skipped (API key not configured)."
+        }
+    try:
+        payload = {
+            "client": {"clientId": "fraudcheck", "clientVersion": "1.0"},
+            "threatInfo": {
+                "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"],
+                "platformTypes": ["ANY_PLATFORM"],
+                "threatEntryTypes": ["URL"],
+                "threatEntries": [{"url": url}],
+            },
+        }
+        response = requests.post(
+            f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={api_key}",
+            json=payload,
+            timeout=10,
+        )
+        response.raise_for_status()
+        matches = response.json().get("matches", [])
+        is_blacklisted = len(matches) > 0
+        return {
+            "is_blacklisted": is_blacklisted,
+            "reason": "URL flagged by Google Safe Browsing." if is_blacklisted else "URL not found on blacklists.",
+        }
+    except Exception as e:
+        return {"is_blacklisted": False, "reason": f"Safe Browsing check failed: {e}"}
 
 def check_archive_history(url: str) -> dict:
     """Checks if a URL has a history on the Wayback Machine."""
     try:
         api_url = f"http://archive.org/wayback/available?url={url}"
-        response = requests.get(api_url)
+        response = requests.get(api_url, timeout=10)
         response.raise_for_status()
         data = response.json()
         

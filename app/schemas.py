@@ -17,27 +17,25 @@ class ChatResponse(BaseModel):
     response: Message
 
 class ExtractRequest(BaseModel):
-    session_id: str
-    listing_content: str
+    session_id: str = Field(..., max_length=100)
+    listing_content: str = Field(..., max_length=50_000)
 
 class ExtractedData(BaseModel):
-    listing_url: Optional[str] = None
-    address: Optional[str] = None
-    description: Optional[str] = None
-    image_urls: Optional[List[str]] = None
-    communication_text: Optional[str] = None
-    host_email: Optional[str] = None
-    host_phone: Optional[str] = None
-    reviews: Optional[List[Dict[str, Any]]] = None
-    price_details: Optional[str] = None
+    listing_url: Optional[str] = Field(None, max_length=2048)
+    address: Optional[str] = Field(None, max_length=500)
+    description: Optional[str] = Field(None, max_length=20_000)
+    image_urls: Optional[List[str]] = Field(None, max_length=20)
+    communication_text: Optional[str] = Field(None, max_length=20_000)
+    host_email: Optional[str] = Field(None, max_length=320)
+    host_phone: Optional[str] = Field(None, max_length=30)
+    reviews: Optional[List[Dict[str, Any]]] = Field(None, max_length=50)
+    price_details: Optional[str] = Field(None, max_length=2000)
     host_profile: Optional[Dict[str, Any]] = None
-    property_type: Optional[str] = None
-    check_in: Optional[str] = None
-    check_out: Optional[str] = None
-    number_of_people: Optional[int] = None
+    property_type: Optional[str] = Field(None, max_length=100)
+    check_in: Optional[str] = Field(None, max_length=30)
+    check_out: Optional[str] = Field(None, max_length=30)
+    number_of_people: Optional[int] = Field(None, ge=0, le=100)
 
-# ALIASES for backward compatibility with services that haven't been updated.
-ExtractedListingData = ExtractedData
 class RawExtractedData(BaseModel):
     listing_url: Optional[str] = None
     property_type: Optional[str] = None
@@ -57,6 +55,15 @@ class RawExtractedData(BaseModel):
     reviews: Optional[List[Dict[str, Any]]] = None
     host_profile: Optional[Dict[str, Any]] = None
 
+
+class UrlExtractRequest(BaseModel):
+    session_id: str = Field(..., max_length=100)
+    listing_url: str = Field(..., max_length=2048)
+
+class UrlExtractResponse(BaseModel):
+    extracted_data: ExtractedData
+    screenshot_url: Optional[str] = None
+    scrape_source: str = "unknown"
 
 class ExtractDataResponse(BaseModel):
     extracted_data: ExtractedData
@@ -124,9 +131,3 @@ class HistoryResponse(BaseModel):
     """
     history: List[JobStatusResponse] = []
 
-class AnalysisStep(BaseModel):
-    job_name: str
-    description: str      
-    status: str          
-    inputs_used: dict     
-    result: dict         

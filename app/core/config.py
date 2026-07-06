@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     GOOGLE_GEMINI_API_KEY: str
     GOOGLE_SEARCH_ENGINE_ID: str
 
+    # Scraping
+    FIRECRAWL_API_KEY: Optional[str] = None
+
     # Security
     RISK_SCORE_THRESHOLD: int = 70
     API_RATE_LIMIT: str = "100/minute"

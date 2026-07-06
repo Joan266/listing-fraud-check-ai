@@ -1,6 +1,6 @@
 import pydantic
 from typing import List, Optional, Dict, Any
-from app.schemas import ExtractedListingData, RawExtractedData
+from app.schemas import RawExtractedData
 
 
 # --- 2. Create the Formatting Function ---

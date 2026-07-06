@@ -11,14 +11,6 @@ class JobStatus(enum.Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    
 class FraudCheck(Base):
     __tablename__ = "fraud_checks"
 

@@ -1,12 +1,18 @@
+import asyncio
+import json
+import logging
 from typing import List
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
+from sse_starlette.sse import EventSourceResponse
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 from app.core.limiter import limiter
 from app.db import models
 from app.db.session import get_db
-from app.workers.queues import analysis_fast_queue
-from app.schemas import FraudCheckRequest, JobResponse, JobStatusResponse, ChatRequest,HistoryResponse, ChatResponse,ExtractRequest, ExtractDataResponse, Message
+from app.workers.queues import analysis_fast_queue, redis_conn
+from app.schemas import FraudCheckRequest, JobResponse, JobStatusResponse, ChatRequest, HistoryResponse, ChatResponse, ExtractRequest, ExtractDataResponse, UrlExtractRequest, UrlExtractResponse, Message
 from app.services import chat_service, extract_data_service
 
 
@@ -20,9 +26,43 @@ def extract_data_from_text(request: Request, extract_request: ExtractRequest):
     """
     if not extract_request.listing_content:
         raise HTTPException(status_code=400, detail="Listing content cannot be empty.")
+    if len(extract_request.listing_content) > 50_000:
+        raise HTTPException(status_code=400, detail="Listing content exceeds maximum length (50,000 characters).")
    
     formatted_data = extract_data_service.extract_and_format_data(extract_request.listing_content)
     return {"extracted_data": formatted_data}
+
+
+@router.post("/extract-from-url", response_model=UrlExtractResponse)
+@limiter.limit("2/minute")
+def extract_data_from_url(request: Request, url_request: UrlExtractRequest):
+    """
+    Scrapes a listing URL and extracts structured data from the page content.
+    """
+    from app.utils.validators import validate_external_url
+    from app.services import url_scraper
+
+    try:
+        validate_external_url(url_request.listing_url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    scrape_result = url_scraper.scrape_url(url_request.listing_url)
+    markdown = scrape_result.get("markdown", "")
+
+    if not markdown or len(markdown) < 50:
+        raise HTTPException(status_code=422, detail="Could not extract enough content from the URL.")
+
+    formatted_data = extract_data_service.extract_and_format_data(markdown)
+    # Ensure the listing_url is set from the request
+    if isinstance(formatted_data, dict):
+        formatted_data["listing_url"] = url_request.listing_url
+
+    return UrlExtractResponse(
+        extracted_data=formatted_data,
+        screenshot_url=scrape_result.get("screenshot_url"),
+        scrape_source=scrape_result.get("source", "unknown"),
+    )
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -94,12 +134,78 @@ def create_analysis(request: Request, fraud_request: FraudCheckRequest, db: Sess
     return {"job_id": str(new_check.id)}
 
 
+@router.get("/analysis/history/{url_session_id}", response_model=HistoryResponse)
+@limiter.limit("20/minute")
+def get_session_history(
+    request: Request,
+    url_session_id: str,
+    session_id: str = Header(...),
+    db: Session = Depends(get_db)
+):
+    """Gets the analysis history for a given session_id."""
+    logger.info(f"Fetching history for session_id: {url_session_id}")
+    reports = db.query(models.FraudCheck).filter(
+        models.FraudCheck.session_id == url_session_id,
+        models.FraudCheck.status == models.JobStatus.COMPLETED
+    ).order_by(models.FraudCheck.created_at.desc()).all()
+
+    return HistoryResponse(history=reports)
+
+
+@router.get("/analysis/{check_id}/stream")
+async def stream_analysis_progress(
+    request: Request,
+    check_id: str,
+    session_id: str = Query(...),
+):
+    """
+    SSE endpoint that streams real-time analysis progress.
+    Uses query param for session_id since EventSource can't send custom headers.
+    """
+    try:
+        job_uuid = uuid.UUID(check_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid check_id format.")
+
+    channel = f"analysis:{check_id}:progress"
+
+    async def event_generator():
+        if not redis_conn:
+            yield {"event": "error", "data": json.dumps({"error": "Redis unavailable"})}
+            return
+
+        pubsub = redis_conn.pubsub()
+        pubsub.subscribe(channel)
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                message = pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message and message["type"] == "message":
+                    data = message["data"]
+                    if isinstance(data, bytes):
+                        data = data.decode("utf-8")
+                    parsed = json.loads(data)
+                    yield {"event": "step_complete", "data": data}
+                    if parsed.get("job_name") == "aggregate_and_conclude":
+                        yield {"event": "done", "data": json.dumps({"status": "COMPLETED"})}
+                        break
+                else:
+                    yield {"event": "heartbeat", "data": ""}
+                await asyncio.sleep(0.5)
+        finally:
+            pubsub.unsubscribe(channel)
+            pubsub.close()
+
+    return EventSourceResponse(event_generator())
+
+
 @router.get("/analysis/{check_id}", response_model=JobStatusResponse)
 @limiter.limit("60/minute")
 def get_analysis_status(
     request: Request,
     check_id: str,
-    session_id: str = Header(..., alias="session_id"), 
+    session_id: str = Header(...),
     db: Session = Depends(get_db)
 ):
     """
@@ -114,43 +220,28 @@ def get_analysis_status(
     check_result = db.query(models.FraudCheck).filter(models.FraudCheck.id == job_uuid).first()
     if not check_result:
         raise HTTPException(status_code=404, detail="Analysis not found.")
-    
+
     if check_result.session_id != session_id:
         raise HTTPException(status_code=403, detail="Not authorized to view this analysis.")
-        
+
     return check_result
+
 
 @router.get("/chat/{chat_id}/messages", response_model=List[Message])
 @limiter.limit("20/minute")
 def get_chat_messages(
     request: Request,
     chat_id: str,
-    session_id: str = Header(..., alias="session_id"),
+    session_id: str = Header(...),
     db: Session = Depends(get_db)
 ):
     """Gets all messages for a specific chat, verifying session ownership."""
     chat_uuid = uuid.UUID(chat_id)
     chat = db.query(models.Chat).filter(models.Chat.id == chat_uuid).first()
-    
+
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found.")
     if chat.session_id != session_id:
         raise HTTPException(status_code=403, detail="Not authorized.")
-        
+
     return chat.messages
-@router.get("/analysis/history/{url_session_id}", response_model=HistoryResponse) 
-@limiter.limit("20/minute")
-def get_session_history(
-    request: Request,
-    url_session_id: str,
-    session_id: str = Header(..., alias="session_id"),
-    db: Session = Depends(get_db)
-):
-    """Gets the analysis history for a given session_id."""
-    print(f"Fetching history for session_id: {url_session_id}")
-    reports = db.query(models.FraudCheck).filter(
-        models.FraudCheck.session_id == url_session_id,
-        models.FraudCheck.status == models.JobStatus.COMPLETED 
-    ).order_by(models.FraudCheck.created_at.desc()).all()
-    
-    return HistoryResponse(history=reports)

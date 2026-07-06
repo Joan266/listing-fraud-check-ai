@@ -90,7 +90,6 @@ const ReviewPage: React.FC = () => {
       return;
     }
     setIsStartingAnalysis(true);
-    console.log('Starting analysis with data:', editableData);
     try {
       const newAnalysis = await dispatch(startAnalysisAsync(editableData)).unwrap();
       navigate(`/results/${newAnalysis.id}`);

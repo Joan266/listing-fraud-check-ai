@@ -5,13 +5,15 @@ import rq
 from app.db.session import SessionLocal
 from app.db.models import FraudCheck, JobStatus
 from app.services import gemini_analysis
+from app.workers.scoring import calculate_job_risk_score, calculate_weighted_score
 
 logger = logging.getLogger(__name__)
 
 def job_aggregate_and_conclude(check_id_arg):
     """
-    Collects the full AnalysisStep results from all dependencies, calls the
-    final AI model for synthesis, and saves the complete report.
+    Collects the full AnalysisStep results from all dependencies, calculates
+    structured risk scores, calls the final AI model for synthesis, and saves
+    the complete report.
     """
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -19,31 +21,49 @@ def job_aggregate_and_conclude(check_id_arg):
         check_id = check_id_arg
 
     logger.info(f"Finalizing report for Check ID: {check_id}")
-    
+
     db = SessionLocal()
     try:
         current_job = rq.get_current_job()
         dependencies = current_job.fetch_dependencies()
-        
+
         all_job_steps = [dep.result for dep in dependencies]
-        
+
+        # Calculate structured risk scores for each job
+        job_scores = {}
+        for step in all_job_steps:
+            if not isinstance(step, dict):
+                continue
+            job_name = step.get("job_name", "")
+            status = step.get("status", "ERROR")
+            result = step.get("result", {})
+            score_data = calculate_job_risk_score(job_name, result, status)
+            step["risk_score"] = score_data["risk_score"]
+            step["confidence"] = score_data["confidence"]
+            if job_name:
+                job_scores[job_name] = score_data
+
+        # Calculate weighted aggregate score
+        scoring_summary = calculate_weighted_score(job_scores)
+
         check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
         if not check:
             raise Exception(f"FraudCheck ID {check_id} not found in finalizer.")
 
         full_context = {
             "user_provided_data": check.input_data,
-            "analysis_steps": all_job_steps
+            "analysis_steps": all_job_steps,
+            "scoring_summary": scoring_summary,
         }
 
         synthesis_report = gemini_analysis.synthesize_advanced_report(full_context)
-        
+
         check.analysis_steps = all_job_steps
         check.final_report = synthesis_report
         check.status = JobStatus.COMPLETED if "error" not in synthesis_report else JobStatus.FAILED
         db.commit()
 
-        logger.info(f"✅ Completed fraud check for job_id: {check_id}.")
+        logger.info(f"Completed fraud check for job_id: {check_id}.")
         return synthesis_report
 
     except Exception as e:

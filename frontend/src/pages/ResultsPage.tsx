@@ -17,6 +17,7 @@ import { pollAnalysisStatus, sendChatMessageAsync, setCurrentAnalysisId } from '
 import { ChatMessage } from '../types/index';
 import { toast } from 'react-hot-toast';
 import { LoadingScreen } from '../components/UI/LoadingScreen';
+import { AnalysisProgress } from '../components/UI/AnalysisProgress';
 import { FlagsCard } from '../components/Results/FlagsCard';
 import { AnalysisRunbook } from '../components/Results/AnalysisRubook';
 import EnhancedMapComponent from '../components/UI/MapComponent/EnhancedMapComponent';
@@ -39,10 +40,8 @@ const ResultsPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    console.log(analysis)
     if (analysisId) {
       dispatch(setCurrentAnalysisId(analysisId));
-      console.log(analysis)
       if (!isPolling && analysis && (analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS')) {
         dispatch(pollAnalysisStatus(analysisId));
       }
@@ -97,8 +96,12 @@ const ResultsPage: React.FC = () => {
       navigate('/review', { state: { extractedData: analysis.input_data } });
     }
   };
-  // 5. If the analysis is pending, show the main loading screen
+  const { sessionId } = useAppSelector(state => state.app);
+  // 5. If the analysis is pending/in progress, show real-time progress
   if (!analysis || analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS') {
+    if (analysisId) {
+      return <AnalysisProgress checkId={analysisId} sessionId={sessionId} />;
+    }
     return <LoadingScreen />;
   }
   if (analysis.status === 'FAILED') {
@@ -235,7 +238,7 @@ const ResultsPage: React.FC = () => {
                           : 'bg-gray-100 text-gray-700'
                         }`}
                     >
-                      <p className="text-sm" dangerouslySetInnerHTML={{ __html: message.content.replace(/\n/g, '<br />') }}></p>
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     </div>
                   </div>
                 ))}

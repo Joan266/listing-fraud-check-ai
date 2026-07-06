@@ -18,8 +18,14 @@ rq-dashboard
 # Google Cloud Services
 google-api-python-client
 google-cloud-vision
-google-generativeai
+google-genai
 googlemaps
+
+# Scraping
+firecrawl-py
+
+# SSE
+sse-starlette
 
 # Other utilities
 pydantic

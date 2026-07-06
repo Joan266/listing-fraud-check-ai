@@ -1,25 +1,19 @@
-import google.generativeai as genai
 import json
 import logging
 import requests
 import io
 from PIL import Image
-from app.core.config import settings
 from app.services import gemini_analysis
 from app.utils.helpers import load_prompt
 from google.cloud import vision
 
 logger = logging.getLogger(__name__)
 
-# Initialize clients once for efficiency
 try:
     vision_client = vision.ImageAnnotatorClient()
-    genai.configure(api_key=settings.GOOGLE_GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel('gemini-1.5-pro-latest')
 except Exception as e:
-    logger.error(f"Failed to initialize Google clients in image_analysis: {e}")
+    logger.error(f"Failed to initialize Vision client in image_analysis: {e}")
     vision_client = None
-    gemini_model = None
 
 def reverse_image_search(image_url: str) -> dict:
     """
@@ -71,17 +65,25 @@ def reverse_image_search(image_url: str) -> dict:
         logger.error(f"Cloud Vision API call failed for url {image_url}: {e}")
         return {"is_reused": False, "reason": "Error during reverse image search.", "url": image_url}
     
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
+
 def check_for_ai_artifacts(image_url: str) -> dict:
     """
     Downloads, resizes, and then calls the Gemini service to analyze an image.
     """
+    from app.utils.validators import validate_external_url
     try:
+        validate_external_url(image_url)
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Referer': 'https://www.google.com/'
         }
-        image_response = requests.get(image_url, stream=True, headers=headers)
+        image_response = requests.get(image_url, stream=True, headers=headers, timeout=10)
         image_response.raise_for_status()
+
+        content_length = int(image_response.headers.get('Content-Length', 0))
+        if content_length > MAX_IMAGE_SIZE:
+            return {"confidence_score": 0.0, "verdict": "Skipped", "artifacts": ["Image too large."], "url": image_url}
 
         # --- Image Resizing Logic ---
         image = Image.open(io.BytesIO(image_response.content))

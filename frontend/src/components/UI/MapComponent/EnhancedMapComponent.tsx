@@ -82,10 +82,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ address, theme, onLocationC
                 scaledSize: new window.google.maps.Size(24, 24),
                 anchor: new window.google.maps.Point(12, 12)
               }}
-              onClick={() => {
-                // In a real app, you'd fetch place details here
-                console.log(`Clicked on ${place.name}`);
-              }}
+              onClick={() => {}}
             />
           );
         });

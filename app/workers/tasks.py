@@ -2,16 +2,20 @@ import concurrent.futures
 import json
 import logging
 import uuid
+from datetime import datetime
 from app.db.models import FraudCheck
+
+logger = logging.getLogger(__name__)
 from app.utils.helpers import generate_hash, get_nested
 from app.workers.queues import redis_conn
-from app.services import google_search, image_analysis, gemini_analysis, google_apis, url_analysis
+from app.services import google_search, image_analysis, gemini_analysis, google_apis, url_analysis, catastro
 from app.db.session import SessionLocal 
 from urllib.parse import urlparse
 import rq
 # --- Constants for Input Limits ---
 MAX_REVIEWS_TO_ANALYZE = 10
 MAX_IMAGES_TO_ANALYZE = 5
+
 # --- The Caching Helper ---
 def _run_cached_job(check_id: str, job_name: str, inputs: dict, task_function):
     """A helper to abstract away the caching logic for each job."""
@@ -21,10 +25,10 @@ def _run_cached_job(check_id: str, job_name: str, inputs: dict, task_function):
 
     cached_result = redis_conn.hget(redis_main_key, cache_field_key)
     if cached_result:
-        print(f"✅ Cache HIT for {job_name} (Check ID: {check_id})")
+        logger.debug(f"Cache HIT for {job_name} (Check ID: {check_id})")
         return json.loads(cached_result)
 
-    print(f"⚙️ Cache MISS for {job_name} (Check ID: {check_id}). Running task...")
+    logger.info(f"Cache MISS for {job_name} (Check ID: {check_id}). Running task...")
     result = task_function(inputs)
     redis_conn.hset(redis_main_key, cache_field_key, json.dumps(result))
     return result
@@ -67,7 +71,7 @@ def job_geocode(check_id_arg):
     try:
         def task(data):
             return google_apis.geocode_address(data["address"])
-            
+
         task_result = _run_cached_job(str(check_id), job_name, inputs, task)
 
         if task_result.get("error"):
@@ -796,7 +800,7 @@ def job_online_presence_analysis(check_id_arg):
             "host_profile_result": dependency_results[0].get("result", {}),
             "reputation_check_result": dependency_results[1].get("result", {}),
             "reverse_image_search_result": dependency_results[2].get("result", {}),
-            "reverse_image_search_result": dependency_results[3].get("result", {}),
+            "url_forensics_result": dependency_results[3].get("result", {}),
         }
     except Exception as e:
         return {
@@ -867,8 +871,10 @@ def job_host_profile_check(check_id_arg):
         
         if not host_profile.get("is_verified"):
             themes.append("Host profile is not verified.")
-        if host_profile.get("member_since") and "2025" in str(host_profile.get("member_since")):
-             themes.append("Host account is very new (created this year).")
+        current_year = datetime.now().year
+        member_since = str(host_profile.get("member_since", ""))
+        if member_since and (str(current_year) in member_since or str(current_year - 1) in member_since):
+            themes.append("Host account is very new (created recently).")
 
         task_result = {"themes": themes}
 
@@ -886,4 +892,69 @@ def job_host_profile_check(check_id_arg):
             "status": "ERROR",
             "inputs_used": inputs,
             "result": {"error_message": str(e)}
+        }
+
+def job_catastro_check(check_id_arg):
+    """
+    Checks the Spanish Catastro (land registry) for property verification.
+    Only runs for Spanish properties (country_code == "es").
+    """
+    job_name = "catastro_check"
+    job_description = "Verifies the property exists in the Spanish Catastro (land registry) using coordinates from geocoding."
+
+    try:
+        current_job = rq.get_current_job()
+        geocode_result = current_job.dependency.result
+        country_code = get_nested(geocode_result, ["result", "country_code"], default="")
+        coordinates = get_nested(geocode_result, ["result", "coordinates"])
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": {"dependency_error": str(e)},
+            "result": {"reason": "Could not get result from geocode dependency."},
+        }
+
+    inputs = {"country_code": country_code, "coordinates": coordinates}
+
+    if country_code != "es":
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": f"Catastro check only available for Spain. Country: {country_code}"},
+        }
+
+    if not coordinates:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No coordinates available for Catastro lookup."},
+        }
+
+    try:
+        def task(data):
+            coords = data["coordinates"]
+            return catastro.lookup_by_coordinates(coords["lat"], coords["lng"])
+
+        task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task)
+
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": task_result,
+        }
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)},
         }
