@@ -51,6 +51,7 @@ MANIFEST
 
 # Python - PyInstaller
 *.manifest
+!manifest.json
 *.spec
 
 # Python - Installer logs

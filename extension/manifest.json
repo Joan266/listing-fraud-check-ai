@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "FraudCheck.ai — Analizar anuncio",
+  "version": "1.0.0",
+  "description": "Extrae el contenido de un anuncio inmobiliario y lo envía a FraudCheck.ai para su análisis de fraude.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.idealista.com/*",
+        "*://*.fotocasa.es/*",
+        "*://*.booking.com/*",
+        "*://*.airbnb.com/*",
+        "*://*.airbnb.es/*",
+        "*://*.pisos.com/*",
+        "*://*.habitaclia.com/*",
+        "*://*.milanuncios.com/*",
+        "*://*.wallapop.com/*",
+        "*://*.enalquiler.com/*",
+        "*://*.yaencontre.com/*",
+        "*://*.inmobiliaria.com/*",
+        "*://*.vrbo.com/*",
+        "*://*.homeaway.com/*",
+        "*://*.tripadvisor.com/*",
+        "*://*.tripadvisor.es/*",
+        "*://*.expedia.com/*",
+        "*://*.expedia.es/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

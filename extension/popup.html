@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 340px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .header .badge {
+      font-size: 10px;
+      background: #22c55e;
+      color: #0f172a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .site-info {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      border: 1px solid #334155;
+    }
+
+    .site-info .url {
+      color: #94a3b8;
+      word-break: break-all;
+      font-size: 11px;
+      margin-top: 4px;
+    }
+
+    .site-info .title {
+      color: #f1f5f9;
+      font-weight: 600;
+    }
+
+    #btn-analyze {
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #3b82f6;
+      color: white;
+      transition: background 0.2s;
+    }
+
+    #btn-analyze:hover { background: #2563eb; }
+    #btn-analyze:disabled {
+      background: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 12px;
+      text-align: center;
+      min-height: 18px;
+    }
+
+    .status.loading { color: #fbbf24; }
+    .status.success { color: #22c55e; }
+    .status.error { color: #f87171; }
+
+    .settings {
+      margin-top: 16px;
+      border-top: 1px solid #334155;
+      padding-top: 12px;
+    }
+
+    .settings label {
+      font-size: 11px;
+      color: #94a3b8;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .settings input {
+      width: 100%;
+      padding: 8px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #e2e8f0;
+      outline: none;
+    }
+
+    .settings input:focus { border-color: #3b82f6; }
+
+    .settings .hint {
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>FraudCheck.ai</h1>
+    <span class="badge">Extension</span>
+  </div>
+
+  <div class="site-info" id="site-info">
+    <div class="title" id="page-title">Cargando...</div>
+    <div class="url" id="page-url"></div>
+  </div>
+
+  <button id="btn-analyze">Analizar este anuncio</button>
+
+  <div class="status" id="status"></div>
+
+  <div class="settings">
+    <label for="api-url">URL del servidor FraudCheck.ai</label>
+    <input type="text" id="api-url" placeholder="http://localhost:8000">
+    <div class="hint">Cambia esto si usas un servidor en producción</div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -19,6 +19,38 @@ export const LandingPage: React.FC = () => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [listingText, setListingText] = useState('');
   const [listingUrl, setListingUrl] = useState('');
+  // Check if opened from the Chrome extension with pre-extracted data
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('from_extension') !== 'true') return;
+
+    // Clean the URL param
+    window.history.replaceState({}, '', '/');
+
+    // Try to load data from the extension's chrome.storage via BroadcastChannel
+    // The extension stores data in chrome.storage.local, but the web page
+    // can't access it directly. Instead, check localStorage as a bridge.
+    const stored = localStorage.getItem('fraudcheck_extension_data');
+    localStorage.removeItem('fraudcheck_extension_data');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const data = parsed?.extracted_data;
+        // Validate: must be a plain object with at least one expected field
+        if (
+          data &&
+          typeof data === 'object' &&
+          !Array.isArray(data) &&
+          (data.address || data.description || data.listing_url)
+        ) {
+          toast.success('Datos recibidos de la extensión de Chrome');
+          navigate('/review', { state: { extractedData: data } });
+          return;
+        }
+      } catch { /* ignore parse errors — discard malformed data */ }
+    }
+  }, []);
+
   useEffect(() => {
     dispatch(setCurrentAnalysisId(null))
     if (headerRef.current && formRef.current) {

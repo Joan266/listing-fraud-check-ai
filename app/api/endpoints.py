@@ -59,8 +59,16 @@ async def extract_data_from_url(request: Request, url_request: UrlExtractRequest
     scrape_result = await asyncio.to_thread(url_scraper.scrape_url, url_request.listing_url)
     markdown = scrape_result.get("markdown", "")
 
-    if not markdown or len(markdown) < 50:
-        raise HTTPException(status_code=422, detail="Could not extract enough content from the URL.")
+    if scrape_result.get("source") == "blocked" or not markdown or len(markdown) < 50:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "No se pudo extraer el contenido de esta URL. "
+                "Es probable que el sitio bloquee el acceso automatizado (captcha, anti-bot). "
+                "Copia el contenido del anuncio manualmente (Ctrl+A, Ctrl+C) "
+                "y pégalo en el campo de texto."
+            ),
+        )
 
     formatted_data = await asyncio.to_thread(
         extract_data_service.extract_and_format_data, markdown
