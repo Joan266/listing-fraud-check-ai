@@ -24,6 +24,7 @@ googlemaps
 
 # Scraping
 firecrawl-py
+playwright
 
 # SSE
 sse-starlette

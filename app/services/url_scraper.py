@@ -11,14 +11,14 @@ FIRECRAWL_BASE_URL = "https://api.firecrawl.dev/v1"
 
 def scrape_url(url: str) -> dict:
     """
-    Scrapes a URL using Firecrawl API and returns markdown content + screenshot.
-    Falls back to basic requests if Firecrawl is unavailable.
+    Scrapes a URL and returns markdown content + optional screenshot.
+    Priority: Firecrawl (API) → Playwright (local headless browser) → requests (static HTML).
     """
     validate_external_url(url)
 
     if FIRECRAWL_API_KEY:
         return _scrape_with_firecrawl(url)
-    return _scrape_with_requests(url)
+    return _scrape_with_playwright(url)
 
 
 def _scrape_with_firecrawl(url: str) -> dict:
@@ -44,7 +44,68 @@ def _scrape_with_firecrawl(url: str) -> dict:
             "source": "firecrawl",
         }
     except Exception as e:
-        logger.warning(f"Firecrawl failed for {url}: {e}. Falling back to requests.")
+        logger.warning(f"Firecrawl failed for {url}: {e}. Falling back to Playwright.")
+        return _scrape_with_playwright(url)
+
+
+def _scrape_with_playwright(url: str) -> dict:
+    """Scrape using a local headless Chromium browser — renders JS like a real user."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        logger.warning("Playwright not installed. Falling back to requests.")
+        return _scrape_with_requests(url)
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                           "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                locale="es-ES",
+            )
+            page = context.new_page()
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            page.wait_for_timeout(2000)
+
+            # Dismiss cookie banners / overlays (best-effort)
+            for selector in [
+                "button:has-text('Aceptar')", "button:has-text('Accept')",
+                "button:has-text('Agree')", "[id*='cookie'] button",
+                "[class*='cookie'] button", "[id*='consent'] button",
+            ]:
+                try:
+                    btn = page.locator(selector).first
+                    if btn.is_visible(timeout=500):
+                        btn.click(timeout=1000)
+                        page.wait_for_timeout(500)
+                        break
+                except Exception:
+                    continue
+
+            # Scroll down to trigger lazy-loaded content
+            for _ in range(5):
+                page.keyboard.press("End")
+                page.wait_for_timeout(500)
+            page.keyboard.press("Home")
+            page.wait_for_timeout(500)
+
+            # Extract visible text from the body
+            text = page.inner_text("body", timeout=5000)
+
+            # Clean up excessive whitespace
+            lines = [line.strip() for line in text.splitlines() if line.strip()]
+            cleaned = "\n".join(lines)
+
+            browser.close()
+
+        return {
+            "markdown": cleaned[:30000],
+            "screenshot_url": None,
+            "source": "playwright",
+        }
+    except Exception as e:
+        logger.warning(f"Playwright scrape failed for {url}: {e}. Falling back to requests.")
         return _scrape_with_requests(url)
 
 
