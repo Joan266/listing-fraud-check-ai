@@ -125,9 +125,19 @@ class HistoryItem(BaseModel):
 
 class HistoryResponse(BaseModel):
     """
-
     The response for the history endpoint.
-    FIX: The list should contain JobStatusResponse objects.
     """
     history: List[JobStatusResponse] = []
+
+
+class FeedbackRequest(BaseModel):
+    was_fraud: bool
+    comments: Optional[str] = Field(None, max_length=2000)
+
+
+class FeedbackResponse(BaseModel):
+    id: str
+    fraud_check_id: str
+    was_fraud: bool
+    comments: Optional[str] = None
 

@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 # Configure client once
 try:
-    gmaps = googlemaps.Client(key=settings.GOOGLE_API_KEY)
+    gmaps = googlemaps.Client(key=settings.GOOGLE_API_KEY, timeout=10)
 except Exception as e:
     logger.error(f"Failed to initialize Google Maps client: {e}")
     gmaps = None

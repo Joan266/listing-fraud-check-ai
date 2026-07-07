@@ -1,12 +1,23 @@
 import whois
 import requests
+import concurrent.futures
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
+
+WHOIS_TIMEOUT_SECONDS = 10
+
+
+def _whois_lookup(domain_name: str):
+    """Runs whois.whois in a thread with timeout protection."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(whois.whois, domain_name)
+        return future.result(timeout=WHOIS_TIMEOUT_SECONDS)
+
 
 def check_domain_age(domain_name: str) -> dict:
     """Checks the creation date of a domain."""
     try:
-        w = whois.whois(domain_name)
+        w = _whois_lookup(domain_name)
         creation_date = w.creation_date[0] if isinstance(w.creation_date, list) else w.creation_date
         if not creation_date:
             return {"is_new": False, "reason": "Could not determine creation date."}

@@ -1,6 +1,6 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, JSON, Enum as SQLAlchemyEnum, func, TIMESTAMP, ForeignKey, Integer
+from sqlalchemy import Boolean, Column, String, JSON, Enum as SQLAlchemyEnum, func, TIMESTAMP, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from .session import Base
@@ -50,3 +50,13 @@ class ChatMessage(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     
     chat = relationship("Chat", back_populates="messages")
+
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    fraud_check_id = Column(PG_UUID(as_uuid=True), ForeignKey("fraud_checks.id"), nullable=False, index=True)
+    was_fraud = Column(Boolean, nullable=False)
+    comments = Column(String(2000), nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

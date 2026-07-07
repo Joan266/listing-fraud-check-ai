@@ -51,10 +51,17 @@ COMPOUND_RULES: list[dict] = [
         "description": "Property not found in Spanish land registry with new host account",
         "bonus_score": 10,
     },
+    {
+        "name": "verified_safe",
+        "conditions": ["host_profile_check", "reputation_check", "geocode"],
+        "description": "Verified host with clean history and confirmed address",
+        "bonus_score": -15,
+    },
 ]
 
-# Thresholds for considering a job's score as "high risk"
+# Thresholds for considering a job's score as "high risk" or "low risk"
 HIGH_RISK_THRESHOLD = 60
+LOW_RISK_THRESHOLD = 20
 
 
 def calculate_job_risk_score(job_name: str, result: dict, status: str) -> dict:
@@ -200,6 +207,7 @@ def calculate_weighted_score(job_scores: dict[str, dict]) -> dict:
     total_weighted = 0.0
     total_weight = 0.0
     high_risk_signals = []
+    low_risk_signals = []
 
     for job_name, score_data in job_scores.items():
         weight = WEIGHTS.get(job_name, 0.05)
@@ -213,6 +221,8 @@ def calculate_weighted_score(job_scores: dict[str, dict]) -> dict:
 
             if risk_score >= HIGH_RISK_THRESHOLD:
                 high_risk_signals.append(job_name)
+            if risk_score <= LOW_RISK_THRESHOLD:
+                low_risk_signals.append(job_name)
 
     base_score = int(total_weighted / total_weight) if total_weight > 0 else 50
 
@@ -220,14 +230,20 @@ def calculate_weighted_score(job_scores: dict[str, dict]) -> dict:
     compound_bonus = 0
     triggered_rules = []
     for rule in COMPOUND_RULES:
-        conditions_met = all(
-            job_name in high_risk_signals for job_name in rule["conditions"]
-        )
+        if rule["bonus_score"] < 0:
+            # Negative bonus rules trigger when all conditions have LOW risk
+            conditions_met = all(
+                job_name in low_risk_signals for job_name in rule["conditions"]
+            )
+        else:
+            conditions_met = all(
+                job_name in high_risk_signals for job_name in rule["conditions"]
+            )
         if conditions_met:
             compound_bonus += rule["bonus_score"]
             triggered_rules.append(rule["name"])
 
-    final_score = min(base_score + compound_bonus, 100)
+    final_score = max(0, min(base_score + compound_bonus, 100))
 
     return {
         "calculated_risk_score": final_score,

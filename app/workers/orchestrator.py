@@ -9,6 +9,63 @@ from app.db.models import FraudCheck, JobStatus
 
 logger = logging.getLogger(__name__)
 
+HIGH_RISK_SCORE_THRESHOLD = 70
+
+
+def _check_historical_fraud(db, check: FraudCheck) -> list[dict]:
+    """
+    Query DB for previous completed analyses with matching host_email, host_phone,
+    or address that had high risk scores. Returns list of warnings.
+    """
+    warnings = []
+    input_data = check.input_data or {}
+    host_email = input_data.get("host_email")
+    host_phone = input_data.get("host_phone")
+    address = input_data.get("address")
+
+    if not any([host_email, host_phone, address]):
+        return warnings
+
+    try:
+        previous = (
+            db.query(FraudCheck)
+            .filter(
+                FraudCheck.id != check.id,
+                FraudCheck.status == JobStatus.COMPLETED,
+                FraudCheck.final_report.isnot(None),
+            )
+            .all()
+        )
+
+        for prev in previous:
+            prev_input = prev.input_data or {}
+            prev_report = prev.final_report or {}
+            prev_score = prev_report.get("calculated_risk_score") or prev_report.get("risk_score", 0)
+
+            if prev_score < HIGH_RISK_SCORE_THRESHOLD:
+                continue
+
+            matches = []
+            if host_email and prev_input.get("host_email") == host_email:
+                matches.append(f"email: {host_email}")
+            if host_phone and prev_input.get("host_phone") == host_phone:
+                matches.append(f"phone: {host_phone}")
+            if address and prev_input.get("address") == address:
+                matches.append(f"address: {address}")
+
+            if matches:
+                warnings.append({
+                    "previous_check_id": str(prev.id),
+                    "previous_risk_score": prev_score,
+                    "matched_fields": matches,
+                    "created_at": prev.created_at.isoformat() if prev.created_at else None,
+                })
+
+    except Exception as e:
+        logger.warning(f"Historical cross-check failed (non-blocking): {e}")
+
+    return warnings
+
 
 def _handle_job_success(job, connection, result, *args, **kwargs):
     """RQ on_success callback — publishes job progress to Redis for SSE."""
@@ -43,6 +100,20 @@ def start_full_analysis(check_id_arg):
             logger.error(f"FraudCheck ID {check_id} not found.")
             return
         check.status = JobStatus.IN_PROGRESS
+
+        # Historical cross-check: flag if same email/phone/address appeared in previous high-risk analyses
+        historical_warnings = _check_historical_fraud(db, check)
+        if historical_warnings:
+            logger.warning(f"Historical fraud matches found for {check_id}: {len(historical_warnings)} previous high-risk analyses")
+            existing_steps = check.analysis_steps or []
+            existing_steps.append({
+                "job_name": "historical_cross_check",
+                "status": "COMPLETED",
+                "description": "Previous high-risk analyses found matching this listing's contact info or address",
+                "result": {"warnings": historical_warnings},
+            })
+            check.analysis_steps = existing_steps
+
         db.commit()
     finally:
         db.close()
