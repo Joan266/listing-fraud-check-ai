@@ -16,7 +16,7 @@ WEIGHTS: dict[str, float] = {
     "reputation_check": 0.08,
     "host_profile_check": 0.06,
     "online_presence_analysis": 0.06,
-    "catastro_check": 0.06,
+    "land_registry_check": 0.06,
 }
 
 # Compound rules: combinations of signals that amplify risk
@@ -46,9 +46,9 @@ COMPOUND_RULES: list[dict] = [
         "bonus_score": 18,
     },
     {
-        "name": "no_catastro_plus_new_host",
-        "conditions": ["catastro_check", "host_profile_check"],
-        "description": "Property not found in Spanish land registry with new host account",
+        "name": "no_registry_plus_new_host",
+        "conditions": ["land_registry_check", "host_profile_check"],
+        "description": "Property not found in national land registry with new host account",
         "bonus_score": 10,
     },
     {
@@ -184,7 +184,7 @@ def calculate_job_risk_score(job_name: str, result: dict, status: str) -> dict:
             score = 0
             confidence = 0.6
 
-    elif job_name == "catastro_check":
+    elif job_name == "land_registry_check":
         if result.get("found"):
             score = 0  # Property exists in registry — positive signal
             confidence = 0.9

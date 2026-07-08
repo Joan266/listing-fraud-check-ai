@@ -136,7 +136,7 @@ def start_full_analysis(check_id_arg):
     place_details_job = analysis_fast_queue.enqueue(tasks.job_place_details, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
     reputation_job = analysis_fast_queue.enqueue(tasks.job_reputation_check, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
     neighborhood_job = analysis_fast_queue.enqueue(tasks.job_neighborhood_analysis, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
-    catastro_job = analysis_fast_queue.enqueue(tasks.job_catastro_check, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
+    land_registry_job = analysis_fast_queue.enqueue(tasks.job_land_registry_check, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
     ai_detection_job = analysis_heavy_queue.enqueue(tasks.job_ai_image_detection, check_id_str, depends_on=reverse_search_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
     
     # --- Layer 3: Enqueue the "meta-analysis" job that synthesizes Layer 1/2 results ---
@@ -163,7 +163,7 @@ def start_full_analysis(check_id_arg):
         place_details_job,
         neighborhood_job,
         ai_detection_job,
-        catastro_job,
+        land_registry_job,
         # The meta-analysis job
         online_presence_job
     ]

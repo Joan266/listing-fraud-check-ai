@@ -8,7 +8,7 @@ from app.db.models import FraudCheck
 logger = logging.getLogger(__name__)
 from app.utils.helpers import generate_hash, get_nested
 from app.workers.queues import redis_conn
-from app.services import google_search, image_analysis, gemini_analysis, google_apis, url_analysis, catastro
+from app.services import google_search, image_analysis, gemini_analysis, google_apis, url_analysis, catastro, france_cadastre, uk_land_registry
 from app.db.session import SessionLocal 
 from urllib.parse import urlparse
 import rq
@@ -894,19 +894,21 @@ def job_host_profile_check(check_id_arg):
             "result": {"error_message": str(e)}
         }
 
-def job_catastro_check(check_id_arg):
+def job_land_registry_check(check_id_arg):
     """
-    Checks the Spanish Catastro (land registry) for property verification.
-    Only runs for Spanish properties (country_code == "es").
+    Verifies the property exists in the relevant national land registry.
+    Dispatches to Spain (Catastro), France (Geoplateforme), or UK (HM Land Registry)
+    based on the country_code from geocoding.
     """
-    job_name = "catastro_check"
-    job_description = "Verifies the property exists in the Spanish Catastro (land registry) using coordinates from geocoding."
+    job_name = "land_registry_check"
+    job_description = "Verifies the property exists in the national land registry for the detected country."
 
     try:
         current_job = rq.get_current_job()
         geocode_result = current_job.dependency.result
         country_code = get_nested(geocode_result, ["result", "country_code"], default="")
         coordinates = get_nested(geocode_result, ["result", "coordinates"])
+        postal_code = get_nested(geocode_result, ["result", "postal_code"], default="")
     except Exception as e:
         return {
             "job_name": job_name,
@@ -916,32 +918,54 @@ def job_catastro_check(check_id_arg):
             "result": {"reason": "Could not get result from geocode dependency."},
         }
 
-    inputs = {"country_code": country_code, "coordinates": coordinates}
+    inputs = {"country_code": country_code, "coordinates": coordinates, "postal_code": postal_code}
 
-    if country_code != "es":
+    # Dispatch by country
+    if country_code == "es":
+        if not coordinates:
+            return {
+                "job_name": job_name,
+                "description": job_description,
+                "status": "SKIPPED",
+                "inputs_used": inputs,
+                "result": {"reason": "No coordinates available for Spanish Catastro lookup."},
+            }
+        task_fn = lambda data: catastro.lookup_by_coordinates(
+            data["coordinates"]["lat"], data["coordinates"]["lng"]
+        )
+    elif country_code == "fr":
+        if not coordinates:
+            return {
+                "job_name": job_name,
+                "description": job_description,
+                "status": "SKIPPED",
+                "inputs_used": inputs,
+                "result": {"reason": "No coordinates available for French cadastre lookup."},
+            }
+        task_fn = lambda data: france_cadastre.lookup_by_coordinates(
+            data["coordinates"]["lat"], data["coordinates"]["lng"]
+        )
+    elif country_code == "gb":
+        if not postal_code:
+            return {
+                "job_name": job_name,
+                "description": job_description,
+                "status": "SKIPPED",
+                "inputs_used": inputs,
+                "result": {"reason": "No postcode available for UK Land Registry lookup."},
+            }
+        task_fn = lambda data: uk_land_registry.lookup_by_postcode(data["postal_code"])
+    else:
         return {
             "job_name": job_name,
             "description": job_description,
             "status": "SKIPPED",
             "inputs_used": inputs,
-            "result": {"reason": f"Catastro check only available for Spain. Country: {country_code}"},
-        }
-
-    if not coordinates:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "SKIPPED",
-            "inputs_used": inputs,
-            "result": {"reason": "No coordinates available for Catastro lookup."},
+            "result": {"reason": f"Land registry check not available for {country_code}"},
         }
 
     try:
-        def task(data):
-            coords = data["coordinates"]
-            return catastro.lookup_by_coordinates(coords["lat"], coords["lng"])
-
-        task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task)
+        task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task_fn)
 
         return {
             "job_name": job_name,

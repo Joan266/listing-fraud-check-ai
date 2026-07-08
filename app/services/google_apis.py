@@ -36,14 +36,18 @@ def geocode_address(address: str) -> dict:
             "types": first_result.get('types', [])
         }
 
-        # 2. Extract and add the country code
-        country_code = 'us' # Default
+        # 2. Extract country code and postal code from address components
+        country_code = 'us'  # Default
+        postal_code = ''
         address_components = first_result.get('address_components', [])
         for component in address_components:
-            if 'country' in component.get('types', []):
+            types = component.get('types', [])
+            if 'country' in types:
                 country_code = component.get('short_name', 'us').lower()
-                break
+            if 'postal_code' in types:
+                postal_code = component.get('long_name', '')
         report['country_code'] = country_code
+        report['postal_code'] = postal_code
         
         return report
 

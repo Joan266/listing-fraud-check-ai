@@ -24,7 +24,7 @@ const JOB_LABELS: Record<string, string> = {
   host_profile_check: 'Perfil del anfitrión',
   online_presence_analysis: 'Presencia online',
   url_forensics: 'Análisis forense de URL',
-  catastro_check: 'Registro del Catastro',
+  land_registry_check: 'Registro de la propiedad',
 };
 
 const ALL_JOBS = Object.keys(JOB_LABELS);
