@@ -18,7 +18,7 @@ class ChatResponse(BaseModel):
 
 class ExtractRequest(BaseModel):
     session_id: str = Field(..., max_length=100)
-    listing_content: str = Field(..., max_length=50_000)
+    listing_content: str = Field(..., max_length=100_000)
 
 class ExtractedData(BaseModel):
     listing_url: Optional[str] = Field(None, max_length=2048)

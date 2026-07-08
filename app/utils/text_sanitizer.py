@@ -1,0 +1,148 @@
+import re
+from app.utils.validators import sanitize_user_text
+
+
+# Footer markers — everything after these is platform boilerplate
+_FOOTER_MARKERS = (
+    "copyright ©",
+    "all rights reserved",
+    "tots els drets reservats",
+    "todos los derechos reservados",
+    "booking holdings inc",
+    "privacy policy",
+    "política de privacidad",
+    "política de privadesa",
+    "terms of service",
+    "condicions del servei",
+    "condiciones del servicio",
+    "© 2024",
+    "© 2025",
+    "© 2026",
+)
+
+# Lines that are pure UI noise (buttons, pagination, survey options)
+_NOISE_EXACT = frozenset({
+    "eur", "usd", "gbp", "chf",
+    "question image",
+    "neutral",
+    "molt d'acord", "d'acord", "poc d'acord", "gens d'acord",
+    "strongly agree", "agree", "disagree", "strongly disagree",
+    "muy de acuerdo", "de acuerdo", "en desacuerdo",
+})
+
+_NOISE_PATTERNS = [
+    re.compile(r"^\d+\s*fotos?\s*(més|more|más)?\s*$", re.IGNORECASE),
+    re.compile(
+        r"^(mostra|show|mostrar|ver)\s+(la\s+)?"
+        r"(disponibilitat|availability|disponibilidad)",
+        re.IGNORECASE,
+    ),
+    re.compile(r"^(reserva|book)\s+(ara|now|ahora)\s*$", re.IGNORECASE),
+    re.compile(
+        r"^(llegeix|read|lee|leer)\s+(tots?|all|todos)\s+"
+        r"(els?\s+)?(comentaris|reviews|comentarios)",
+        re.IGNORECASE,
+    ),
+    re.compile(r"^\d+\s*de\s*\d+\s*$"),  # "1 de 2" pagination
+    re.compile(r"^(desa|save|guardar)\s+(com a|as)\s+", re.IGNORECASE),
+    re.compile(r"^(fes una pregunta|ask a question|haz una pregunta)\s*$", re.IGNORECASE),
+]
+
+# Section headers that start blocks of irrelevant content
+_SKIP_SECTION_STARTS = (
+    "preguntes freqüents",
+    "frequently asked questions",
+    "preguntas frecuentes",
+    "el millor de",
+    "the best of",
+    "lo mejor de",
+    "com ho estem fent",
+    "how are we doing",
+    "clica aquí per veure",
+    "click here to see",
+    "haz clic aquí para ver",
+)
+
+
+def _is_noise(line: str) -> bool:
+    lower = line.lower().strip()
+    if lower in _NOISE_EXACT:
+        return True
+    return any(p.match(line) for p in _NOISE_PATTERNS)
+
+
+def sanitize_listing_text(raw_text: str, max_chars: int = 50000) -> str:
+    """
+    Sanitizes and optimizes raw pasted listing text for AI extraction.
+
+    1. Security: strips control chars, null bytes
+    2. Noise removal: UI buttons, footers, FAQ sections, nav menus
+    3. Deduplication: removes repeated lines
+    4. Link dump detection: removes long runs of short navigation lines
+    5. Caps output length
+    """
+    if not raw_text:
+        return ""
+
+    # Security sanitization first
+    text = sanitize_user_text(raw_text)
+
+    # Strip any leftover HTML tags
+    text = re.sub(r"<[^>]+>", " ", text)
+
+    lines = text.splitlines()
+
+    # --- Phase 1: Filter noise lines and global dedup ---
+    seen: set[str] = set()
+    cleaned: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if len(stripped) <= 2 and not stripped[0].isdigit():
+            continue
+        if stripped in seen:
+            continue
+        seen.add(stripped)
+        if _is_noise(stripped):
+            continue
+        cleaned.append(stripped)
+
+    # --- Phase 2: Truncate at footer markers ---
+    result: list[str] = []
+    for line in cleaned:
+        lower = line.lower()
+        if any(m in lower for m in _FOOTER_MARKERS):
+            break
+        result.append(line)
+
+    # --- Phase 3: Skip irrelevant sections ---
+    filtered: list[str] = []
+    skipping = False
+    for line in result:
+        lower = line.lower()
+        if any(lower.startswith(s) for s in _SKIP_SECTION_STARTS):
+            skipping = True
+            continue
+        # Exit skip mode on a substantial content line
+        if skipping and len(line) > 100:
+            skipping = False
+        if not skipping:
+            filtered.append(line)
+
+    # --- Phase 4: Remove link dumps (8+ consecutive short lines) ---
+    final: list[str] = []
+    short_run: list[str] = []
+    for line in filtered:
+        if len(line) < 35:
+            short_run.append(line)
+        else:
+            if len(short_run) < 8:
+                final.extend(short_run)
+            short_run = []
+            final.append(line)
+    if len(short_run) < 8:
+        final.extend(short_run)
+
+    output = "\n".join(final)
+    return output[:max_chars]

@@ -95,20 +95,20 @@ def check_data_consistency(listing_data: dict, google_data: dict) -> dict:
 def synthesize_simple_report(full_context: dict) -> dict:
     """Calls the FAST model for a straightforward final report."""
     prompt = load_prompt("synthesize_final_report_prompt")
-    prompt = prompt.replace("[LANGUAGE_CODE]", "en") 
+    prompt = prompt.replace("[LANGUAGE_CODE]", "es")
     context_str = json.dumps(full_context, indent=2)
     return _call_gemini(FAST_MODEL, [prompt, context_str])
 
 def synthesize_advanced_report(full_context: dict) -> dict:
     """Calls the ADVANCED model for a complex final report."""
     prompt = load_prompt("synthesize_final_report_prompt")
-    prompt = prompt.replace("[LANGUAGE_CODE]", "en") 
+    prompt = prompt.replace("[LANGUAGE_CODE]", "es")
     context_str = json.dumps(full_context, indent=2)
     return _call_gemini(ADVANCED_MODEL, [prompt, context_str])
 def extract_data_from_text(raw_text: str) -> dict:
     """Extracts structured data from a raw text paste of a listing."""
     prompt = load_prompt("data_extraction_prompt")
-    context = f"\n<user_data>\n{raw_text[:10000]}\n</user_data>"
+    context = f"\n<user_data>\n{raw_text}\n</user_data>"
 
     return _call_gemini(ADVANCED_MODEL, [prompt, context])
 

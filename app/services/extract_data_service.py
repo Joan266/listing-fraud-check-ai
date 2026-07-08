@@ -8,6 +8,7 @@ from app.schemas import RawExtractedData
 from app.services import gemini_analysis
 from app.services import data_formatter
 from app.utils.helpers import load_prompt
+from app.utils.text_sanitizer import sanitize_listing_text
 
 def extract_and_format_data(content: str) -> dict:
     """
@@ -17,8 +18,13 @@ def extract_and_format_data(content: str) -> dict:
     if not content:
         return {}
 
-    # 1. Call the AI to get the simple, raw data
-    raw_data_dict = gemini_analysis.extract_data_from_text(content)
+    # 1. Sanitize and optimize the text (security + noise removal)
+    clean_content = sanitize_listing_text(content)
+    if not clean_content:
+        return {}
+
+    # 2. Call the AI to get the simple, raw data
+    raw_data_dict = gemini_analysis.extract_data_from_text(clean_content)
     if "error" in raw_data_dict:
         raise HTTPException(status_code=500, detail=f"AI data extraction failed: {raw_data_dict['error']}")
     # 2. Validate and format the data
