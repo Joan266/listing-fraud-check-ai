@@ -134,3 +134,9 @@ ipython_config.py
 # Binarios descargados localmente
 cloud-sql-proxy
 tools/
+
+# Playwright screenshots (generated artifacts)
+frontend/screenshots/
+
+# TypeScript build info
+frontend/tsconfig.tsbuildinfo

@@ -45,7 +45,7 @@ const Sidebar: React.FC = () => {
 
       <button
         onClick={() => dispatch(toggleSidebar())}
-        className={`absolute -right-3 top-8 w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-lg border ${theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 border-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100 border-gray-300'
+        className={`absolute -right-3 top-8 w-6 h-6 rounded-full hidden md:flex items-center justify-center transition-colors shadow-lg border ${theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 border-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100 border-gray-300'
           }`}
       >
         {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
