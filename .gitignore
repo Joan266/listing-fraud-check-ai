@@ -133,3 +133,4 @@ ipython_config.py
 
 # Binarios descargados localmente
 cloud-sql-proxy
+tools/
