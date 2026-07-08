@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import BrandLogo from './BrandLogo';
 import { useAppSelector } from '../../hooks/redux';
 
 interface StepProgress {
@@ -9,21 +10,21 @@ interface StepProgress {
 }
 
 const JOB_LABELS: Record<string, string> = {
-  geocode: 'Address Verification',
-  place_details: 'Place Details',
-  neighborhood_analysis: 'Neighborhood Analysis',
-  reputation_check: 'Host Reputation',
-  description_plagiarism_check: 'Plagiarism Check',
-  description_analysis: 'Description Analysis',
-  communication_analysis: 'Communication Analysis',
-  listing_reviews_analysis: 'Reviews Analysis',
-  reverse_image_search: 'Reverse Image Search',
-  ai_image_detection: 'AI Image Detection',
-  price_sanity_check: 'Price Analysis',
-  host_profile_check: 'Host Profile',
-  online_presence_analysis: 'Online Presence',
-  url_forensics: 'URL Forensics',
-  catastro_check: 'Catastro Registry',
+  geocode: 'Verificación de dirección',
+  place_details: 'Detalles del lugar',
+  neighborhood_analysis: 'Análisis del barrio',
+  reputation_check: 'Reputación del anfitrión',
+  description_plagiarism_check: 'Detección de plagio',
+  description_analysis: 'Análisis de descripción',
+  communication_analysis: 'Análisis de comunicaciones',
+  listing_reviews_analysis: 'Análisis de reseñas',
+  reverse_image_search: 'Búsqueda inversa de imágenes',
+  ai_image_detection: 'Detección de imágenes IA',
+  price_sanity_check: 'Análisis de precio',
+  host_profile_check: 'Perfil del anfitrión',
+  online_presence_analysis: 'Presencia online',
+  url_forensics: 'Análisis forense de URL',
+  catastro_check: 'Registro del Catastro',
 };
 
 const ALL_JOBS = Object.keys(JOB_LABELS);
@@ -75,13 +76,13 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ checkId, ses
         <div className="text-center mb-8">
           <div className="w-20 h-20 mx-auto mb-4 relative flex items-center justify-center">
             <div className="absolute inset-0 border-2 border-yellow-400/30 rounded-full animate-ping" />
-            <ShieldCheck className="w-10 h-10 text-yellow-400" />
+            <BrandLogo size={40} />
           </div>
           <h2 className={`text-2xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-700'}`}>
-            {isDone ? 'Analysis Complete!' : 'Analyzing Your Listing...'}
+            {isDone ? '¡Análisis completado!' : 'Analizando tu anuncio...'}
           </h2>
           <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-            {completedSteps.length} of {ALL_JOBS.length} checks completed
+            {completedSteps.length} de {ALL_JOBS.length} verificaciones completadas
           </p>
         </div>
 
@@ -121,7 +122,7 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({ checkId, ses
                   {isError ? (
                     <AlertCircle size={16} className="text-red-400" />
                   ) : isSkipped ? (
-                    <span className="text-xs text-gray-400">SKIP</span>
+                    <span className="text-xs text-gray-400">OMITIDO</span>
                   ) : isCompleted ? (
                     <CheckCircle size={16} className="text-green-400" />
                   ) : (

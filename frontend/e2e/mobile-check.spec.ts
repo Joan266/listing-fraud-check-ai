@@ -32,7 +32,7 @@ test.describe('Mobile Sidebar Fix', () => {
     await page.goto('/');
     await page.waitForTimeout(1000);
     // Scroll down to form
-    await page.locator('text=Check a listing now').scrollIntoViewIfNeeded();
+    await page.locator('text=Verifica un anuncio ahora').scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
     await page.screenshot({ path: 'screenshots/13-mobile-form-section.png' });
   });

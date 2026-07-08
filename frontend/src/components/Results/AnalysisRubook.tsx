@@ -104,10 +104,10 @@ export const AnalysisRunbook: React.FC<AnalysisRunbookProps> = ({ steps, theme =
         <div className={`border rounded-xl shadow-sm transition-all duration-300 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
             <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                 <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Forensic Analysis Details
+                    Detalles del análisis forense
                 </h2>
                 <p className={`mt-2 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {steps.filter(s => s.status === 'COMPLETED').length} analysis steps completed
+                    {steps.filter(s => s.status === 'COMPLETED').length} pasos de análisis completados
                 </p>
             </div>
             

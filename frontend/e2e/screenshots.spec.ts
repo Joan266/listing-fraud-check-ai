@@ -29,7 +29,7 @@ test.describe('Visual Review Screenshots', () => {
     await page.goto('/');
     await page.waitForTimeout(1000);
     // Toggle to light mode
-    const themeBtn = page.locator('header button').first();
+    const themeBtn = page.locator('header button').last();
     await themeBtn.click();
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'screenshots/03-landing-light-full.png', fullPage: true });
@@ -38,7 +38,7 @@ test.describe('Visual Review Screenshots', () => {
   test('landing-light-viewport', async ({ page }) => {
     await page.goto('/');
     await page.waitForTimeout(1000);
-    const themeBtn = page.locator('header button').first();
+    const themeBtn = page.locator('header button').last();
     await themeBtn.click();
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'screenshots/04-landing-light-viewport.png' });
@@ -48,7 +48,7 @@ test.describe('Visual Review Screenshots', () => {
     await page.goto('/');
     await page.waitForTimeout(1000);
     // Switch to URL mode
-    const urlBtn = page.locator('button', { hasText: 'Paste URL' });
+    const urlBtn = page.locator('button', { hasText: 'Pegar URL' });
     await urlBtn.click();
     await page.waitForTimeout(300);
     // Scroll to form

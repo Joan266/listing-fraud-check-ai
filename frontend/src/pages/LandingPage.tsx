@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { setCurrentAnalysisId, setError } from '../store/appSlice';
 import { apiClient } from '../api/client';
 import {
-  Search, Link as LinkIcon, ShieldCheck, Type, ArrowDown,
+  Search, Link as LinkIcon, Type, ArrowDown,
   MapPin, BarChart3, AlertTriangle, Scan, Building2, Globe,
   ClipboardPaste, Cpu, FileCheck,
 } from 'lucide-react';
@@ -12,55 +12,56 @@ import { toast } from 'react-hot-toast';
 import { LoadingScreen } from '../components/UI/LoadingScreen';
 import { gsap } from 'gsap';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
+import BrandLogo from '../components/UI/BrandLogo';
 
 const FEATURES = [
   {
     icon: MapPin,
-    title: 'Address verification',
-    description: 'Cross-referenced against Catastro and Google Maps to confirm the property exists at the stated location.',
+    title: 'Verificación de dirección',
+    description: 'Cruzamos los datos con el Catastro y Google Maps para confirmar que la propiedad existe en la ubicación indicada.',
   },
   {
     icon: BarChart3,
-    title: 'Price analysis',
-    description: 'Compared to local market rates to catch suspiciously low prices designed to lure victims.',
+    title: 'Análisis de precio',
+    description: 'Comparado con precios de mercado de la zona para detectar precios sospechosamente bajos diseñados para atraer víctimas.',
   },
   {
     icon: AlertTriangle,
-    title: 'Scam pattern detection',
-    description: 'Matched against known fraud tactics, urgency pressure, and common red flags.',
+    title: 'Detección de patrones de estafa',
+    description: 'Comparado con tácticas de fraude conocidas, presión de urgencia y señales de alerta comunes.',
   },
   {
     icon: Scan,
-    title: 'Image forensics',
-    description: 'Reverse-searched and analyzed for stolen, duplicated, or AI-generated listing photos.',
+    title: 'Análisis forense de imágenes',
+    description: 'Búsqueda inversa y análisis para detectar fotos robadas, duplicadas o generadas por IA.',
   },
   {
     icon: Building2,
-    title: 'Neighborhood analysis',
-    description: 'Local context verified — nearby amenities, transport connections, and area reputation.',
+    title: 'Análisis del barrio',
+    description: 'Contexto local verificado: servicios cercanos, conexiones de transporte y reputación de la zona.',
   },
   {
     icon: Globe,
-    title: 'URL & host check',
-    description: 'Domain age, registration details, and host profile cross-verified for authenticity.',
+    title: 'Verificación de URL y anfitrión',
+    description: 'Antigüedad del dominio, datos de registro y perfil del anfitrión verificados para confirmar autenticidad.',
   },
 ];
 
 const STEPS = [
   {
     icon: ClipboardPaste,
-    title: 'Paste your listing',
-    description: 'Copy the text or drop a URL from any rental site.',
+    title: 'Pega tu anuncio',
+    description: 'Copia el texto o pega la URL de cualquier portal de alquiler.',
   },
   {
     icon: Cpu,
-    title: 'AI runs the checks',
-    description: 'Six verification layers analyze address, price, photos, host, area, and URL.',
+    title: 'La IA ejecuta las verificaciones',
+    description: 'Seis capas de verificación analizan dirección, precio, fotos, anfitrión, zona y URL.',
   },
   {
     icon: FileCheck,
-    title: 'Get your report',
-    description: 'A clear risk score with every red flag explained.',
+    title: 'Recibe tu informe',
+    description: 'Una puntuación de riesgo clara con cada señal de alerta explicada.',
   },
 ];
 
@@ -99,7 +100,7 @@ export const LandingPage: React.FC = () => {
           !Array.isArray(data) &&
           (data.address || data.description || data.listing_url)
         ) {
-          toast.success('Datos recibidos de la extension de Chrome');
+          toast.success('Datos recibidos de la extensión de Chrome');
           navigate('/review', { state: { extractedData: data } });
           return;
         }
@@ -130,7 +131,7 @@ export const LandingPage: React.FC = () => {
       if (inputMode === 'url') {
         const trimmedUrl = listingUrl.trim();
         if (!trimmedUrl) {
-          toast('Please enter a listing URL.');
+          toast('Introduce la URL de un anuncio.');
           setIsExtracting(false);
           return;
         }
@@ -139,7 +140,7 @@ export const LandingPage: React.FC = () => {
       } else {
         const cleanedListingText = listingText.trim().replace(/\s+/g, ' ');
         if (cleanedListingText.length < 100) {
-          toast('Please provide a listing with at least 100 characters.');
+          toast('El anuncio debe tener al menos 100 caracteres.');
           setIsExtracting(false);
           return;
         }
@@ -147,7 +148,7 @@ export const LandingPage: React.FC = () => {
         navigate('/review', { state: { extractedData } });
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to process listing.';
+      const errorMessage = error instanceof Error ? error.message : 'Error al procesar el anuncio.';
       dispatch(setError(errorMessage));
     } finally {
       setIsExtracting(false);
@@ -164,16 +165,16 @@ export const LandingPage: React.FC = () => {
       {/* Hero */}
       <section className="px-6 pt-16 pb-20 max-w-4xl mx-auto text-center" ref={heroRef} style={{ opacity: 0 }}>
         <div className="flex items-center justify-center gap-3 mb-8">
-          <ShieldCheck size={48} className="text-yellow-400" />
+          <BrandLogo size={48} />
           <span className={`font-display text-4xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Safe<span className="text-yellow-400">Lease</span>
+            Alqui<span className="text-yellow-400">Seguro</span>
           </span>
         </div>
 
         <h1 className={`font-display text-5xl md:text-6xl font-bold leading-tight mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          Check{' '}
+          Verifica{' '}
           <span className="relative inline-block">
-            <span className="relative z-10">before you sign</span>
+            <span className="relative z-10">antes de firmar</span>
             <span
               ref={highlightRef}
               className="absolute bottom-1 left-0 w-full h-3 bg-yellow-400/50 rounded-sm origin-left scale-x-0"
@@ -182,23 +183,23 @@ export const LandingPage: React.FC = () => {
         </h1>
 
         <p className={`font-body text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-8 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          Paste any rental listing — our AI cross-references the address, price, photos,
-          and host against public records and known scam patterns.
+          Pega cualquier anuncio de alquiler — nuestra IA cruza la dirección, precio, fotos
+          y anfitrión con registros públicos y patrones de estafa conocidos.
         </p>
 
         <div className={`flex items-center justify-center gap-6 text-sm font-body mb-10 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-          <span>Free</span>
+          <span>Gratis</span>
           <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-gray-600' : 'bg-gray-300'}`} />
-          <span>No sign-up</span>
+          <span>Sin registro</span>
           <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-gray-600' : 'bg-gray-300'}`} />
-          <span>Results in minutes</span>
+          <span>Resultados en minutos</span>
         </div>
 
         <button
           onClick={scrollToForm}
           className="inline-flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-display font-semibold px-8 py-3.5 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
         >
-          Check a listing
+          Verificar anuncio
           <ArrowDown size={18} />
         </button>
       </section>
@@ -211,7 +212,7 @@ export const LandingPage: React.FC = () => {
       {/* How it works */}
       <section className="px-6 py-20 max-w-4xl mx-auto" ref={stepsRef} style={{ opacity: 0 }}>
         <p className={`font-display text-sm font-semibold tracking-widest uppercase text-center mb-12 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-          How it works
+          Cómo funciona
         </p>
         <div className="grid md:grid-cols-3 gap-10">
           {STEPS.map((step, i) => (
@@ -234,7 +235,7 @@ export const LandingPage: React.FC = () => {
       <section className={`px-6 py-20 ${isDark ? 'bg-gray-800/30' : 'bg-white/60'}`} ref={featuresRef} style={{ opacity: 0 }}>
         <div className="max-w-4xl mx-auto">
           <p className={`font-display text-sm font-semibold tracking-widest uppercase text-center mb-12 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-            Six verification layers
+            Seis capas de verificación
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {FEATURES.map((feature, i) => (
@@ -262,7 +263,7 @@ export const LandingPage: React.FC = () => {
       {/* Form */}
       <section ref={formSectionRef} className="px-6 py-20 max-w-3xl mx-auto" style={{ opacity: 0 }}>
         <h2 className={`font-display text-2xl font-bold text-center mb-8 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          Check a listing now
+          Verifica un anuncio ahora
         </h2>
 
         <form ref={formRef} onSubmit={handleSubmit}>
@@ -278,7 +279,7 @@ export const LandingPage: React.FC = () => {
                 }`}
               >
                 <Type size={16} />
-                <span>Paste Text</span>
+                <span>Pegar texto</span>
               </button>
               <button
                 type="button"
@@ -290,7 +291,7 @@ export const LandingPage: React.FC = () => {
                 }`}
               >
                 <LinkIcon size={16} />
-                <span>Paste URL</span>
+                <span>Pegar URL</span>
               </button>
             </div>
           </div>
@@ -299,7 +300,7 @@ export const LandingPage: React.FC = () => {
             <textarea
               value={listingText}
               onChange={(e) => setListingText(e.target.value)}
-              placeholder="Paste your rental listing here. Tip: Ctrl+A to select all, Ctrl+C to copy, Ctrl+V to paste."
+              placeholder="Pega aquí el texto del anuncio de alquiler. Consejo: Ctrl+A para seleccionar todo, Ctrl+C para copiar, Ctrl+V para pegar."
               className={`w-full h-48 p-4 border rounded-lg resize-none font-body focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all ${
                 isDark
                   ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
@@ -311,7 +312,7 @@ export const LandingPage: React.FC = () => {
               type="url"
               value={listingUrl}
               onChange={(e) => setListingUrl(e.target.value)}
-              placeholder="https://www.airbnb.com/rooms/12345678 or any rental listing URL"
+              placeholder="https://www.idealista.com/inmueble/12345678 o cualquier URL de anuncio"
               className={`w-full p-4 border rounded-lg font-body focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all ${
                 isDark
                   ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
@@ -328,12 +329,12 @@ export const LandingPage: React.FC = () => {
             {isExtracting ? (
               <>
                 <LoadingSpinner size="sm" color="text-gray-900" />
-                <span>{inputMode === 'url' ? 'Scraping & Extracting...' : 'Extracting data...'}</span>
+                <span>{inputMode === 'url' ? 'Extrayendo datos de la URL...' : 'Extrayendo datos...'}</span>
               </>
             ) : (
               <>
                 <Search size={20} />
-                <span>Check My Listing</span>
+                <span>Verificar mi anuncio</span>
               </>
             )}
           </button>
@@ -345,7 +346,7 @@ export const LandingPage: React.FC = () => {
               to="/review"
               className={`font-body text-sm hover:text-yellow-400 transition-colors ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
             >
-              or skip and fill the form manually
+              o salta y rellena el formulario manualmente
             </Link>
           </div>
         )}
@@ -355,11 +356,11 @@ export const LandingPage: React.FC = () => {
       <footer className={`px-6 py-8 border-t ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-yellow-400" />
-            <span className={`font-display text-sm font-semibold ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>SafeLease</span>
+            <BrandLogo size={16} />
+            <span className={`font-display text-sm font-semibold ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>AlquiSeguro</span>
           </div>
           <p className={`font-body text-xs ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-            AI-powered rental fraud detection
+            Detección de fraude en alquileres con IA
           </p>
         </div>
       </footer>

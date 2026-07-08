@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
-import { ShieldCheck, Eye, UserCheck } from 'lucide-react';
+import { Eye, UserCheck } from 'lucide-react';
+import BrandLogo from './BrandLogo';
 import { useAppSelector } from '../../hooks/redux';
 
 // --- Sub-component for the Progress Bar ---
@@ -38,10 +39,10 @@ export const LoadingScreen: React.FC = () => {
 
 
   const tips = [
-    'Always verify the property owner\'s identity before making any payments.',
-    'Never pay a security deposit using instant cash transfer services.',
-    'Trust your gut. If a deal seems too good to be true, it probably is.',
-    'Schedule a live video call to tour the property and meet the host.'
+    'Verifica siempre la identidad del propietario antes de realizar cualquier pago.',
+    'Nunca pagues una fianza mediante transferencias instantáneas de efectivo.',
+    'Confía en tu instinto. Si una oferta parece demasiado buena para ser real, probablemente lo sea.',
+    'Programa una videollamada para ver la propiedad y conocer al anfitrión.'
   ];
 
   useEffect(() => {
@@ -80,15 +81,15 @@ export const LoadingScreen: React.FC = () => {
         <div className="w-24 h-24 mx-auto mb-6 relative flex items-center justify-center">
           <div className="absolute inset-0 border-2 border-yellow-400/30 rounded-full animate-ping"></div>
           <div className="absolute inset-2 border-2 border-yellow-400/50 rounded-full animate-pulse"></div>
-          <ShieldCheck className="w-12 h-12 text-yellow-400" />
+          <BrandLogo size={48} />
         </div>
 
-        <h2 className={`text-3xl mb-10 font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-700'} mb-3`}>{loadingMessage ? loadingMessage :"Loading..."}</h2>
+        <h2 className={`text-3xl mb-10 font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-700'} mb-3`}>{loadingMessage ? loadingMessage : "Cargando..."}</h2>
 
         <ProgressBar progress={progress} theme={theme} />
         
         <div className="mt-12 text-center h-16">
-            <p className="text-sm font-semibold text-yellow-400 mb-2">PRO TIP</p>
+            <p className="text-sm font-semibold text-yellow-400 mb-2">CONSEJO</p>
             <p className={`italic ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                 "{tip}"
             </p>

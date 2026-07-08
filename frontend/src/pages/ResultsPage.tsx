@@ -84,7 +84,7 @@ const ResultsPage: React.FC = () => {
       setChatMessages(prev => [...prev, aiMessage]);
 
     } catch (err) {
-      toast.error("Failed to send message.");
+      toast.error("Error al enviar el mensaje.");
     } finally {
       setIsSending(false);
     }
@@ -121,7 +121,7 @@ const ResultsPage: React.FC = () => {
             <div className="flex items-center space-x-3">
               <Shield size={28} className="text-yellow-400" />
               <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Analysis Results
+                Resultados del análisis
               </h1>
             </div>
             <div className="flex space-x-3">
@@ -130,7 +130,7 @@ const ResultsPage: React.FC = () => {
                 className={`px-4 py-2 border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg transition-colors flex items-center space-x-2`}
               >
                 <RotateCcw size={16} />
-                <span>Rerun Analysis</span>
+                <span>Repetir análisis</span>
               </button>
             </div>
           </div>
@@ -142,15 +142,15 @@ const ResultsPage: React.FC = () => {
             {report && (
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Overall Assessment
+                Evaluación general
               </h2>
               <div className="flex flex-wrap justify-center gap-x-12 gap-y-6 mb-6">
-                <ScoreGauge score={report.authenticity_score} title="Authenticity Score" theme={theme} />
-                <ScoreGauge score={report.quality_score} title="Quality Score" theme={theme} />
+                <ScoreGauge score={report.authenticity_score} title="Autenticidad" theme={theme} />
+                <ScoreGauge score={report.quality_score} title="Calidad" theme={theme} />
               </div>
               <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
                 <h3 className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Summary
+                  Resumen
                 </h3>
                 <p className={`${theme === 'dark' ? 'text-gray-100' : 'text-gray-700'}`}>
                   {report.sidebar_summary}
@@ -164,7 +164,7 @@ const ResultsPage: React.FC = () => {
               <div className="flex items-center space-x-2 mb-4">
                 <MapPin size={20} className="text-yellow-400" />
                 <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Location Verification
+                  Verificación de ubicación
                 </h2>
               </div>
               <MapComponent
@@ -184,7 +184,7 @@ const ResultsPage: React.FC = () => {
             {report && (
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Recommended Actions
+                Acciones recomendadas
               </h2>
               <div className="space-y-3">
                 {report.suggested_actions.map((action: string, index: number) => (
@@ -203,7 +203,7 @@ const ResultsPage: React.FC = () => {
             {report && (
             <div className={`${theme === 'dark' ? 'text-gray-300 bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Detailed Explanation
+                Explicación detallada
               </h2>
               <p>
                 {report.explanation}
@@ -224,11 +224,11 @@ const ResultsPage: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <MessageCircle size={20} className="text-yellow-400" />
                   <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Ask Questions
+                    Haz preguntas
                   </h2>
                 </div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Get detailed explanations about the analysis
+                  Obtén explicaciones detalladas sobre el análisis
                 </p>
               </div>
               {/* Chat Messages */}
@@ -267,7 +267,7 @@ const ResultsPage: React.FC = () => {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !isSending && handleSendMessage()}
-                    placeholder="Ask about the analysis..."
+                    placeholder="Pregunta sobre el análisis..."
                     className={`flex-1 p-2 border rounded-lg text-sm ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
@@ -279,7 +279,7 @@ const ResultsPage: React.FC = () => {
                     disabled={!newMessage.trim() || isSending}
                     className="px-3 py-2 bg-yellow-400 hover:bg-yellow-500 disabled:bg-gray-400 disabled:cursor-not-allowed text-gray-900 rounded-lg transition-colors text-sm font-medium"
                   >
-                    Send
+                    Enviar
                   </button>
                 </div>
               </div>

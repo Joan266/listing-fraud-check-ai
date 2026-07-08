@@ -25,28 +25,28 @@ const MapControls: React.FC<MapControlsProps> = ({
     const baseConfig = {
       parks: {
         icon: Trees,
-        label: 'Parks',
+        label: 'Parques',
         activeColor: theme === 'dark' ? 'text-green-400' : 'text-green-600',
         activeBg: theme === 'dark' ? 'bg-green-900/20' : 'bg-green-50',
         activeBorder: theme === 'dark' ? 'border-green-600' : 'border-green-200',
       },
       restaurants: {
         icon: Utensils,
-        label: 'Restaurants',
+        label: 'Restaurantes',
         activeColor: theme === 'dark' ? 'text-orange-400' : 'text-orange-600',
         activeBg: theme === 'dark' ? 'bg-orange-900/20' : 'bg-orange-50',
         activeBorder: theme === 'dark' ? 'border-orange-600' : 'border-orange-200',
       },
       supermarkets: {
         icon: ShoppingCart,
-        label: 'Supermarkets',
+        label: 'Supermercados',
         activeColor: theme === 'dark' ? 'text-blue-400' : 'text-blue-600',
         activeBg: theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-50',
         activeBorder: theme === 'dark' ? 'border-blue-600' : 'border-blue-200',
       },
       transit_stations: {
         icon: Train,
-        label: 'Transit',
+        label: 'Transporte',
         activeColor: theme === 'dark' ? 'text-purple-400' : 'text-purple-600',
         activeBg: theme === 'dark' ? 'bg-purple-900/20' : 'bg-purple-50',
         activeBorder: theme === 'dark' ? 'border-purple-600' : 'border-purple-200',
@@ -68,7 +68,7 @@ const MapControls: React.FC<MapControlsProps> = ({
               }`}
           >
             <Map className="w-4 h-4" />
-            Map
+            Mapa
           </button>
           <button
             onClick={() => onMapTypeChange('satellite')}
@@ -78,14 +78,14 @@ const MapControls: React.FC<MapControlsProps> = ({
               }`}
           >
             <Satellite className="w-4 h-4" />
-            Satellite
+            Satélite
           </button>
         </div>
       </div>
 
       {/* Location Filters */}
       <div className="space-y-2">
-        <h3 className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Show Locations</h3>
+        <h3 className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Mostrar ubicaciones</h3>
         <div className="grid grid-cols-4 gap-2">
           {(Object.keys(filters) as LocationType[]).map((type) => {
             const config = getLocationConfig(type);

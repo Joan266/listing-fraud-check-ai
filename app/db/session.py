@@ -40,24 +40,31 @@ def _to_async_url(url: str) -> str:
 
 
 _is_postgres = settings.DATABASE_URL.startswith(("postgresql://", "postgres://"))
+_is_sqlite = settings.DATABASE_URL.startswith("sqlite")
 
 if _is_postgres:
+    _async_url = _to_async_url(settings.DATABASE_URL)
     async_engine = create_async_engine(
-        _to_async_url(settings.DATABASE_URL),
+        _async_url,
         pool_size=settings.DB_POOL_SIZE,
         max_overflow=settings.DB_MAX_OVERFLOW,
     )
-    AsyncSessionLocal = async_sessionmaker(
-        async_engine, class_=AsyncSession, expire_on_commit=False
-    )
+elif _is_sqlite:
+    _async_url = settings.DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
+    async_engine = create_async_engine(_async_url)
 else:
     async_engine = None
-    AsyncSessionLocal = None
+
+AsyncSessionLocal = (
+    async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
+    if async_engine
+    else None
+)
 
 
 async def async_get_db():
     """Async DB dependency for FastAPI endpoints."""
     if AsyncSessionLocal is None:
-        raise RuntimeError("Async DB not available — requires PostgreSQL + asyncpg.")
+        raise RuntimeError("Async DB not available — unsupported DATABASE_URL scheme.")
     async with AsyncSessionLocal() as session:
         yield session

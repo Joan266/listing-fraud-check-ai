@@ -47,7 +47,7 @@ export const FlagsCard: React.FC<FlagsCardProps> = ({ flags }) => {
   return (
     <div className={`border rounded-lg p-6 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
       <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Key Findings
+        Hallazgos clave
       </h2>
       <div className="space-y-4">
         {flags.map((flag, index) => {

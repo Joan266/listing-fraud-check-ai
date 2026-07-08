@@ -14,10 +14,10 @@ const ScoreGauge: React.FC<ScoreGaugeProps> = ({ score, title, theme }) => {
   };
 
   const getScoreText = (score: number) => {
-    if (score >= 80) return 'Excellent';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Fair';
-    return 'Poor';
+    if (score >= 80) return 'Excelente';
+    if (score >= 60) return 'Bueno';
+    if (score >= 40) return 'Regular';
+    return 'Deficiente';
   };
 
   const circumference = 2 * Math.PI * 40;

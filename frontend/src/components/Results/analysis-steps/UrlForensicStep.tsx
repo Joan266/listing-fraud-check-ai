@@ -71,7 +71,7 @@ const UrlForensicsStep: React.FC<UrlForensicsStepProps> = ({ inputs_used, result
     return (
       <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
         <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-          No URL provided for analysis
+          No se proporcionó URL para el análisis
         </p>
       </div>
     );
@@ -82,12 +82,12 @@ const UrlForensicsStep: React.FC<UrlForensicsStepProps> = ({ inputs_used, result
       {/* URL Preview */}
       <div>
         <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Analyzed URL
+          URL analizada
         </h4>
         <UrlPreview
           url={inputs_used.listing_url}
-          title={`Listing on ${getDomainFromUrl(inputs_used.listing_url)}`}
-          description="Airbnb property listing under forensic analysis"
+          title={`Anuncio en ${getDomainFromUrl(inputs_used.listing_url)}`}
+          description="Anuncio de alquiler bajo análisis forense"
           theme={theme}
         />
       </div>
@@ -95,7 +95,7 @@ const UrlForensicsStep: React.FC<UrlForensicsStepProps> = ({ inputs_used, result
       {/* Forensics Results */}
       <div>
         <h4 className={`font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Security Analysis Results
+          Resultados del análisis de seguridad
         </h4>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -104,7 +104,7 @@ const UrlForensicsStep: React.FC<UrlForensicsStepProps> = ({ inputs_used, result
             <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="flex items-center gap-3 mb-2">
                 <Clock className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Domain Age</span>
+                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Antigüedad del dominio</span>
                 {getStatusIcon(domainAge.status)}
               </div>
               <div className="flex items-center justify-between">
@@ -113,7 +113,7 @@ const UrlForensicsStep: React.FC<UrlForensicsStepProps> = ({ inputs_used, result
                 </span>
               </div>
               <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {domainAge.status ? 'Established domain' : 'New domain'}
+                {domainAge.status ? 'Dominio establecido' : 'Dominio nuevo'}
               </p>
             </div>
           )}
@@ -123,16 +123,16 @@ const UrlForensicsStep: React.FC<UrlForensicsStepProps> = ({ inputs_used, result
             <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="flex items-center gap-3 mb-2">
                 <Shield className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Blacklist Status</span>
+                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Lista negra</span>
                 {getStatusIcon(blacklistCheck.clean)}
               </div>
               <div className="flex items-center justify-between">
                 <span className={`text-lg font-semibold ${blacklistCheck.clean ? 'text-green-500' : 'text-red-500'}`}>
-                  {blacklistCheck.clean ? 'Clean' : 'Listed'}
+                  {blacklistCheck.clean ? 'Limpio' : 'Listado'}
                 </span>
               </div>
               <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {blacklistCheck.clean ? 'Not on security blacklists' : 'Found on blacklists'}
+                {blacklistCheck.clean ? 'No aparece en listas negras' : 'Encontrado en listas negras'}
               </p>
             </div>
           )}
@@ -142,17 +142,17 @@ const UrlForensicsStep: React.FC<UrlForensicsStepProps> = ({ inputs_used, result
             <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="flex items-center gap-3 mb-2">
                 <Archive className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Archive History</span>
+                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Historial de archivo</span>
 
                 {getStatusIcon(archiveCheck.found)}
               </div>
               <div className="flex items-center justify-between">
                 <span className={`text-lg font-semibold ${archiveCheck.found ? 'text-green-500' : 'text-yellow-500'}`}>
-                  {archiveCheck.found ? 'Found' : 'Not Found'}
+                  {archiveCheck.found ? 'Encontrado' : 'No encontrado'}
                 </span>
               </div>
               <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {archiveCheck.consistent ? 'Consistent history' : 'Inconsistent data'}
+                {archiveCheck.consistent ? 'Historial consistente' : 'Datos inconsistentes'}
               </p>
             </div>
           )}

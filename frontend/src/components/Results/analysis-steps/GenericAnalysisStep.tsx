@@ -89,7 +89,7 @@ const GenericAnalysisStep: React.FC<GenericAnalysisStepProps> = ({
     Object.entries(data).forEach(([key, value]) => {
       // Skip very large objects or arrays
       if (Array.isArray(value) && value.length > 10) {
-        relevant[key] = `${value.length} items`;
+        relevant[key] = `${value.length} elementos`;
       } else if (typeof value === 'object' && value !== null) {
         const keys = Object.keys(value);
         if (keys.length > 5) {
@@ -102,7 +102,7 @@ const GenericAnalysisStep: React.FC<GenericAnalysisStepProps> = ({
               filtered[metric] = valueRecord[metric];
             }
           });
-          relevant[key] = Object.keys(filtered).length > 0 ? filtered : `${keys.length} properties`;
+          relevant[key] = Object.keys(filtered).length > 0 ? filtered : `${keys.length} propiedades`;
         } else {
           relevant[key] = value;
         }
@@ -149,7 +149,7 @@ const GenericAnalysisStep: React.FC<GenericAnalysisStepProps> = ({
       {urlPreviews.length > 0 && (
         <div>
           <h5 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            URLs Analyzed
+            URLs analizadas
           </h5>
           <UrlCarousel urls={urlPreviews} theme={theme} />
         </div>
@@ -159,7 +159,7 @@ const GenericAnalysisStep: React.FC<GenericAnalysisStepProps> = ({
       {imageItems.length > 0 && (
         <div>
           <h5 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Images Analyzed
+            Imágenes analizadas
           </h5>
           <ImageCarousel images={imageItems} theme={theme} />
         </div>
@@ -169,7 +169,7 @@ const GenericAnalysisStep: React.FC<GenericAnalysisStepProps> = ({
       {Object.keys(relevantResult).length > 0 && (
         <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <h5 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Analysis Results
+            Resultados del análisis
           </h5>
           <div className="space-y-3">
             {Object.entries(relevantResult).map(([key, value]) => (
@@ -192,7 +192,7 @@ const GenericAnalysisStep: React.FC<GenericAnalysisStepProps> = ({
       {Object.keys(relevantInputs).length > 0 && (
         <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <h5 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Input Parameters
+            Parámetros de entrada
           </h5>
           <div className="space-y-2">
             {Object.entries(relevantInputs).map(([key, value]) => (

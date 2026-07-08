@@ -41,12 +41,12 @@ export const startAnalysisAsync = createAsyncThunk(
   'app/startAnalysis',
   async (extractedData: ExtractedData, { getState, dispatch }) => {
     const { sessionId, sessionHistory } = (getState() as RootState).app;
-    if (!sessionId) throw new Error('Session ID is missing.');
+    if (!sessionId) throw new Error('Falta el ID de sesión.');
 
     const response = await apiClient.startAnalysis(sessionId, extractedData);
     const existingAnalysis = sessionHistory.find(a => a.id === response.job_id);
     if (existingAnalysis && (existingAnalysis.status === 'COMPLETED' || existingAnalysis.status === 'FAILED')) {
-      dispatch(setError("This analysis has already been completed."))
+      dispatch(setError("Este análisis ya se ha completado."))
     }
     const pendingAnalysis: Analysis = {
       id: response.job_id,
@@ -95,7 +95,7 @@ export const sendChatMessageAsync = createAsyncThunk(
   'app/sendChatMessage',
   async ({ analysisId, chatId, message }: { analysisId: string, chatId: string; message: string }, { getState }) => {
     const { sessionId } = (getState() as RootState).app;
-    if (!sessionId || !chatId) throw new Error("Missing session ID.");
+    if (!sessionId || !chatId) throw new Error("Falta el ID de sesión.");
 
     const response = await apiClient.sendChatMessage(chatId, sessionId, message);
     return { aiMessage: response.response, analysisId };
@@ -161,7 +161,7 @@ const appSlice = createSlice({
       })
       .addCase(startAnalysisAsync.pending, (state) => {
         state.isLoading = true;
-        state.loadingMessage = 'Running full analysis...';
+        state.loadingMessage = 'Ejecutando análisis completo...';
       })
       .addCase(startAnalysisAsync.fulfilled, (state, action: PayloadAction<Analysis>) => {
         const returnedAnalysis = action.payload;
@@ -173,7 +173,7 @@ const appSlice = createSlice({
       })
       .addCase(startAnalysisAsync.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.error.message || 'Failed to start analysis.';
+        state.error = action.error.message || 'Error al iniciar el análisis.';
       })
       .addCase(pollAnalysisStatus.fulfilled, (state, action: PayloadAction<Analysis>) => {
         const index = state.sessionHistory.findIndex(a => a.id === action.payload.id);
@@ -186,7 +186,7 @@ const appSlice = createSlice({
       })
       .addCase(pollAnalysisStatus.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.error.message || 'Analysis polling failed.';
+        state.error = action.error.message || 'Error en la consulta del análisis.';
         // Find the analysis in history and mark it as FAILED
         const analysisId = action.meta.arg;
         const index = state.sessionHistory.findIndex(a => a.id === analysisId);

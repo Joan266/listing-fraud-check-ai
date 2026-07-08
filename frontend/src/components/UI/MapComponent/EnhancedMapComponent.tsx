@@ -93,7 +93,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ address, theme, onLocationC
   };
 
   if (!apiKey) {
-    return <div>Error: Google Maps API key is missing.</div>;
+    return <div>Error: Falta la clave de API de Google Maps.</div>;
   }
 
   const { isLoaded } = useJsApiLoader({
@@ -207,7 +207,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ address, theme, onLocationC
 
           </GoogleMap>
         ) : (
-          <div>Loading Map...</div>
+          <div>Cargando mapa...</div>
         )}
 
       </div>

@@ -62,13 +62,13 @@ const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, resu
     if (weekMatch) return `${weekMatch[1]} week${weekMatch[1] !== '1' ? 's' : ''}`;
     if (dayMatch) return `${dayMatch[1]} day${dayMatch[1] !== '1' ? 's' : ''}`;
     if (nightMatch) return `${nightMatch[1]} night${nightMatch[1] !== '1' ? 's' : ''}`;
-    return 'Stay duration';
+    return 'Duración de la estancia';
   };
 
   // Extract guests from price_details
   const extractGuests = (priceDetails: string) => {
     const match = priceDetails.match(/(\d+)\s*adult/i);
-    return match ? `${match[1]} adults` : 'Guests';
+    return match ? `${match[1]} adultos` : 'Huéspedes';
   };
 
   // Extract accommodation type from price_details
@@ -78,7 +78,7 @@ const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, resu
     
     if (suiteMatch) return `${suiteMatch[1]} suite${suiteMatch[1] !== '1' ? 's' : ''}`;
     if (roomMatch) return `${roomMatch[1]} room${roomMatch[1] !== '1' ? 's' : ''}`;
-    return inputs_used.property_type || 'Accommodation';
+    return inputs_used.property_type || 'Alojamiento';
   };
 
   // Truncate description for display
@@ -97,10 +97,10 @@ const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, resu
           </div>
           <div>
             <h4 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {inputs_used.price_details ? extractPrice(inputs_used.price_details) : 'Price not available'}
+              {inputs_used.price_details ? extractPrice(inputs_used.price_details) : 'Precio no disponible'}
             </h4>
             <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              {inputs_used.price_details ? extractDuration(inputs_used.price_details) : 'Duration not specified'}
+              {inputs_used.price_details ? extractDuration(inputs_used.price_details) : 'Duración no especificada'}
             </p>
           </div>
         </div>
@@ -112,7 +112,7 @@ const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, resu
             <div className="flex items-center gap-2 mb-2">
               <Home className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
               <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Property
+                Propiedad
               </span>
             </div>
             <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -125,7 +125,7 @@ const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, resu
             <div className="flex items-center gap-2 mb-2">
               <Users className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
               <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Guests
+                Huéspedes
               </span>
             </div>
             <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -138,7 +138,7 @@ const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, resu
             <div className="flex items-center gap-2 mb-2">
               <Calendar className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
               <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Duration
+                Duración
               </span>
             </div>
             <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -151,11 +151,11 @@ const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, resu
             <div className="flex items-center gap-2 mb-2">
               <MapPin className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
               <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Location
+                Ubicación
               </span>
             </div>
             <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} line-clamp-2`}>
-              {inputs_used.address ? inputs_used.address.split(',')[0] : 'Location not specified'}
+              {inputs_used.address ? inputs_used.address.split(',')[0] : 'Ubicación no especificada'}
             </p>
           </div>
         </div>
@@ -166,7 +166,7 @@ const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, resu
             {getVerdictIcon(result.verdict || 'unknown')}
             <div>
               <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Price Analysis
+                Análisis de precio
               </span>
               <p className={`text-lg font-semibold ${getVerdictColor(result.verdict || 'unknown')}`}>
                 {result.verdict || 'Unknown'}
@@ -185,7 +185,7 @@ const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, resu
       {inputs_used.description && (
         <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <h5 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Property Description
+            Descripción de la propiedad
           </h5>
           <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} leading-relaxed`}>
             {truncateDescription(inputs_used.description)}
@@ -200,7 +200,7 @@ const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, resu
             <MapPin className={`w-5 h-5 mt-0.5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
             <div>
               <h5 className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Full Address
+                Dirección completa
               </h5>
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                 {inputs_used.address}

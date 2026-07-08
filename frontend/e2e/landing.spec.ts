@@ -6,30 +6,30 @@ test.describe('Landing Page', () => {
   });
 
   test('displays brand name and hero', async ({ page }) => {
-    await expect(page.getByText('SafeLease').first()).toBeVisible();
-    const heroHeading = page.getByRole('heading', { name: 'Check before you sign' });
+    await expect(page.getByText('AlquiSeguro').first()).toBeVisible();
+    const heroHeading = page.getByRole('heading', { name: 'Verifica antes de firmar' });
     await expect(heroHeading).toBeVisible();
   });
 
   test('shows how-it-works section', async ({ page }) => {
-    await expect(page.locator('text=How it works')).toBeVisible();
-    await expect(page.locator('text=Paste your listing')).toBeVisible();
-    await expect(page.locator('text=AI runs the checks')).toBeVisible();
-    await expect(page.locator('text=Get your report')).toBeVisible();
+    await expect(page.locator('text=Cómo funciona')).toBeVisible();
+    await expect(page.locator('text=Pega tu anuncio')).toBeVisible();
+    await expect(page.locator('text=La IA ejecuta las verificaciones')).toBeVisible();
+    await expect(page.locator('text=Recibe tu informe')).toBeVisible();
   });
 
   test('shows features grid', async ({ page }) => {
-    await expect(page.getByText('Six verification layers', { exact: true })).toBeVisible();
-    await expect(page.getByText('Address verification')).toBeVisible();
-    await expect(page.getByText('Price analysis')).toBeVisible();
-    await expect(page.getByText('Scam pattern detection')).toBeVisible();
-    await expect(page.getByText('Image forensics')).toBeVisible();
-    await expect(page.getByText('Neighborhood analysis').first()).toBeVisible();
+    await expect(page.getByText('Seis capas de verificación', { exact: true })).toBeVisible();
+    await expect(page.getByText('Verificación de dirección')).toBeVisible();
+    await expect(page.getByText('Análisis de precio')).toBeVisible();
+    await expect(page.getByText('Detección de patrones de estafa')).toBeVisible();
+    await expect(page.getByText('Análisis forense de imágenes')).toBeVisible();
+    await expect(page.getByText('Análisis del barrio').first()).toBeVisible();
   });
 
   test('has text/url input toggle', async ({ page }) => {
-    const textBtn = page.locator('button', { hasText: 'Paste Text' });
-    const urlBtn = page.locator('button', { hasText: 'Paste URL' });
+    const textBtn = page.locator('button', { hasText: 'Pegar texto' });
+    const urlBtn = page.locator('button', { hasText: 'Pegar URL' });
 
     await expect(textBtn).toBeVisible();
     await expect(urlBtn).toBeVisible();
@@ -61,11 +61,11 @@ test.describe('Landing Page', () => {
   });
 
   test('hero CTA scrolls to form', async ({ page }) => {
-    const ctaBtn = page.locator('button', { hasText: 'Check a listing' });
+    const ctaBtn = page.locator('button', { hasText: 'Verificar anuncio' });
     await ctaBtn.click();
 
     // The form section should be scrolled into view
-    const formHeading = page.locator('h2', { hasText: 'Check a listing now' });
+    const formHeading = page.locator('h2', { hasText: 'Verifica un anuncio ahora' });
     await expect(formHeading).toBeInViewport();
   });
 
@@ -73,11 +73,11 @@ test.describe('Landing Page', () => {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     const footer = page.locator('footer');
     await expect(footer).toBeVisible();
-    await expect(footer.locator('text=SafeLease')).toBeVisible();
+    await expect(footer.locator('text=AlquiSeguro')).toBeVisible();
   });
 
   test('"skip and fill manually" link navigates to /review', async ({ page }) => {
-    const skipLink = page.locator('a', { hasText: 'skip and fill the form manually' });
+    const skipLink = page.locator('a', { hasText: 'salta y rellena el formulario manualmente' });
     await expect(skipLink).toBeVisible();
     await skipLink.click();
     await expect(page).toHaveURL(/\/review/);

@@ -61,9 +61,8 @@ const ReviewPage: React.FC = () => {
     const trimmedUrl = newImageUrl.trim();
     const currentUrls = editableData.image_urls || [];
 
-    // 3. Limit the number of image URLs
     if (currentUrls.length >= MAX_IMAGE_URLS) {
-      toast.error(`You can add a maximum of ${MAX_IMAGE_URLS} images.`);
+      toast.error(`Puedes añadir un máximo de ${MAX_IMAGE_URLS} imágenes.`);
       return;
     }
 
@@ -86,7 +85,7 @@ const ReviewPage: React.FC = () => {
   const handleSubmit = async () => {
     const isDataSufficient = editableData.address && editableData.description && editableData.price_details;
     if (!isDataSufficient) {
-      toast.error("Please provide at least an address, description, and price for a better analysis.");
+      toast.error("Proporciona al menos una dirección, descripción y precio para un mejor análisis.");
       return;
     }
     setIsStartingAnalysis(true);
@@ -94,7 +93,7 @@ const ReviewPage: React.FC = () => {
       const newAnalysis = await dispatch(startAnalysisAsync(editableData)).unwrap();
       navigate(`/results/${newAnalysis.id}`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to start analysis.';
+      const errorMessage = error instanceof Error ? error.message : 'Error al iniciar el análisis.';
       toast.error(errorMessage);
     } finally {
       setIsStartingAnalysis(false);
@@ -114,11 +113,11 @@ const ReviewPage: React.FC = () => {
           <div className="flex items-center space-x-3 mb-4">
             <Edit3 size={28} className="text-yellow-400" />
             <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Review & Edit Details
+              Revisar y editar datos
             </h1>
           </div>
           <p className={`text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            Verify the extracted information before running the full analysis
+            Verifica la información extraída antes de ejecutar el análisis completo
           </p>
         </div>
 
@@ -132,20 +131,20 @@ const ReviewPage: React.FC = () => {
               <div className="flex items-center space-x-2 mb-4">
                 <Home size={20} className="text-yellow-400" />
                 <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Property Information
+                  Información del inmueble
                 </h2>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Listing URL
+                    URL del anuncio
                   </label>
                   <input
                     type="url"
                     value={editableData.listing_url || ''}
                     onChange={(e) => handleInputChange('listing_url', e.target.value)}
-                    placeholder="https://www.airbnb.com/rooms/..."
+                    placeholder="https://www.idealista.com/inmueble/..."
                     className={`w-full p-3 border rounded-lg ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
@@ -154,13 +153,13 @@ const ReviewPage: React.FC = () => {
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Property Type
+                    Tipo de propiedad
                   </label>
                   <input
                     type="text"
                     value={editableData.property_type || ''}
                     onChange={(e) => handleInputChange('property_type', e.target.value)}
-                    placeholder="e.g., Entire apartment"
+                    placeholder="Ej: Piso completo"
                     className={`w-full p-3 border rounded-lg ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
@@ -171,12 +170,12 @@ const ReviewPage: React.FC = () => {
 
               <div className="mt-4">
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Address
+                  Dirección
                 </label>
                 <input
                   type="text"
                   value={addressInputValue}
-                  onChange={(e) => setAddressInputValue(e.target.value)} // Actualiza el estado local al instante.
+                  onChange={(e) => setAddressInputValue(e.target.value)}
                   className={`w-full p-3 border rounded-lg ${theme === 'dark'
                     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
@@ -186,13 +185,13 @@ const ReviewPage: React.FC = () => {
 
               <div className="mt-4">
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Description
+                  Descripción
                 </label>
                 <textarea
                   value={editableData.description || ''}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   rows={4}
-                  placeholder="A short description of the property..."
+                  placeholder="Una breve descripción de la propiedad..."
                   className={`w-full p-3 border rounded-lg resize-y ${theme === 'dark'
                     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
@@ -206,20 +205,20 @@ const ReviewPage: React.FC = () => {
               <div className="flex items-center space-x-2 mb-4">
                 <User size={20} className="text-yellow-400" />
                 <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Host Information
+                  Información del anfitrión
                 </h2>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Host email
+                    Email del anfitrión
                   </label>
                   <input
                     type="email"
                     value={editableData.host_email || ''}
                     onChange={(e) => handleInputChange('host_email', e.target.value)}
-                    placeholder="e.g., host@example.com"
+                    placeholder="Ej: anfitrion@ejemplo.com"
                     className={`w-full p-3 border rounded-lg ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
@@ -228,13 +227,13 @@ const ReviewPage: React.FC = () => {
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Host phone
+                    Teléfono del anfitrión
                   </label>
                   <input
                     type="tel"
                     value={editableData.host_phone || ''}
                     onChange={(e) => handleInputChange('host_phone', e.target.value)}
-                    placeholder="e.g., +1 555-123-4567"
+                    placeholder="Ej: +34 612 345 678"
                     className={`w-full p-3 border rounded-lg ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
@@ -249,14 +248,14 @@ const ReviewPage: React.FC = () => {
               <div className="flex items-center space-x-2 mb-4">
                 <MessageSquare size={20} className="text-yellow-400" />
                 <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Communication Text
+                  Comunicaciones
                 </h2>
               </div>
               <textarea
                 value={editableData.communication_text || ''}
                 onChange={(e) => handleInputChange('communication_text', e.target.value)}
                 rows={4}
-                placeholder="Paste any messages or communication with the host here..."
+                placeholder="Pega aquí los mensajes o comunicaciones con el anfitrión..."
                 className={`w-full p-3 border rounded-lg resize-y ${theme === 'dark'
                   ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                   : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
@@ -268,7 +267,7 @@ const ReviewPage: React.FC = () => {
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <div className="flex items-center space-x-2 mb-4">
                 <Image size={20} className="text-yellow-400" />
-                <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Image URLs</h2>
+                <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>URLs de imágenes</h2>
               </div>
 
               <div className="flex items-center space-x-2 mb-4">
@@ -277,13 +276,13 @@ const ReviewPage: React.FC = () => {
                   value={newImageUrl}
                   onChange={(e) => setNewImageUrl(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddImageUrl()}
-                  placeholder="https://example.com/image.jpg"
+                  placeholder="https://ejemplo.com/imagen.jpg"
                   className={`flex-grow p-3 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
                 />
                 <button
                   onClick={handleAddImageUrl}
                   className="bg-yellow-400 text-gray-900 p-3 rounded-lg hover:bg-yellow-500 transition-colors flex-shrink-0"
-                  aria-label="Add Image URL"
+                  aria-label="Añadir URL de imagen"
                 >
                   <Plus size={24} />
                 </button>
@@ -296,7 +295,7 @@ const ReviewPage: React.FC = () => {
                     <button
                       onClick={() => handleRemoveImageUrl(index)}
                       className="text-red-500 hover:text-red-700 ml-4 flex-shrink-0"
-                      aria-label={`Remove ${url}`}
+                      aria-label={`Eliminar ${url}`}
                     >
                       <X size={18} />
                     </button>
@@ -309,13 +308,13 @@ const ReviewPage: React.FC = () => {
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <div className="flex items-center space-x-2 mb-4">
                 <DollarSign size={20} className="text-yellow-400" />
-                <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Price Details</h2>
+                <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Detalles de precio</h2>
               </div>
               <textarea
                 value={editableData.price_details || ''}
                 onChange={(e) => handleInputChange('price_details', e.target.value)}
                 rows={4}
-                placeholder="e.g., €150 per night"
+                placeholder="Ej: 850 EUR/mes"
                 className={`w-full p-3 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
               />
             </div>
@@ -325,10 +324,10 @@ const ReviewPage: React.FC = () => {
               <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
                 <div className="flex items-center space-x-2 mb-4">
                   <MessageSquare size={20} className="text-yellow-400" />
-                  <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Extracted Reviews</h2>
+                  <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Reseñas extraídas</h2>
                 </div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
-                  Reviews are included in the analysis but cannot be edited here.
+                  Las reseñas se incluyen en el análisis pero no se pueden editar aquí.
                 </p>
                 <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
                   {editableData.reviews.map((review, index) => (
@@ -351,7 +350,7 @@ const ReviewPage: React.FC = () => {
                 <div className="flex items-center space-x-2 mb-4">
                   <MapPin size={20} className="text-yellow-400" />
                   <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Location Verification
+                    Verificación de ubicación
                   </h2>
                 </div>
                 <MapComponent
@@ -360,10 +359,10 @@ const ReviewPage: React.FC = () => {
                   className="h-64"
                   onLocationChange={handleMapUpdate}
                 />
-              </div> 
+              </div>
               {!isDataSufficient && (
                 <div className={`${theme === 'dark' ? 'bg-yellow-900/20 text-yellow-200' : 'bg-yellow-100/50 text-yellow-800'} text-center p-4  rounded-lg text-sm`}>
-                  For the best results, please provide at least an address, description, and price.
+                  Para mejores resultados, proporciona al menos una dirección, descripción y precio.
                 </div>
               )}
               {/* Submit Button */}
@@ -375,10 +374,10 @@ const ReviewPage: React.FC = () => {
                 {isStartingAnalysis ? (
                   <>
                     <LoadingSpinner size="sm" color="text-gray-900" />
-                    <span>Starting Analysis...</span>
+                    <span>Iniciando análisis...</span>
                   </>
                 ) : (
-                  <span>Start Full Analysis</span>
+                  <span>Iniciar análisis completo</span>
                 )}
               </button>
             </div>

@@ -73,10 +73,10 @@ const ReviewsAnalysisStep: React.FC<ReviewsAnalysisStepProps> = ({ inputs_used, 
           </div>
           <div>
             <h4 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Reviews Analysis
+              Análisis de reseñas
             </h4>
             <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              {reviews.length} reviews analyzed
+              {reviews.length} reseñas analizadas
             </p>
           </div>
         </div>
@@ -88,7 +88,7 @@ const ReviewsAnalysisStep: React.FC<ReviewsAnalysisStepProps> = ({ inputs_used, 
               <span className="text-2xl">{getSentimentIcon(result.sentiment || 'neutral')}</span>
               <div>
                 <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Overall Sentiment
+                  Sentimiento general
                 </span>
                 <p className={`text-lg font-semibold ${getSentimentColor(result.sentiment || 'neutral')}`}>
                   {result.sentiment || 'Neutral'}
@@ -108,7 +108,7 @@ const ReviewsAnalysisStep: React.FC<ReviewsAnalysisStepProps> = ({ inputs_used, 
               <TrendingUp className={`w-5 h-5 mt-0.5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
               <div>
                 <h5 className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Analysis Summary
+                  Resumen del análisis
                 </h5>
                 <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                   {result.reason}
@@ -125,7 +125,7 @@ const ReviewsAnalysisStep: React.FC<ReviewsAnalysisStepProps> = ({ inputs_used, 
               <AlertTriangle className="w-5 h-5 mt-0.5 text-red-500" />
               <div className="flex-1">
                 <h5 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Recurring Complaints ({result.negative_themes.length})
+                  Quejas recurrentes ({result.negative_themes.length})
                 </h5>
                 <div className="space-y-2">
                   {result.negative_themes.map((theme, index) => (
@@ -150,7 +150,7 @@ const ReviewsAnalysisStep: React.FC<ReviewsAnalysisStepProps> = ({ inputs_used, 
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-green-500"></div>
               <span className={`font-medium ${theme === 'dark' ? 'text-green-300' : 'text-green-800'}`}>
-                No recurring complaints found
+                Sin quejas recurrentes
               </span>
             </div>
           </div>
@@ -163,7 +163,7 @@ const ReviewsAnalysisStep: React.FC<ReviewsAnalysisStepProps> = ({ inputs_used, 
           <div className="flex items-center gap-2 mb-4">
             <MessageSquare className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
             <h5 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Sample Reviews ({Math.min(3, reviews.length)} of {reviews.length})
+              Reseñas de ejemplo ({Math.min(3, reviews.length)} de {reviews.length})
             </h5>
           </div>
           <div className="space-y-3">

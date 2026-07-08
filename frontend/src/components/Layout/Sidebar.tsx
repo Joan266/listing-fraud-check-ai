@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { History, Plus, ShieldCheck, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
+import { History, Plus, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
+import BrandLogo from '../UI/BrandLogo';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { toggleSidebar, fetchHistoryAsync } from '../../store/appSlice';
@@ -53,13 +54,11 @@ const Sidebar: React.FC = () => {
 
       <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
         <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
-          <div className="w-10 h-10 bg-yellow-400 rounded-lg flex items-center justify-center flex-shrink-0">
-            <ShieldCheck size={20} className="text-gray-900" />
-          </div>
+          <BrandLogo size={40} />
           {!sidebarCollapsed && (
             <div>
               <h1 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Safe<span className="text-yellow-400">Lease</span>
+                Alqui<span className="text-yellow-400">Seguro</span>
               </h1>
             </div>
           )}
@@ -79,7 +78,7 @@ const Sidebar: React.FC = () => {
           `}
         >
           <Plus size={20} />
-          {!sidebarCollapsed && <span>New Analysis</span>}
+          {!sidebarCollapsed && <span>Nuevo análisis</span>}
         </button>
       </div>
 
@@ -89,7 +88,7 @@ const Sidebar: React.FC = () => {
           <div className={`px-4 pt-4 pb-2 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
             <h2 className={`text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} flex items-center space-x-2`}>
               <History size={14} />
-              <span>Recent Analyses</span>
+              <span>Análisis recientes</span>
             </h2>
           </div>
         )}
@@ -133,22 +132,22 @@ const Sidebar: React.FC = () => {
                         {isRunning && (
                           <span className="text-xs font-medium text-blue-400 flex items-center">
                             <Loader2 size={12} className="animate-spin mr-1" />
-                            In Progress
+                            En curso
                           </span>
                         )}
                         {isFailed && (
                           <span className="text-xs font-medium text-red-400 flex items-center">
                             <AlertTriangle size={12} className="mr-1" />
-                            Failed
+                            Fallido
                           </span>
                         )}
                       </div>
                     </div>
                     <div className="text-sm font-medium truncate">
-                      {analysis.input_data.address || 'Unknown Address'}
+                      {analysis.input_data.address || 'Dirección desconocida'}
                     </div>
                     <div className="text-xs opacity-75 truncate">
-                      {analysis.input_data.property_type || 'Property'}
+                      {analysis.input_data.property_type || 'Propiedad'}
                     </div>
                   </>
                 ) : (
@@ -166,7 +165,7 @@ const Sidebar: React.FC = () => {
           {sessionHistory.length === 0 && !sidebarCollapsed && (
             <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
               <History size={32} className="mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No analyses yet</p>
+              <p className="text-sm">Sin análisis aún</p>
             </div>
           )}
         </div>

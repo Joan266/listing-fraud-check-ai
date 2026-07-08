@@ -58,7 +58,7 @@ const UrlPreview: React.FC<UrlPreviewProps> = ({
           rel="noopener noreferrer"
           className={`inline-flex items-center gap-1 text-xs font-medium ${theme === 'dark' ? 'text-yellow-400 hover:text-yellow-300' : 'text-yellow-600 hover:text-yellow-700'} transition-colors duration-200`}
         >
-          Visit Link
+          Visitar enlace
           <ExternalLink className="w-3 h-3" />
         </a>
       </div>

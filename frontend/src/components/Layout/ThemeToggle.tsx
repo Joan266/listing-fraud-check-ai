@@ -15,7 +15,7 @@ const ThemeToggle: React.FC = () => {
           ? 'bg-gray-800 text-yellow-400 hover:bg-gray-700' 
           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
       }`}
-      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+      title={`Cambiar a tema ${theme === 'dark' ? 'claro' : 'oscuro'}`}
     >
       {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
     </button>

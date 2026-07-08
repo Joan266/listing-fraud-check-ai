@@ -112,7 +112,7 @@ test.describe('Analysis Flow', () => {
     await page.goto('/');
 
     // Switch to URL mode
-    const urlBtn = page.locator('button', { hasText: 'Paste URL' });
+    const urlBtn = page.locator('button', { hasText: 'Pegar URL' });
     await urlBtn.click();
 
     // Enter a URL
