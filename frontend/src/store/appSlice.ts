@@ -54,6 +54,7 @@ export const startAnalysisAsync = createAsyncThunk(
       input_data: extractedData,
       final_report: null,
       created_at: new Date().toISOString(),
+      analysis_steps: null,
       chat: null,
     };
     return pendingAnalysis;

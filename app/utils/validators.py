@@ -37,11 +37,12 @@ def validate_external_url(url: str) -> str:
     # Block private/reserved IPs
     try:
         ip = ipaddress.ip_address(hostname)
-        if ip.is_private or ip.is_reserved or ip.is_loopback or ip.is_link_local:
-            raise ValueError(f"Private/reserved IP not allowed: {hostname}")
     except ValueError:
         # hostname is not an IP — that's fine, it's a domain name
         pass
+    else:
+        if ip.is_private or ip.is_reserved or ip.is_loopback or ip.is_link_local:
+            raise ValueError(f"Private/reserved IP not allowed: {hostname}")
 
     return url
 

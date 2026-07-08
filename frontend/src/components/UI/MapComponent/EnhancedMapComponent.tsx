@@ -66,7 +66,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ address, theme, onLocationC
 
     (Object.keys(neighborhoodData) as LocationType[]).forEach((type) => {
       if (filters[type]) {
-        neighborhoodData[type].places.forEach((place, index) => {
+        neighborhoodData[type].places.forEach((place: any, index: number) => {
           markers.push(
             <MarkerF
               key={`${type}-${index}`}

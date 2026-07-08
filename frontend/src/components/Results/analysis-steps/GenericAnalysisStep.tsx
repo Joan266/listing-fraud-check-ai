@@ -96,9 +96,10 @@ const GenericAnalysisStep: React.FC<GenericAnalysisStepProps> = ({
           // Show only key metrics for large objects
           const keyMetrics = ['score', 'status', 'count', 'rating', 'percentage', 'level', 'result'];
           const filtered: any = {};
+          const valueRecord = value as Record<string, any>;
           keyMetrics.forEach(metric => {
-            if (value[metric] !== undefined) {
-              filtered[metric] = value[metric];
+            if (valueRecord[metric] !== undefined) {
+              filtered[metric] = valueRecord[metric];
             }
           });
           relevant[key] = Object.keys(filtered).length > 0 ? filtered : `${keys.length} properties`;

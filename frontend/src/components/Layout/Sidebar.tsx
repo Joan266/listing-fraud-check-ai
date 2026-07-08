@@ -120,7 +120,7 @@ const Sidebar: React.FC = () => {
                         {formatDate(analysis.created_at)}
                       </span>
                       <div className="flex space-x-1.5">
-                        {analysis.status === 'COMPLETED' && analysis.final_report && (
+                        {analysis.status === 'COMPLETED' && analysis.final_report && 'authenticity_score' in analysis.final_report && (
                           <>
                             <span className={`text-xs font-bold ${getScoreColor(analysis.final_report.authenticity_score)}`}>
                               A:{analysis.final_report.authenticity_score}
@@ -153,7 +153,7 @@ const Sidebar: React.FC = () => {
                   </>
                 ) : (
                   <div className="flex items-center justify-center">
-                    {analysis.final_report ? (
+                    {analysis.final_report && 'authenticity_score' in analysis.final_report ? (
                       <span className={`text-sm font-bold ${getScoreColor(analysis.final_report.authenticity_score)}`}>
                         {analysis.final_report.authenticity_score}
                       </span>

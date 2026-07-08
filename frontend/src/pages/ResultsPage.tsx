@@ -109,6 +109,7 @@ const ResultsPage: React.FC = () => {
   }
 
   const { final_report, analysis_steps } = analysis;
+  const report = final_report && 'authenticity_score' in final_report ? final_report : null;
 
   return (
     <div className={`min-h-full ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} p-6`}>
@@ -138,23 +139,25 @@ const ResultsPage: React.FC = () => {
 
           <div className="lg:col-span-2 space-y-6">
             {/* Summary Card */}
+            {report && (
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Overall Assessment
               </h2>
               <div className="flex flex-wrap justify-center gap-x-12 gap-y-6 mb-6">
-                <ScoreGauge score={final_report.authenticity_score} title="Authenticity Score" theme={theme} />
-                <ScoreGauge score={final_report.quality_score} title="Quality Score" theme={theme} />
+                <ScoreGauge score={report.authenticity_score} title="Authenticity Score" theme={theme} />
+                <ScoreGauge score={report.quality_score} title="Quality Score" theme={theme} />
               </div>
               <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
                 <h3 className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Summary
                 </h3>
                 <p className={`${theme === 'dark' ? 'text-gray-100' : 'text-gray-700'}`}>
-                  {final_report.sidebar_summary}
+                  {report.sidebar_summary}
                 </p>
               </div>
             </div>
+            )}
 
             {/* Map Card */}
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg  p-6`}>
@@ -169,20 +172,22 @@ const ResultsPage: React.FC = () => {
                 theme={theme}
                 neighborhoodData={neighborhoodData}
                 onLocationChange={() => { }}
+                isDraggable={false}
               />
 
             </div>
 
-            <FlagsCard flags={final_report.flags} />
+            {report && <FlagsCard flags={report.flags} />}
 
 
             {/* Suggested Actions */}
+            {report && (
             <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Recommended Actions
               </h2>
               <div className="space-y-3">
-                {final_report.suggested_actions.map((action, index) => (
+                {report.suggested_actions.map((action: string, index: number) => (
                   <div key={index} className="flex items-start space-x-3">
                     <div className="w-6 h-6 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-sm font-bold mt-0.5 flex-shrink-0">
                       {index + 1}
@@ -194,16 +199,19 @@ const ResultsPage: React.FC = () => {
                 ))}
               </div>
             </div>
+            )}
+            {report && (
             <div className={`${theme === 'dark' ? 'text-gray-300 bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
               <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Detailed Explanation
               </h2>
               <p>
-                {final_report.explanation}
+                {report.explanation}
               </p>
             </div>
+            )}
 
-            <AnalysisRunbook steps={analysis_steps} theme={theme} />
+            <AnalysisRunbook steps={analysis_steps ?? []} theme={theme} />
 
           </div>
 
