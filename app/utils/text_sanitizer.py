@@ -48,19 +48,29 @@ _NOISE_PATTERNS = [
     re.compile(r"^(fes una pregunta|ask a question|haz una pregunta)\s*$", re.IGNORECASE),
 ]
 
-# Section headers that start blocks of irrelevant content
-_SKIP_SECTION_STARTS = (
+# Sections near the bottom of the page — skip everything after
+_SKIP_TO_END = (
     "preguntes freqüents",
     "frequently asked questions",
     "preguntas frecuentes",
     "el millor de",
     "the best of",
     "lo mejor de",
-    "com ho estem fent",
-    "how are we doing",
     "clica aquí per veure",
     "click here to see",
     "haz clic aquí para ver",
+)
+
+# Mid-page noise sections — skip until real content resumes
+_SKIP_UNTIL_CONTENT = (
+    "com ho estem fent",
+    "how are we doing",
+    "què vol saber la gent",
+    "what do people want to know",
+    "qué quiere saber la gente",
+    "treu més partit",
+    "get more out of",
+    "saca más partido",
 )
 
 
@@ -75,11 +85,12 @@ def sanitize_listing_text(raw_text: str, max_chars: int = 50000) -> str:
     """
     Sanitizes and optimizes raw pasted listing text for AI extraction.
 
-    1. Security: strips control chars, null bytes
-    2. Noise removal: UI buttons, footers, FAQ sections, nav menus
+    1. Security: strips control chars, null bytes, HTML tags
+    2. Noise removal: UI buttons, survey options, repeated CTAs
     3. Deduplication: removes repeated lines
-    4. Link dump detection: removes long runs of short navigation lines
-    5. Caps output length
+    4. Footer truncation: cuts at copyright/TOS markers
+    5. Section skipping: removes FAQ, link dumps, platform promos
+    6. Caps output length
     """
     if not raw_text:
         return ""
@@ -118,31 +129,28 @@ def sanitize_listing_text(raw_text: str, max_chars: int = 50000) -> str:
 
     # --- Phase 3: Skip irrelevant sections ---
     filtered: list[str] = []
-    skipping = False
+    skip_to_end = False
+    skip_until_content = False
     for line in result:
         lower = line.lower()
-        if any(lower.startswith(s) for s in _SKIP_SECTION_STARTS):
-            skipping = True
+
+        # Bottom-of-page junk: skip everything after
+        if any(lower.startswith(s) for s in _SKIP_TO_END):
+            skip_to_end = True
             continue
-        # Exit skip mode on a substantial content line
-        if skipping and len(line) > 100:
-            skipping = False
-        if not skipping:
-            filtered.append(line)
+        if skip_to_end:
+            continue
 
-    # --- Phase 4: Remove link dumps (8+ consecutive short lines) ---
-    final: list[str] = []
-    short_run: list[str] = []
-    for line in filtered:
-        if len(line) < 35:
-            short_run.append(line)
-        else:
-            if len(short_run) < 8:
-                final.extend(short_run)
-            short_run = []
-            final.append(line)
-    if len(short_run) < 8:
-        final.extend(short_run)
+        # Mid-page noise: skip questions/short lines until real content
+        if any(lower.startswith(s) for s in _SKIP_UNTIL_CONTENT):
+            skip_until_content = True
+            continue
+        if skip_until_content:
+            if line.endswith("?") or len(line) <= 40:
+                continue
+            skip_until_content = False
 
-    output = "\n".join(final)
+        filtered.append(line)
+
+    output = "\n".join(filtered)
     return output[:max_chars]
