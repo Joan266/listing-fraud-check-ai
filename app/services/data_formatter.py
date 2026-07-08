@@ -11,24 +11,24 @@ def format_extracted_data(raw_data: RawExtractedData) -> dict:
     """
   
 
-    # --- Combine all price parts into a single string ---
+    # --- Combine all price parts into a readable string ---
     price_parts = []
     if raw_data.base_price_text:
-        price_parts.append(f"Base Price: {raw_data.base_price_text}")
+        price_parts.append(f"Precio base: {raw_data.base_price_text}")
     if raw_data.cleaning_fee:
-        price_parts.append(f"Cleaning Fee: {raw_data.cleaning_fee}")
+        price_parts.append(f"Limpieza: {raw_data.cleaning_fee}")
     if raw_data.service_fee:
-        price_parts.append(f"Service Fee: {raw_data.service_fee}")
+        price_parts.append(f"Servicio: {raw_data.service_fee}")
     if raw_data.security_deposit:
-        price_parts.append(f"Security Deposit: {raw_data.security_deposit}")
+        price_parts.append(f"Fianza: {raw_data.security_deposit}")
     if raw_data.taxes:
-        price_parts.append(f"Taxes: {raw_data.taxes}")
+        price_parts.append(f"Impuestos: {raw_data.taxes}")
     if raw_data.discounts_text:
-        price_parts.append(f"Discounts: {raw_data.discounts_text}")
+        price_parts.append(f"Descuentos: {raw_data.discounts_text}")
     if raw_data.payment_terms_text:
-        price_parts.append(f"Payment Terms: {raw_data.payment_terms_text}")
+        price_parts.append(f"Condiciones de pago: {raw_data.payment_terms_text}")
 
-    final_price_details = ", ".join(price_parts) if price_parts else None
+    final_price_details = "\n".join(price_parts) if price_parts else None
 
     # --- Build the final dictionary ---
     final_data = {

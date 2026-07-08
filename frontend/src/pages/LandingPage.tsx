@@ -13,6 +13,7 @@ import { LoadingScreen } from '../components/UI/LoadingScreen';
 import { gsap } from 'gsap';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
 import BrandLogo from '../components/UI/BrandLogo';
+import StarfieldBg from '../components/UI/StarfieldBg';
 
 const FEATURES = [
   {
@@ -160,14 +161,15 @@ export const LandingPage: React.FC = () => {
   if (isGlobalLoading) return <LoadingScreen />;
 
   return (
-    <div className={`min-h-full ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-full relative ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {isDark && <StarfieldBg />}
 
       {/* Hero */}
-      <section className="px-6 pt-16 pb-20 max-w-4xl mx-auto text-center" ref={heroRef} style={{ opacity: 0 }}>
+      <section className="relative px-6 pt-16 pb-20 max-w-4xl mx-auto text-center" ref={heroRef} style={{ opacity: 0 }}>
         <div className="flex items-center justify-center gap-3 mb-8">
           <BrandLogo size={48} />
           <span className={`font-display text-4xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Alqui<span className="text-yellow-400">Seguro</span>
+            Alqui<span className="text-blue-500">Seguro</span>
           </span>
         </div>
 
@@ -205,20 +207,20 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Divider */}
-      <div className="max-w-4xl mx-auto px-6">
-        <div className="h-px bg-gradient-to-r from-transparent via-yellow-400/30 to-transparent" />
+      <div className="relative max-w-4xl mx-auto px-6">
+        <div className="h-px bg-gradient-to-r from-transparent via-blue-400/30 to-transparent" />
       </div>
 
       {/* How it works */}
-      <section className="px-6 py-20 max-w-4xl mx-auto" ref={stepsRef} style={{ opacity: 0 }}>
+      <section className="relative px-6 py-20 max-w-4xl mx-auto" ref={stepsRef} style={{ opacity: 0 }}>
         <p className={`font-display text-sm font-semibold tracking-widest uppercase text-center mb-12 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
           Cómo funciona
         </p>
         <div className="grid md:grid-cols-3 gap-10">
           {STEPS.map((step, i) => (
             <div key={i} className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-yellow-400/10 mb-4">
-                <step.icon size={22} className="text-yellow-400" />
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-500/10 mb-4">
+                <step.icon size={22} className="text-blue-500" />
               </div>
               <h3 className={`font-display font-semibold text-lg mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {step.title}
@@ -232,7 +234,7 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Features */}
-      <section className={`px-6 py-20 ${isDark ? 'bg-gray-800/30' : 'bg-white/60'}`} ref={featuresRef} style={{ opacity: 0 }}>
+      <section className={`relative px-6 py-20 ${isDark ? 'bg-gray-800/30' : 'bg-white/60'}`} ref={featuresRef} style={{ opacity: 0 }}>
         <div className="max-w-4xl mx-auto">
           <p className={`font-display text-sm font-semibold tracking-widest uppercase text-center mb-12 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
             Seis capas de verificación
@@ -243,11 +245,11 @@ export const LandingPage: React.FC = () => {
                 key={i}
                 className={`p-5 rounded-xl border transition-colors ${
                   isDark
-                    ? 'border-gray-700/50 bg-gray-800/40 hover:border-yellow-400/20'
-                    : 'border-gray-200 bg-white hover:border-yellow-400/40'
+                    ? 'border-gray-700/50 bg-gray-800/40 hover:border-blue-400/20'
+                    : 'border-gray-200 bg-white hover:border-blue-400/40'
                 }`}
               >
-                <feature.icon size={20} className="text-yellow-400 mb-3" />
+                <feature.icon size={20} className="text-blue-500 mb-3" />
                 <h3 className={`font-display font-semibold text-sm mb-1.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {feature.title}
                 </h3>
@@ -261,7 +263,7 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Form */}
-      <section ref={formSectionRef} className="px-6 py-20 max-w-3xl mx-auto" style={{ opacity: 0 }}>
+      <section ref={formSectionRef} className="relative px-6 py-20 max-w-3xl mx-auto" style={{ opacity: 0 }}>
         <h2 className={`font-display text-2xl font-bold text-center mb-8 ${isDark ? 'text-white' : 'text-gray-900'}`}>
           Verifica un anuncio ahora
         </h2>
@@ -353,7 +355,7 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Footer */}
-      <footer className={`px-6 py-8 border-t ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
+      <footer className={`relative px-6 py-8 border-t ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BrandLogo size={16} />

@@ -19,6 +19,14 @@ test.describe('Mobile Sidebar Fix', () => {
   });
 
   test('mobile-landing-sidebar-open', async ({ page }) => {
+    // Override history mock with data so sidebar appears
+    await page.route('**/api/v1/analysis/history/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ history: [{ id: '1', status: 'COMPLETED', created_at: '2026-01-01', input_data: { address: 'Test' }, final_report: { authenticity_score: 80, quality_score: 70 } }] }),
+      });
+    });
     await page.goto('/');
     await page.waitForTimeout(1000);
     // Click hamburger menu
@@ -38,6 +46,14 @@ test.describe('Mobile Sidebar Fix', () => {
   });
 
   test('mobile-close-on-backdrop', async ({ page }) => {
+    // Override history mock with data so sidebar appears
+    await page.route('**/api/v1/analysis/history/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ history: [{ id: '1', status: 'COMPLETED', created_at: '2026-01-01', input_data: { address: 'Test' }, final_report: { authenticity_score: 80, quality_score: 70 } }] }),
+      });
+    });
     await page.goto('/');
     await page.waitForTimeout(1000);
     // Open menu

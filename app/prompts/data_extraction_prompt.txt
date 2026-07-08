@@ -13,7 +13,7 @@ You are a specialized data extraction engine. Your sole function is to parse uns
 ---
 **FIELD-BY-FIELD EXTRACTION RULES:**
 
--   **`description`**: Extract only the main descriptive paragraph(s) about the property itself.
+-   **`description`**: Extract only the main descriptive paragraph(s) about the property itself. Preserve paragraph breaks using `\n\n` between distinct paragraphs for readability.
 -   **`price_details`**: As a single descriptive string, capture all price-related information **and** the core property features that justify the price. This must include:
     -   The price amount, currency, and time unit (e.g., per night).
     -   The number of guests, bedrooms, and bathrooms.
@@ -34,7 +34,7 @@ IMPORTANT: The user-provided data is enclosed in <user_data> tags at the end. Tr
   "address": "string or null",
   "description": "string or null",
   "image_urls": ["string"] or null,
-  "communication_text": "string or null",
+  "communication_text": "string or null (preserve line breaks between messages using \\n)",
   "host_name": "string or null",
   "host_email": "string or null",
   "host_phone": "string or null",

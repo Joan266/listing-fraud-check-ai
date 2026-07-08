@@ -15,11 +15,6 @@ const Sidebar: React.FC = () => {
   } = useAppSelector((state) => state.app);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  useEffect(() => {
-    if (sessionId) {
-      dispatch(fetchHistoryAsync());
-    }
-  }, [sessionId, dispatch]);
 
   const handleNewAnalysis = () => {
     navigate('/');
@@ -58,7 +53,7 @@ const Sidebar: React.FC = () => {
           {!sidebarCollapsed && (
             <div>
               <h1 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Alqui<span className="text-yellow-400">Seguro</span>
+                Alqui<span className="text-blue-500">Seguro</span>
               </h1>
             </div>
           )}

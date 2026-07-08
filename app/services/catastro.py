@@ -30,16 +30,19 @@ def lookup_by_coordinates(lat: float, lng: float) -> dict:
         return {"found": False, "error": str(e)}
 
 
-def lookup_by_address(province: str, municipality: str, street: str, number: str) -> dict:
+def lookup_by_address(
+    province: str, municipality: str, street: str, number: str, sigla: str = "CL"
+) -> dict:
     """
     Looks up Catastro data using a structured address.
+    sigla: street type abbreviation (CL=Calle, AV=Avenida, PZ=Plaza, PS=Paseo, etc.)
     """
     try:
         url = f"{OVC_BASE_URL}/OVCCallejero.asmx/Consulta_DNPLOC"
         params = {
             "Provincia": province,
             "Municipio": municipality,
-            "Sigla": "",
+            "Sigla": sigla,
             "Calle": street,
             "Numero": number,
             "Bloque": "",
@@ -71,14 +74,22 @@ def _parse_catastro_response(xml_text: str) -> dict:
                 "error": error_msg.text if error_msg is not None else "Unknown Catastro error",
             }
 
-        # Extract cadastral reference
-        rc_elem = root.find(".//rc")
+        # Address lookups: rcdnp/rc; coordinate lookups: coord/pc
+        rc_elem = root.find(".//rcdnp/rc")
+        if rc_elem is None:
+            rc_elem = root.find(".//coord/pc")
+        if rc_elem is None:
+            rc_elem = root.find(".//rc")
         if rc_elem is None:
             return {"found": False, "reason": "No cadastral reference found."}
 
         pc1 = rc_elem.findtext("pc1", "")
         pc2 = rc_elem.findtext("pc2", "")
         cadastral_ref = f"{pc1}{pc2}"
+
+        # Count total properties found (address lookups can return many)
+        all_entries = root.findall(".//rcdnp")
+        num_properties = len(all_entries) if all_entries else 1
 
         # Extract address details
         address_elem = root.find(".//ldt")
@@ -88,12 +99,15 @@ def _parse_catastro_response(xml_text: str) -> dict:
         use_elem = root.find(".//luso")
         use_text = use_elem.text if use_elem is not None else None
 
-        return {
+        result = {
             "found": True,
             "cadastral_reference": cadastral_ref,
             "registered_address": address_text,
             "registered_use": use_text,
         }
+        if num_properties > 1:
+            result["num_properties"] = num_properties
+        return result
     except ET.ParseError as e:
         logger.error(f"Failed to parse Catastro XML: {e}")
         return {"found": False, "error": f"XML parse error: {e}"}
