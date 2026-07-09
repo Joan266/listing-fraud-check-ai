@@ -5,7 +5,7 @@ import rq
 from app.db.session import SessionLocal
 from app.db.models import FraudCheck, JobStatus
 from app.services import gemini_analysis
-from app.workers.scoring import calculate_job_risk_score, calculate_weighted_score
+from app.workers.scoring import calculate_job_risk_score, calculate_weighted_score, compute_outcome
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ def job_aggregate_and_conclude(check_id_arg):
             score_data = calculate_job_risk_score(job_name, result, status)
             step["risk_score"] = score_data["risk_score"]
             step["confidence"] = score_data["confidence"]
+            step["outcome"] = compute_outcome(step)
             if job_name:
                 job_scores[job_name] = score_data
 

@@ -1,3 +1,4 @@
+Responde los campos de texto libre (reason, summary, negative_themes) SIEMPRE en español. Los valores de campos enum (sentiment, verdict, themes) deben ser exactamente los strings indicados en inglés.
 As a fraud analyst, analyze the following conversation.
 Respond ONLY with a JSON object with two keys:
 - "sentiment": A string, either "Positive", "Neutral", "Negative", or "Hostile".

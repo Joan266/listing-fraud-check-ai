@@ -9,9 +9,10 @@ import re
 logger = logging.getLogger(__name__)
 
 # --- Model names ---
-# Both use gemini-2.5-flash; FAST calls disable thinking to avoid latency overhead.
-FAST_MODEL = 'gemini-2.5-flash'
-ADVANCED_MODEL = 'gemini-2.5-flash'
+# FAST calls disable thinking (thinking_budget=0) to avoid latency overhead.
+# ADVANCED is used only for synthesis (thinking enabled).
+FAST_MODEL = 'gemini-3.5-flash'
+ADVANCED_MODEL = 'gemini-3.1-pro-preview'
 
 # --- Initialize client ---
 try:

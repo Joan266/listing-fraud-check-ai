@@ -6,8 +6,10 @@ You will be given the property's address, type, description, and the listed pric
 
 **TASK:**
 Respond ONLY with a valid JSON object containing two keys:
-1.  "verdict": A string, either "Suspiciously Low", "Reasonable", or "High".
+1.  "verdict": A string, one of: "Suspiciously Low", "Reasonable", "High", or "Not Evaluable".
 2.  "reason": A brief, one-sentence explanation for your verdict.
+
+**IMPORTANT:** Use "Not Evaluable" if the price field does not contain an actual rental price — for example, if it only mentions a security deposit, a fianza, cancellation conditions, or payment method instructions without stating a nightly/weekly/monthly rate. A deposit is NOT a price.
 
 ---
 **EXAMPLE:**

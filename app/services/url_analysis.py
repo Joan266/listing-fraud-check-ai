@@ -45,7 +45,7 @@ def check_url_blacklist(url: str) -> dict:
     if not api_key:
         return {
             "is_blacklisted": False,
-            "reason": "Safe Browsing check skipped (API key not configured)."
+            "reason": "No verificado."
         }
     try:
         payload = {

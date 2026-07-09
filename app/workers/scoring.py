@@ -143,6 +143,9 @@ def calculate_job_risk_score(job_name: str, result: dict, status: str) -> dict:
         elif verdict == "High":
             score = 20
             confidence = 0.6
+        elif verdict == "Not Evaluable":
+            score = 0
+            confidence = 0.0  # excluded from weighted average
         else:
             score = 0
             confidence = 0.8
@@ -172,12 +175,11 @@ def calculate_job_risk_score(job_name: str, result: dict, status: str) -> dict:
         confidence = 0.7
 
     elif job_name == "online_presence_analysis":
-        # This is already a synthesis — use its sentiment if available
-        sentiment = result.get("sentiment", "Neutral")
-        if sentiment == "Negative":
-            score = 60
+        verdict = result.get("verdict", result.get("sentiment", "Neutral"))
+        if verdict in ("Suspicious", "Negative"):
+            score = 65
             confidence = 0.7
-        elif sentiment == "Mixed":
+        elif verdict == "Mixed":
             score = 35
             confidence = 0.6
         else:
@@ -196,6 +198,27 @@ def calculate_job_risk_score(job_name: str, result: dict, status: str) -> dict:
             confidence = 0.7
 
     return {"risk_score": min(score, 100), "confidence": round(confidence, 2)}
+
+
+def compute_outcome(step: dict) -> str:
+    """Returns outcome label for frontend rendering."""
+    status = step.get("status")
+    if status == "SKIPPED":
+        return "skipped"
+    if status == "ERROR":
+        return "failed"
+    result = step.get("result", {})
+    job_name = step.get("job_name", "")
+    if job_name == "price_sanity_check" and result.get("verdict") == "Not Evaluable":
+        return "not_evaluable"
+    risk = step.get("risk_score", 0)
+    if risk >= 60:
+        return "risk_high"
+    if risk >= 30:
+        return "risk_medium"
+    if risk > 0:
+        return "risk_low"
+    return "no_risk"
 
 
 def calculate_weighted_score(job_scores: dict[str, dict]) -> dict:

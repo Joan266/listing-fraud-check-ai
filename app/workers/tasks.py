@@ -189,9 +189,14 @@ def job_neighborhood_analysis(check_id_arg):
             return google_apis.get_neighborhood_analysis(data["coordinates"])
 
         task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task)
-        
+
         if task_result.get("error"):
             raise Exception(task_result.get("error"))
+
+        # Keep total count (valuable signal) but trim places list for frontend
+        for category in task_result.values():
+            if isinstance(category, dict) and "places" in category:
+                category["places"] = category["places"][:3]
 
         return {
             "job_name": job_name,

@@ -29,36 +29,84 @@ def reverse_image_search(image_url: str) -> dict:
         response = vision_client.web_detection(image=image)
         detection = response.web_detection
 
-        if not detection.pages_with_matching_images:
+        has_full_matches = bool(detection.full_matching_images)
+        has_page_matches = bool(detection.pages_with_matching_images)
+
+        full_match_urls = [img.url for img in detection.full_matching_images]
+        logger.info(
+            "[reverse_image_search] url=%s full_matches=%d page_matches=%d",
+            image_url,
+            len(detection.full_matching_images),
+            len(detection.pages_with_matching_images),
+        )
+        logger.info("[reverse_image_search] full_match_image_urls=%s", full_match_urls)
+
+        if not has_full_matches and not has_page_matches:
             return {
                 "is_reused": False,
                 "reason": "Image appears to be unique.",
                 "url": image_url
             }
 
-        # 1. Gather the context for all matching pages
+        # Without full (pixel-exact) matches, only visual similarity was found —
+        # not enough evidence to flag as reused.
+        if not has_full_matches:
+            return {
+                "is_reused": False,
+                "reason": "Image found on other sites as a visual similarity only, not an exact copy.",
+                "url": image_url
+            }
+
+        # Known rental/travel platform domains — exact copies here mean multi-platform, not fraud
+        _RENTAL_DOMAINS = (
+            "muscache.com",       # Airbnb CDN
+            "airbnb.com",
+            "bstatic.com",        # Booking.com CDN
+            "booking.com",
+            "vrbo.com",
+            "homeaway.com",
+            "expedia.com",
+            "tripadvisor.com",
+            "hometogo.com",
+            "holidu.com",
+            "ruralia.com",
+        )
+
+        from urllib.parse import urlparse
+        full_match_domains = {urlparse(img.url).netloc for img in detection.full_matching_images}
+        external_matches = [
+            d for d in full_match_domains
+            if not any(d.endswith(rental) for rental in _RENTAL_DOMAINS)
+        ]
+
+        if not external_matches:
+            # All exact copies are on known rental platforms — same host, multi-platform
+            return {
+                "is_reused": False,
+                "reason": "Image found on other rental platforms — likely the same host listing on multiple sites.",
+                "url": image_url
+            }
+
+        # Exact copies found on non-rental domains — genuinely suspicious
+        logger.info("[reverse_image_search] external full-match domains: %s", external_matches)
         url_data_to_filter = [
             {"url": page.url, "title": page.page_title}
             for page in detection.pages_with_matching_images
         ]
-
-        # 2. Call the AI to classify the URLs
         classification_result = gemini_analysis.filter_suspicious_urls(url_data_to_filter)
-        
         suspicious_urls = classification_result.get("suspicious_urls", [])
 
-        # 3. Base the verdict on the AI's classification
         if suspicious_urls:
             return {
                 "is_reused": True,
-                "reason": f"Image found on {len(suspicious_urls)} potentially suspicious or unrelated page(s).",
+                "reason": f"Exact copy of this image found on {len(suspicious_urls)} unrelated page(s).",
                 "suspicious_urls": suspicious_urls,
                 "url": image_url
             }
-        
+
         return {
             "is_reused": False,
-            "reason": "Image was found on other sites, but they appear to be legitimate rental or travel platforms.",
+            "reason": "Image found on other sites, but they appear to be legitimate rental or travel platforms.",
             "url": image_url
         }
     except Exception as e:
