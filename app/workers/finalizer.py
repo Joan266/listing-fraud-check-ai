@@ -63,6 +63,15 @@ def job_aggregate_and_conclude(check_id_arg):
         check.status = JobStatus.COMPLETED if "error" not in synthesis_report else JobStatus.FAILED
         db.commit()
 
+        logger.info(
+            "[finalizer:%s] PAYLOAD SENT TO FRONTEND\n"
+            "=== FINAL REPORT ===\n%s\n"
+            "=== ANALYSIS STEPS (%d steps) ===\n%s",
+            check_id,
+            json.dumps(synthesis_report, ensure_ascii=False, indent=2),
+            len(all_job_steps),
+            json.dumps(all_job_steps, ensure_ascii=False, indent=2),
+        )
         logger.info(f"Completed fraud check for job_id: {check_id}.")
         return synthesis_report
 

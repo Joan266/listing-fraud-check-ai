@@ -101,6 +101,9 @@ def sanitize_listing_text(raw_text: str, max_chars: int = 50000) -> str:
     # Strip any leftover HTML tags
     text = re.sub(r"<[^>]+>", " ", text)
 
+    # Store security-only result as fallback before structural filtering
+    security_only = text
+
     lines = text.splitlines()
 
     # --- Phase 1: Filter noise lines and global dedup ---
@@ -153,4 +156,10 @@ def sanitize_listing_text(raw_text: str, max_chars: int = 50000) -> str:
         filtered.append(line)
 
     output = "\n".join(filtered)
+
+    # Safety net: if structural filtering stripped >85% of content, fall back to
+    # security-sanitized text so Gemini gets usable input
+    if len(output) < max(200, len(security_only) * 0.15):
+        return security_only[:max_chars]
+
     return output[:max_chars]

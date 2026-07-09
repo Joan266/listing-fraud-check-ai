@@ -9,7 +9,7 @@ import re
 logger = logging.getLogger(__name__)
 
 # --- Model names ---
-FAST_MODEL = 'gemini-2.0-flash'
+FAST_MODEL = 'gemini-2.0-flash-001'
 ADVANCED_MODEL = 'gemini-2.5-flash'
 
 # --- Initialize client ---
@@ -110,7 +110,7 @@ def extract_data_from_text(raw_text: str) -> dict:
     prompt = load_prompt("data_extraction_prompt")
     context = f"\n<user_data>\n{raw_text}\n</user_data>"
 
-    return _call_gemini(ADVANCED_MODEL, [prompt, context])
+    return _call_gemini(FAST_MODEL, [prompt, context])
 
 def process_q_and_a(full_context: dict) -> dict:
     """

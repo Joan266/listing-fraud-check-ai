@@ -21,7 +21,7 @@ def reverse_image_search(image_url: str) -> dict:
     the pages where matching images are found.
     """
     if not vision_client:
-        return {"error": "Vision client not initialized."}
+        return {"url": image_url, "is_reused": False, "error": "Vision client not initialized."}
 
     try:
         image = vision.Image()
