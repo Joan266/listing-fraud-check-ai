@@ -6,6 +6,15 @@ from rq import Queue
 from rq.worker import SimpleWorker, Worker
 from app.core.config import settings
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler("worker.log", encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
+)
+
 logger = logging.getLogger(__name__)
 
 listen = ['analysis-fast', 'analysis-heavy']

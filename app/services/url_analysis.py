@@ -1,7 +1,7 @@
 import whois
 import requests
 import concurrent.futures
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 WHOIS_TIMEOUT_SECONDS = 10
@@ -22,7 +22,11 @@ def check_domain_age(domain_name: str) -> dict:
         if not creation_date:
             return {"is_new": False, "reason": "Could not determine creation date."}
         
-        is_new = datetime.now() - creation_date < timedelta(days=90)
+        if creation_date.tzinfo is not None:
+            now = datetime.now(timezone.utc)
+        else:
+            now = datetime.now()
+        is_new = now - creation_date < timedelta(days=90)
         return {
             "is_new": is_new,
             "reason": f"Domain was created on {creation_date.strftime('%Y-%m-%d')}"
