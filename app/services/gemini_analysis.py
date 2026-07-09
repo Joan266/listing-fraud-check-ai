@@ -9,7 +9,8 @@ import re
 logger = logging.getLogger(__name__)
 
 # --- Model names ---
-FAST_MODEL = 'gemini-2.0-flash-001'
+# Both use gemini-2.5-flash; FAST calls disable thinking to avoid latency overhead.
+FAST_MODEL = 'gemini-2.5-flash'
 ADVANCED_MODEL = 'gemini-2.5-flash'
 
 # --- Initialize client ---
@@ -19,13 +20,14 @@ except Exception as e:
     logger.error(f"Failed to initialize Gemini client: {e}")
     client = None
 
-def _call_gemini(model_name: str, content: list, is_json_response: bool = True):
+def _call_gemini(model_name: str, content: list, is_json_response: bool = True, thinking: bool = False):
     """A flexible helper to call a Gemini model with various content types."""
     if not client:
         return {"error": "Gemini client not initialized."}
 
     config = types.GenerateContentConfig(
         temperature=0,
+        thinking_config=types.ThinkingConfig(thinking_budget=1024 if thinking else 0),
         safety_settings=[
             types.SafetySetting(category='HARM_CATEGORY_HARASSMENT', threshold='BLOCK_ONLY_HIGH'),
             types.SafetySetting(category='HARM_CATEGORY_HATE_SPEECH', threshold='BLOCK_ONLY_HIGH'),
@@ -104,7 +106,7 @@ def synthesize_advanced_report(full_context: dict) -> dict:
     prompt = load_prompt("synthesize_final_report_prompt")
     prompt = prompt.replace("[LANGUAGE_CODE]", "es")
     context_str = json.dumps(full_context, indent=2)
-    return _call_gemini(ADVANCED_MODEL, [prompt, context_str])
+    return _call_gemini(ADVANCED_MODEL, [prompt, context_str], thinking=True)
 def extract_data_from_text(raw_text: str) -> dict:
     """Extracts structured data from a raw text paste of a listing."""
     prompt = load_prompt("data_extraction_prompt")
