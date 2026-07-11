@@ -82,6 +82,34 @@ function checkRedFlags(text) {
   return flags;
 }
 
+/**
+ * Runs Gemini Nano (chrome.languageModel) locally to score the listing for fraud risk.
+ * Returns a number 0-10, or null if the model is unavailable/errors out.
+ * Chrome 138+ required; degrades gracefully on older versions.
+ */
+async function getLocalAIScore(text) {
+  if (!chrome.languageModel) return null;
+
+  const availability = await chrome.languageModel.availability();
+  // Only run if model is already downloaded — don't block user waiting for download
+  if (availability !== "available") return null;
+
+  const session = await chrome.languageModel.create({
+    systemPrompt: `Eres un detector de fraude inmobiliario. Analiza el texto de un anuncio y devuelve SOLO un número del 0 al 10 indicando el riesgo de fraude:
+0 = claramente legítimo, 5 = señales ambiguas, 10 = altamente sospechoso.
+Responde ÚNICAMENTE con el número, sin texto adicional.`,
+  });
+
+  try {
+    // Truncate to ~1500 chars to stay within Gemini Nano's context window
+    const result = await session.prompt(text.substring(0, 1500));
+    const score = parseInt(result.trim(), 10);
+    return Number.isNaN(score) ? null : Math.min(10, Math.max(0, score));
+  } finally {
+    session.destroy();
+  }
+}
+
 function showFlags(flags) {
   if (!flagsEl) return;
   flagsEl.innerHTML = "";
@@ -261,8 +289,24 @@ btnAnalyze.addEventListener("click", async () => {
     // Stage 1: Regex red flag filter
     const flags = checkRedFlags(text);
     if (flags.length === 0) {
+      // Stage 2: Local AI triaje via Gemini Nano (Chrome 138+, on-device, $0 cost)
+      setStatus("Analizando con IA local...", "loading");
+      const aiScore = await getLocalAIScore(text).catch(() => null);
+
+      if (aiScore !== null && aiScore > 3) {
+        // Nano found risk the regex missed — escalate to backend
+        showFlags([`IA local: puntuación de riesgo ${aiScore}/10`]);
+        setStatus(`IA local: riesgo ${aiScore}/10. Enviando al servidor...`, "loading");
+        const extractedData = await fetchExtractedData(text, url, apiUrl);
+        setStatus("Datos extraídos. Abriendo FraudCheck.ai...", "success");
+        await openApp(extractedData, url, apiUrl);
+        return;
+      }
+
+      // Neither regex nor local AI found red flags
       showFlags([]);
-      setStatus("Sin señales de alerta. ¿Quieres un análisis completo?", "success");
+      const aiNote = aiScore !== null ? ` (IA local: ${aiScore}/10)` : "";
+      setStatus(`Sin señales de alerta${aiNote}. ¿Quieres un análisis completo?`, "success");
       _pendingText = text;
       _pendingUrl = url;
       btnAnalyzeAnyway.style.display = "block";
