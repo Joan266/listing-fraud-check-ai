@@ -19,5 +19,8 @@ def get_limiter():
 # Create the limiter instance
 limiter = get_limiter()
 
+if settings.DISABLE_RATE_LIMIT:
+    limiter.enabled = False
+
 # Default rate limits
 default_limits = [settings.API_RATE_LIMIT]

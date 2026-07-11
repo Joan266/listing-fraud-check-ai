@@ -36,6 +36,10 @@ class Settings(BaseSettings):
 
     # CORS
     BACKEND_CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    CHROME_EXTENSION_ORIGIN: Optional[str] = None
+
+    # Rate limiting
+    DISABLE_RATE_LIMIT: bool = False
 
     class Config:
         env_file = ".env"
@@ -43,7 +47,10 @@ class Settings(BaseSettings):
         case_sensitive = True
 
     @property
-    def cors_origins(self):
-        return [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",")]
+    def cors_origins(self) -> list[str]:
+        origins = [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",") if o.strip()]
+        if self.CHROME_EXTENSION_ORIGIN and self.CHROME_EXTENSION_ORIGIN.strip():
+            origins.append(self.CHROME_EXTENSION_ORIGIN.strip())
+        return origins
 
 settings = Settings()

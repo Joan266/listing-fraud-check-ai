@@ -1,11 +1,14 @@
 const DEFAULT_API_URL = "http://localhost:8000";
 const API_ENDPOINT = "/api/v1/extract-data";
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const btnAnalyze = document.getElementById("btn-analyze");
+const btnAnalyzeAnyway = document.getElementById("btn-analyze-anyway");
 const statusEl = document.getElementById("status");
 const pageTitleEl = document.getElementById("page-title");
 const pageUrlEl = document.getElementById("page-url");
 const apiUrlInput = document.getElementById("api-url");
+const flagsEl = document.getElementById("flags");
 
 // --- Helpers ---
 
@@ -56,13 +59,129 @@ function isInsecureRemote(urlString) {
   return parsed.protocol === "http:" && !isLocal;
 }
 
+/**
+ * Checks listing text for common fraud red flags using regex.
+ * Returns an array of flag descriptions (empty = no flags detected).
+ */
+function checkRedFlags(text) {
+  const flags = [];
+
+  if (/western\s*union|wire\s*transfer|moneygram/i.test(text)) {
+    flags.push("Método de pago sospechoso (Western Union / wire transfer)");
+  }
+  if (/\b(urgente|urgentísimo|última\s*oportunidad|solo\s*hoy|oferta\s*limitada)\b/i.test(text)) {
+    flags.push("Lenguaje de urgencia en el anuncio");
+  }
+  if (/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i.test(text)) {
+    flags.push("Dirección de email en el anuncio");
+  }
+  if (/wiring|escrow|advance\s*payment|pago\s*anticipado|pago\s*previo/i.test(text)) {
+    flags.push("Solicitud de pago adelantado");
+  }
+
+  return flags;
+}
+
+function showFlags(flags) {
+  if (!flagsEl) return;
+  flagsEl.innerHTML = "";
+  if (flags.length === 0) {
+    flagsEl.innerHTML = '<p class="flags-clean">Sin señales de alerta detectadas.</p>';
+  } else {
+    const ul = document.createElement("ul");
+    flags.forEach((f) => {
+      const li = document.createElement("li");
+      li.textContent = f;
+      ul.appendChild(li);
+    });
+    flagsEl.appendChild(ul);
+  }
+  flagsEl.style.display = "block";
+}
+
+function hideFlags() {
+  if (flagsEl) flagsEl.style.display = "none";
+}
+
+// --- Cache helpers (keyed by listing URL, TTL 24h) ---
+
+function getCacheKey(url) {
+  return `cache_${btoa(unescape(encodeURIComponent(url))).replace(/[^a-zA-Z0-9]/g, "").substring(0, 40)}`;
+}
+
+async function getCached(url) {
+  const key = getCacheKey(url);
+  const result = await chrome.storage.local.get(key);
+  const entry = result[key];
+  if (entry && Date.now() - entry.ts < CACHE_TTL_MS) return entry.data;
+  return null;
+}
+
+async function setCached(url, data) {
+  const key = getCacheKey(url);
+  await chrome.storage.local.set({ [key]: { ts: Date.now(), data } });
+}
+
+// --- Core operations ---
+
+async function openApp(extractedData, sourceUrl, apiUrl) {
+  const parsedApiUrl = validateHttpUrl(apiUrl);
+  if (!parsedApiUrl) throw new Error("URL del servidor no válida.");
+
+  // Derive app origin from API host (replaces port with 5173)
+  const appOrigin = `${parsedApiUrl.protocol}//${parsedApiUrl.hostname}:5173`;
+  const parsedAppUrl = validateHttpUrl(`${appOrigin}/?from_extension=true`);
+  if (!parsedAppUrl) throw new Error("No se pudo construir la URL de la aplicación.");
+
+  const newTab = await chrome.tabs.create({ url: parsedAppUrl.href });
+
+  chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+    if (tabId === newTab.id && info.status === "complete") {
+      chrome.tabs.onUpdated.removeListener(listener);
+      chrome.scripting.executeScript({
+        target: { tabId: newTab.id },
+        func: (data) => {
+          localStorage.setItem("fraudcheck_extension_data", JSON.stringify(data));
+          window.location.reload();
+        },
+        args: [{ extracted_data: extractedData, source_url: sourceUrl }],
+      });
+    }
+  });
+}
+
+async function fetchExtractedData(text, url, apiUrl) {
+  const parsedApiUrl = validateHttpUrl(apiUrl);
+  if (!parsedApiUrl) throw new Error("URL del servidor no válida. Configura una URL http:// o https://.");
+
+  const sessionId = await getOrCreateSessionId();
+  const contentWithUrl = `URL del anuncio: ${url}\n\n${text}`;
+
+  const apiResponse = await fetch(`${apiUrl}${API_ENDPOINT}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      session_id: sessionId,
+      listing_content: contentWithUrl.substring(0, 50000),
+    }),
+  });
+
+  if (!apiResponse.ok) {
+    const err = await apiResponse.json().catch(() => ({}));
+    throw new Error(err.detail || `Error del servidor: ${apiResponse.status}`);
+  }
+
+  const result = await apiResponse.json();
+  await setCached(url, result.extracted_data);
+  return result.extracted_data;
+}
+
 // --- Init ---
 
 (async () => {
   const savedUrl = await getApiUrl();
   apiUrlInput.value = savedUrl;
 
-  // Save on change with validation
   apiUrlInput.addEventListener("change", () => {
     const url = apiUrlInput.value.trim().replace(/\/+$/, "");
     if (url && !validateHttpUrl(url)) {
@@ -70,7 +189,6 @@ function isInsecureRemote(urlString) {
       return;
     }
     chrome.storage.local.set({ apiUrl: url || DEFAULT_API_URL });
-    // Warn if using HTTP on a remote server
     if (isInsecureRemote(url)) {
       setStatus("Aviso: conexión no segura (HTTP). Usa HTTPS en producción.", "error");
     } else {
@@ -78,31 +196,40 @@ function isInsecureRemote(urlString) {
     }
   });
 
-  // Show current page info
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
     pageTitleEl.textContent = tab.title || "Pestaña actual";
     pageUrlEl.textContent = tab.url || "";
   }
 
-  // Show warning if currently configured with insecure remote
   if (isInsecureRemote(savedUrl)) {
     setStatus("Aviso: conexión no segura (HTTP). Usa HTTPS en producción.", "error");
   }
 })();
 
+// --- Shared state for "analyze anyway" flow ---
+let _pendingText = null;
+let _pendingUrl = null;
+
+function resetPending() {
+  _pendingText = null;
+  _pendingUrl = null;
+}
+
 // --- Main action ---
 
 btnAnalyze.addEventListener("click", async () => {
   btnAnalyze.disabled = true;
+  btnAnalyzeAnyway.style.display = "none";
+  hideFlags();
+  resetPending();
   setStatus("Extrayendo contenido de la página...", "loading");
 
   try {
-    // 1. Get the active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error("No se pudo acceder a la pestaña activa.");
 
-    // 2. Inject content script if not on a matched site (manual activation)
+    // Inject content script if not on a matched site (manual activation)
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
@@ -112,81 +239,70 @@ btnAnalyze.addEventListener("click", async () => {
       // Already injected via manifest, that's fine
     }
 
-    // 3. Extract content from the page
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      action: "extractContent",
-    });
-
-    if (!response?.success) {
-      throw new Error(response?.error || "No se pudo extraer el contenido.");
-    }
+    // Extract content from the page
+    const response = await chrome.tabs.sendMessage(tab.id, { action: "extractContent" });
+    if (!response?.success) throw new Error(response?.error || "No se pudo extraer el contenido.");
 
     const { text, url } = response.data;
-
     if (!text || text.length < 50) {
-      throw new Error(
-        "La página no tiene suficiente contenido. Asegúrate de estar en un anuncio."
-      );
+      throw new Error("La página no tiene suficiente contenido. Asegúrate de estar en un anuncio.");
     }
 
+    const apiUrl = apiUrlInput.value.trim().replace(/\/+$/, "") || DEFAULT_API_URL;
+
+    // Stage 0: Cache check — skip backend if already analyzed recently
+    const cached = await getCached(url);
+    if (cached) {
+      setStatus("Resultado en caché. Abriendo FraudCheck.ai...", "success");
+      await openApp(cached, url, apiUrl);
+      return;
+    }
+
+    // Stage 1: Regex red flag filter
+    const flags = checkRedFlags(text);
+    if (flags.length === 0) {
+      showFlags([]);
+      setStatus("Sin señales de alerta. ¿Quieres un análisis completo?", "success");
+      _pendingText = text;
+      _pendingUrl = url;
+      btnAnalyzeAnyway.style.display = "block";
+      btnAnalyze.disabled = false;
+      return;
+    }
+
+    showFlags(flags);
     setStatus(
-      `Extraído: ${text.length.toLocaleString()} caracteres. Enviando al servidor...`,
+      `${flags.length} señal(es) detectada(s). Enviando al servidor...`,
       "loading"
     );
 
-    // 4. Validate and send to backend
-    const apiUrl = apiUrlInput.value.trim().replace(/\/+$/, "") || DEFAULT_API_URL;
-    const parsedApiUrl = validateHttpUrl(apiUrl);
-    if (!parsedApiUrl) {
-      throw new Error("URL del servidor no válida. Configura una URL http:// o https://.");
-    }
-
-    const sessionId = await getOrCreateSessionId();
-    const contentWithUrl = `URL del anuncio: ${url}\n\n${text}`;
-
-    const apiResponse = await fetch(`${apiUrl}${API_ENDPOINT}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        session_id: sessionId,
-        listing_content: contentWithUrl.substring(0, 50000),
-      }),
-    });
-
-    if (!apiResponse.ok) {
-      const err = await apiResponse.json().catch(() => ({}));
-      throw new Error(err.detail || `Error del servidor: ${apiResponse.status}`);
-    }
-
-    const result = await apiResponse.json();
-
+    // Stage 2: Backend extraction
+    const extractedData = await fetchExtractedData(text, url, apiUrl);
     setStatus("Datos extraídos. Abriendo FraudCheck.ai...", "success");
-
-    // 5. Build and validate the app URL before opening
-    const appOrigin = apiUrl.replace(/:\d+$/, ":5173");
-    const parsedAppUrl = validateHttpUrl(`${appOrigin}/?from_extension=true`);
-    if (!parsedAppUrl) {
-      throw new Error("No se pudo construir la URL de la aplicación.");
-    }
-
-    const newTab = await chrome.tabs.create({ url: parsedAppUrl.href });
-
-    // Wait for the tab to load, then inject data via script
-    chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-      if (tabId === newTab.id && info.status === "complete") {
-        chrome.tabs.onUpdated.removeListener(listener);
-        chrome.scripting.executeScript({
-          target: { tabId: newTab.id },
-          func: (data) => {
-            localStorage.setItem("fraudcheck_extension_data", JSON.stringify(data));
-            window.location.reload();
-          },
-          args: [{ extracted_data: result.extracted_data, source_url: url }],
-        });
-      }
-    });
+    await openApp(extractedData, url, apiUrl);
   } catch (err) {
     setStatus(err.message, "error");
+    btnAnalyze.disabled = false;
+  }
+});
+
+// --- Analyze anyway (when no flags detected but user wants full analysis) ---
+
+btnAnalyzeAnyway.addEventListener("click", async () => {
+  if (!_pendingText || !_pendingUrl) return;
+
+  btnAnalyzeAnyway.disabled = true;
+  btnAnalyze.disabled = true;
+  setStatus("Enviando al servidor...", "loading");
+
+  try {
+    const apiUrl = apiUrlInput.value.trim().replace(/\/+$/, "") || DEFAULT_API_URL;
+    const extractedData = await fetchExtractedData(_pendingText, _pendingUrl, apiUrl);
+    setStatus("Datos extraídos. Abriendo FraudCheck.ai...", "success");
+    await openApp(extractedData, _pendingUrl, apiUrl);
+  } catch (err) {
+    setStatus(err.message, "error");
+    btnAnalyzeAnyway.disabled = false;
     btnAnalyze.disabled = false;
   }
 });
