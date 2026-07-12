@@ -88,25 +88,24 @@ export const LandingPage: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('from_extension') !== 'true') return;
-    window.history.replaceState({}, '', '/');
+
     const stored = localStorage.getItem('fraudcheck_extension_data');
     localStorage.removeItem('fraudcheck_extension_data');
+
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         const data = parsed?.extracted_data;
-        if (
-          data &&
-          typeof data === 'object' &&
-          !Array.isArray(data) &&
-          (data.address || data.description || data.listing_url)
-        ) {
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          window.history.replaceState({}, '', '/');
           toast.success('Datos recibidos de la extensión de Chrome');
           navigate('/review', { state: { extractedData: data } });
           return;
         }
       } catch { /* discard malformed data */ }
     }
+    // No data yet — keep from_extension=true in URL so the reload triggered
+    // by the extension will re-enter this effect with the data already set.
   }, []);
 
   useEffect(() => {

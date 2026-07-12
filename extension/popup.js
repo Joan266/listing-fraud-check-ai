@@ -156,25 +156,16 @@ async function openApp(extractedData, sourceUrl, apiUrl) {
   const parsedApiUrl = validateHttpUrl(apiUrl);
   if (!parsedApiUrl) throw new Error("URL del servidor no válida.");
 
-  // Derive app origin from API host (replaces port with 5173)
   const appOrigin = `${parsedApiUrl.protocol}//${parsedApiUrl.hostname}:5173`;
   const parsedAppUrl = validateHttpUrl(`${appOrigin}/?from_extension=true`);
   if (!parsedAppUrl) throw new Error("No se pudo construir la URL de la aplicación.");
 
-  const newTab = await chrome.tabs.create({ url: parsedAppUrl.href });
-
-  chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-    if (tabId === newTab.id && info.status === "complete") {
-      chrome.tabs.onUpdated.removeListener(listener);
-      chrome.scripting.executeScript({
-        target: { tabId: newTab.id },
-        func: (data) => {
-          localStorage.setItem("fraudcheck_extension_data", JSON.stringify(data));
-          window.location.reload();
-        },
-        args: [{ extracted_data: extractedData, source_url: sourceUrl }],
-      });
-    }
+  // Delegate to background service worker — popup context dies when the new tab
+  // steals focus, so we can't wait for onUpdated here.
+  chrome.runtime.sendMessage({
+    type: "OPEN_APP_WITH_DATA",
+    appUrl: parsedAppUrl.href,
+    payload: { extracted_data: extractedData, source_url: sourceUrl },
   });
 }
 

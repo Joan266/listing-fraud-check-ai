@@ -3,7 +3,14 @@
   "name": "FraudCheck.ai — Analizar anuncio",
   "version": "1.0.0",
   "description": "Extrae el contenido de un anuncio inmobiliario y lo envía a FraudCheck.ai para su análisis de fraude.",
-  "permissions": ["activeTab", "scripting", "storage", "languageModel"],
+  "permissions": ["activeTab", "scripting", "storage", "languageModel", "tabs"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "http://localhost:5173/*",
+    "http://localhost:8000/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
