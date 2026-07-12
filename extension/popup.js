@@ -94,8 +94,12 @@ async function getLocalAIScore(text) {
   if (availability !== "available") return null;
 
   const session = await chrome.languageModel.create({
-    systemPrompt: `Eres un detector de fraude inmobiliario. Analiza el texto de un anuncio y devuelve SOLO un número del 0 al 10 indicando el riesgo de fraude:
-0 = claramente legítimo, 5 = señales ambiguas, 10 = altamente sospechoso.
+    systemPrompt: `Eres un detector de fraude inmobiliario ESTRICTO. Busca activamente señales sutiles de fraude:
+precio anormalmente bajo para la zona, descripción genérica o copiada, datos de contacto fuera de la plataforma,
+lenguaje de urgencia implícita, propietario que no puede mostrar la propiedad, fotos poco específicas o inconsistentes,
+solicitud de pago anticipado, gramática extraña o traducción automática.
+Ante la duda, puntúa alto. Es mejor analizar un anuncio legítimo de más que perder a alguien ante un fraude.
+0 = sin ninguna señal de alerta, 10 = múltiples señales claras de fraude.
 Responde ÚNICAMENTE con el número, sin texto adicional.`,
   });
 
@@ -310,7 +314,7 @@ btnAnalyze.addEventListener("click", async () => {
       setStatus("Analizando con IA local...", "loading");
       const aiScore = await getLocalAIScore(text).catch(() => null);
 
-      if (aiScore !== null && aiScore > 3) {
+      if (aiScore !== null && aiScore > 2) {
         // Nano found risk the regex missed — escalate to backend
         showFlags([`IA local: puntuación de riesgo ${aiScore}/10`]);
         setStatus(`IA local: riesgo ${aiScore}/10. Enviando al servidor...`, "loading");
