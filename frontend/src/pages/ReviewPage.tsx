@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Edit3, MapPin, User, Home, Image, DollarSign, MessageSquare, Plus, X, Sparkles, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit3, MapPin, User, Home, Image, DollarSign, MessageSquare, Plus, X, Sparkles, ArrowLeft, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { setCurrentAnalysisId, startAnalysisAsync, } from '../store/appSlice';
 import { ExtractedData } from '../types';
@@ -11,7 +11,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LoadingScreen } from '../components/UI/LoadingScreen';
 
-const MAX_IMAGE_URLS = 3;
+const MAX_IMAGE_URLS = 8;
 
 const ReviewPage: React.FC = () => {
   const navigate = useNavigate();
@@ -403,17 +403,42 @@ const ReviewPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-              {(editableData.image_urls || []).map((url, index) => (
-                <div key={index} className={`flex items-center justify-between p-2 rounded-md ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                  <span className={`truncate text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{url}</span>
-                  <button
-                    onClick={() => handleRemoveImageUrl(index)}
-                    className="text-red-500 hover:text-red-700 ml-4 flex-shrink-0"
-                    aria-label={`Eliminar ${url}`}
-                  >
-                    <X size={18} />
-                  </button>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {(editableData.image_urls || []).map((imgUrl, index) => (
+                <div key={index} className="relative group rounded-lg overflow-hidden">
+                  {/* Thumbnail */}
+                  <img
+                    src={imgUrl}
+                    alt={`Foto ${index + 1}`}
+                    className="w-full h-20 object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      (e.currentTarget.nextElementSibling as HTMLElement | null)?.removeAttribute('hidden');
+                    }}
+                  />
+                  {/* Fallback for broken images */}
+                  <div hidden className={`w-full h-20 flex items-center justify-center ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                    <Image size={20} className={isDark ? 'text-gray-500' : 'text-gray-400'} />
+                  </div>
+                  {/* Hover overlay: open + delete */}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <a
+                      href={imgUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors"
+                      aria-label="Ver imagen"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                    <button
+                      onClick={() => handleRemoveImageUrl(index)}
+                      className="p-1.5 bg-red-500/80 hover:bg-red-600 rounded-full text-white transition-colors"
+                      aria-label={`Eliminar imagen ${index + 1}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
