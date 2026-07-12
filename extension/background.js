@@ -1,4 +1,12 @@
 // Background service worker — persists after popup closes.
+// On install/update: purge any stale cache_* keys left by the old cache system.
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.get(null, (items) => {
+    const staleKeys = Object.keys(items).filter((k) => k.startsWith("cache_"));
+    if (staleKeys.length) chrome.storage.local.remove(staleKeys);
+  });
+});
+
 // Handles tab creation + script injection so the popup context dying doesn't break the flow.
 
 chrome.runtime.onMessage.addListener((message) => {

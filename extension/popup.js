@@ -1,6 +1,5 @@
 const DEFAULT_API_URL = "http://localhost:8000";
 const API_ENDPOINT = "/api/v1/extract-data";
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const btnAnalyze = document.getElementById("btn-analyze");
 const btnAnalyzeAnyway = document.getElementById("btn-analyze-anyway");
@@ -131,25 +130,6 @@ function hideFlags() {
   if (flagsEl) flagsEl.style.display = "none";
 }
 
-// --- Cache helpers (keyed by listing URL, TTL 24h) ---
-
-function getCacheKey(url) {
-  return `cache_${btoa(unescape(encodeURIComponent(url))).replace(/[^a-zA-Z0-9]/g, "").substring(0, 40)}`;
-}
-
-async function getCached(url) {
-  const key = getCacheKey(url);
-  const result = await chrome.storage.local.get(key);
-  const entry = result[key];
-  if (entry && Date.now() - entry.ts < CACHE_TTL_MS) return entry.data;
-  return null;
-}
-
-async function setCached(url, data) {
-  const key = getCacheKey(url);
-  await chrome.storage.local.set({ [key]: { ts: Date.now(), data } });
-}
-
 // --- Core operations ---
 
 async function openApp(extractedData, sourceUrl, apiUrl) {
@@ -191,7 +171,6 @@ async function fetchExtractedData(text, url, apiUrl) {
   }
 
   const result = await apiResponse.json();
-  await setCached(url, result.extracted_data);
   return result.extracted_data;
 }
 
@@ -268,14 +247,6 @@ btnAnalyze.addEventListener("click", async () => {
     }
 
     const apiUrl = apiUrlInput.value.trim().replace(/\/+$/, "") || DEFAULT_API_URL;
-
-    // Stage 0: Cache check — skip backend if already analyzed recently
-    const cached = await getCached(url);
-    if (cached) {
-      setStatus("Resultado en caché. Abriendo FraudCheck.ai...", "success");
-      await openApp(cached, url, apiUrl);
-      return;
-    }
 
     // Stage 1: Regex red flag filter
     const flags = checkRedFlags(text);
