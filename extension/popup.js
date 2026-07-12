@@ -208,10 +208,20 @@ async function fetchExtractedData(text, url, apiUrl) {
 // --- Shared state for "analyze anyway" flow ---
 let _pendingText = null;
 let _pendingUrl = null;
+let _pendingImages = [];
 
 function resetPending() {
   _pendingText = null;
   _pendingUrl = null;
+  _pendingImages = [];
+}
+
+// Merge images captured by the content script into extracted_data.image_urls.
+// Backend Gemini can't extract image URLs from plain text, so we inject them here.
+function mergeImages(extractedData, images) {
+  if (!images?.length) return extractedData;
+  if (extractedData.image_urls?.length) return extractedData; // backend already found some
+  return { ...extractedData, image_urls: images };
 }
 
 // --- Main action ---
@@ -241,7 +251,7 @@ btnAnalyze.addEventListener("click", async () => {
     const response = await chrome.tabs.sendMessage(tab.id, { action: "extractContent" });
     if (!response?.success) throw new Error(response?.error || "No se pudo extraer el contenido.");
 
-    const { text, url } = response.data;
+    const { text, url, images = [] } = response.data;
     if (!text || text.length < 50) {
       throw new Error("La página no tiene suficiente contenido. Asegúrate de estar en un anuncio.");
     }
@@ -261,7 +271,7 @@ btnAnalyze.addEventListener("click", async () => {
         setStatus(`IA local: riesgo ${aiScore}/10. Enviando al servidor...`, "loading");
         const extractedData = await fetchExtractedData(text, url, apiUrl);
         setStatus("Datos extraídos. Abriendo FraudCheck.ai...", "success");
-        await openApp(extractedData, url, apiUrl);
+        await openApp(mergeImages(extractedData, images), url, apiUrl);
         return;
       }
 
@@ -271,6 +281,7 @@ btnAnalyze.addEventListener("click", async () => {
       setStatus(`Sin señales de alerta${aiNote}. ¿Quieres un análisis completo?`, "success");
       _pendingText = text;
       _pendingUrl = url;
+      _pendingImages = images;
       btnAnalyzeAnyway.style.display = "block";
       btnAnalyze.disabled = false;
       return;
@@ -285,7 +296,7 @@ btnAnalyze.addEventListener("click", async () => {
     // Stage 2: Backend extraction
     const extractedData = await fetchExtractedData(text, url, apiUrl);
     setStatus("Datos extraídos. Abriendo FraudCheck.ai...", "success");
-    await openApp(extractedData, url, apiUrl);
+    await openApp(mergeImages(extractedData, images), url, apiUrl);
   } catch (err) {
     setStatus(err.message, "error");
     btnAnalyze.disabled = false;
@@ -305,7 +316,7 @@ btnAnalyzeAnyway.addEventListener("click", async () => {
     const apiUrl = apiUrlInput.value.trim().replace(/\/+$/, "") || DEFAULT_API_URL;
     const extractedData = await fetchExtractedData(_pendingText, _pendingUrl, apiUrl);
     setStatus("Datos extraídos. Abriendo FraudCheck.ai...", "success");
-    await openApp(extractedData, _pendingUrl, apiUrl);
+    await openApp(mergeImages(extractedData, _pendingImages), _pendingUrl, apiUrl);
   } catch (err) {
     setStatus(err.message, "error");
     btnAnalyzeAnyway.disabled = false;
