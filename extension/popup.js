@@ -109,6 +109,46 @@ Responde ÚNICAMENTE con el número, sin texto adicional.`,
   }
 }
 
+/**
+ * Uses Gemini Nano to filter a raw list of image URLs down to actual
+ * property photos (rooms, exterior, amenities). Returns at most 8 URLs.
+ * Falls back to first 8 URLs if the model is unavailable or fails.
+ */
+async function filterImagesWithLocalAI(images) {
+  if (!images.length) return [];
+
+  const MAX = 8;
+
+  if (!chrome.languageModel) return images.slice(0, MAX);
+  const availability = await chrome.languageModel.availability().catch(() => null);
+  if (availability !== "available") return images.slice(0, MAX);
+
+  const session = await chrome.languageModel.create({
+    systemPrompt: `You filter image URLs from rental listing pages.
+Given a list of URLs return ONLY the ones that are actual property photos:
+rooms, exterior, pool, amenities, common areas.
+SKIP: thumbnails (square60, square100, 80x80, 1x1), maps, user avatars,
+icons, badges, logos, UI elements, placeholders.
+Reply with at most ${MAX} URLs, one per line, no extra text.`,
+  });
+
+  try {
+    const input = images.slice(0, 40).join("\n");
+    const result = await session.prompt(input);
+    const filtered = result
+      .trim()
+      .split("\n")
+      .map((u) => u.trim())
+      .filter((u) => u.startsWith("http") && images.includes(u));
+    // Need at least 2 valid matches to trust Nano's output
+    return filtered.length >= 2 ? filtered.slice(0, MAX) : images.slice(0, MAX);
+  } catch {
+    return images.slice(0, MAX);
+  } finally {
+    session.destroy();
+  }
+}
+
 function showFlags(flags) {
   if (!flagsEl) return;
   flagsEl.innerHTML = "";
@@ -251,10 +291,15 @@ btnAnalyze.addEventListener("click", async () => {
     const response = await chrome.tabs.sendMessage(tab.id, { action: "extractContent" });
     if (!response?.success) throw new Error(response?.error || "No se pudo extraer el contenido.");
 
-    const { text, url, images = [] } = response.data;
+    const { text, url, images: rawImages = [] } = response.data;
     if (!text || text.length < 50) {
       throw new Error("La página no tiene suficiente contenido. Asegúrate de estar en un anuncio.");
     }
+
+    // Filter raw image URLs to actual listing photos using Gemini Nano.
+    // Done once here so both the direct path and "analyze anyway" path share the result.
+    setStatus("Filtrando imágenes...", "loading");
+    const images = await filterImagesWithLocalAI(rawImages);
 
     const apiUrl = apiUrlInput.value.trim().replace(/\/+$/, "") || DEFAULT_API_URL;
 
