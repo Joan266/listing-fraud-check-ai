@@ -7,13 +7,13 @@ test.describe('Landing Page', () => {
 
   test('displays brand name and hero', async ({ page }) => {
     await expect(page.getByText('AlquiSeguro').first()).toBeVisible();
-    const heroHeading = page.getByRole('heading', { name: 'Verifica antes de firmar' });
+    const heroHeading = page.getByRole('heading', { name: /dudas.*firmar/i });
     await expect(heroHeading).toBeVisible();
   });
 
   test('shows how-it-works section', async ({ page }) => {
-    await expect(page.locator('text=Cómo funciona')).toBeVisible();
-    await expect(page.locator('text=Pega tu anuncio')).toBeVisible();
+    await expect(page.locator('text=Cómo funciona').first()).toBeVisible();
+    await expect(page.locator('text=Abre el anuncio')).toBeVisible();
     await expect(page.locator('text=La IA ejecuta las verificaciones')).toBeVisible();
     await expect(page.locator('text=Recibe tu informe')).toBeVisible();
   });
@@ -65,7 +65,7 @@ test.describe('Landing Page', () => {
     await ctaBtn.click();
 
     // The form section should be scrolled into view
-    const formHeading = page.locator('h2', { hasText: 'Verifica un anuncio ahora' });
+    const formHeading = page.locator('h2', { hasText: 'Verifica un anuncio' });
     await expect(formHeading).toBeInViewport();
   });
 
