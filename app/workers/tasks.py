@@ -701,10 +701,16 @@ def job_ai_image_detection(check_id_arg):
         if isinstance(task_result, dict) and task_result.get("error"):
             raise Exception(task_result.get("error"))
 
+        ai_results = task_result.get("ai_detection_results", [])
+        all_failed = bool(ai_results) and all(
+            r.get("verdict") == "Error" for r in ai_results if isinstance(r, dict)
+        )
+        step_status = "ERROR" if all_failed else "COMPLETED"
+
         return {
             "job_name": job_name,
             "description": job_description,
-            "status": "COMPLETED",
+            "status": step_status,
             "inputs_used": inputs,
             "result": task_result
         }

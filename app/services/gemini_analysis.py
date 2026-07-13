@@ -142,5 +142,8 @@ def synthesize_online_presence(context: dict) -> dict:
 def analyze_image_for_ai(image_data: dict) -> dict:
     """Analyzes an image for AI artifacts."""
     prompt = load_prompt("ai_image_detection_prompt")
-    
-    return _call_gemini(ADVANCED_MODEL, [prompt, image_data])
+    image_part = types.Part.from_bytes(
+        data=image_data["data"],
+        mime_type=image_data["mime_type"],
+    )
+    return _call_gemini(ADVANCED_MODEL, [prompt, image_part])
