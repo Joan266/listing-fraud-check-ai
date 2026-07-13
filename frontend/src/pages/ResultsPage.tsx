@@ -2,16 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Shield,
-  MessageCircle,
   RotateCcw,
   MapPin,
-  ChevronDown,
-  ChevronRight,
+  Home,
+  ExternalLink,
 } from 'lucide-react';
 import ScoreGauge from '../components/UI/ScoreGauge';
 import { gsap } from 'gsap';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
-import MapComponent from '../components/UI/MapComponent/EnhancedMapComponent';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { pollAnalysisStatus, sendChatMessageAsync, setCurrentAnalysisId } from '../store/appSlice';
 import { ChatMessage } from '../types/index';
@@ -20,8 +18,18 @@ import { LoadingScreen } from '../components/UI/LoadingScreen';
 import { AnalysisProgress } from '../components/UI/AnalysisProgress';
 import { FlagsCard } from '../components/Results/FlagsCard';
 import { AnalysisRunbook } from '../components/Results/AnalysisRubook';
-import EnhancedMapComponent from '../components/UI/MapComponent/EnhancedMapComponent';
 import { FailedAnalysis } from '../components/UI/FailedAnalysis';
+import BrandLogo from '../components/UI/BrandLogo';
+import ListingSidebar from '../components/Results/ListingSidebar';
+import FloatingChat from '../components/Results/FloatingChat';
+
+const card = {
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 16,
+  background: 'rgba(255,255,255,0.02)',
+  padding: '24px',
+} as React.CSSProperties;
+
 const ResultsPage: React.FC = () => {
   const { analysisId } = useParams<{ analysisId: string }>();
   const dispatch = useAppDispatch();
@@ -34,11 +42,13 @@ const ResultsPage: React.FC = () => {
   )?.result;
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(analysis?.chat?.messages || []);
 
-  const { theme, isPolling } = useAppSelector(state => state.app);
+  const { isPolling } = useAppSelector(state => state.app);
   const [isSending, setIsSending] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (analysisId) {
       dispatch(setCurrentAnalysisId(analysisId));
@@ -64,26 +74,23 @@ const ResultsPage: React.FC = () => {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [chatMessages]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !analysis?.chat?.id || !analysisId) return;
-
     const userMessage: ChatMessage = { role: 'user', content: newMessage };
     setChatMessages(prev => [...prev, userMessage]);
     setNewMessage('');
     setIsSending(true);
-
     try {
       const { aiMessage } = await dispatch(sendChatMessageAsync({
         analysisId: analysisId,
         chatId: analysis.chat.id,
         message: newMessage
       })).unwrap();
-
       setChatMessages(prev => [...prev, aiMessage]);
-
-    } catch (err) {
+    } catch {
       toast.error("Error al enviar el mensaje.");
     } finally {
       setIsSending(false);
@@ -91,17 +98,13 @@ const ResultsPage: React.FC = () => {
   };
 
   const handleRerunAnalysis = () => {
-    if (analysis) {
-      // Navigate to the review page and pass the input_data for that analysis
-      navigate('/review', { state: { extractedData: analysis.input_data } });
-    }
+    if (analysis) navigate('/review', { state: { extractedData: analysis.input_data } });
   };
+
   const { sessionId } = useAppSelector(state => state.app);
-  // 5. If the analysis is pending/in progress, show real-time progress
+
   if (!analysis || analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS') {
-    if (analysisId) {
-      return <AnalysisProgress checkId={analysisId} sessionId={sessionId} />;
-    }
+    if (analysisId) return <AnalysisProgress checkId={analysisId} sessionId={sessionId} />;
     return <LoadingScreen />;
   }
   if (analysis.status === 'FAILED') {
@@ -111,183 +114,176 @@ const ResultsPage: React.FC = () => {
   const { final_report, analysis_steps } = analysis;
   const report = final_report && 'authenticity_score' in final_report ? final_report : null;
 
-  return (
-    <div className={`min-h-full ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} p-6`}>
-      <div ref={containerRef} className="max-w-7xl mx-auto">
+  const authScore = report?.authenticity_score ?? 0;
+  const qualScore = report?.quality_score ?? 0;
+  const authDeg = Math.round((authScore / 100) * 360);
 
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center space-x-3">
-              <Shield size={28} className="text-yellow-400" />
-              <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Resultados del análisis
-              </h1>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={handleRerunAnalysis}
-                className={`px-4 py-2 border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg transition-colors flex items-center space-x-2`}
-              >
-                <RotateCcw size={16} />
-                <span>Repetir análisis</span>
-              </button>
-            </div>
+  const listingDomain = (() => {
+    try { return analysis.input_data.listing_url ? new URL(analysis.input_data.listing_url).hostname.replace('www.', '') : null; }
+    catch { return null; }
+  })();
+
+  return (
+    <div style={{ minHeight: '100vh', background: 'radial-gradient(1100px 620px at 50% -10%, rgba(53,212,138,0.09), transparent 60%), #090C12', position: 'relative' }}>
+      <div ref={containerRef} style={{ maxWidth: 1120, margin: '0 auto', padding: '0 28px 80px', position: 'relative' }}>
+
+        {/* Nav */}
+        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+            <BrandLogo size={32} />
+            <span style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 19, letterSpacing: '-0.02em' }}>
+              Alqui<span style={{ color: '#35D48A' }}>Seguro</span>
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontFamily: "'IBM Plex Mono'", fontSize: 12, color: '#6B7385' }}>
+              Informe #{analysisId?.slice(0, 8)}
+            </span>
+            <button onClick={handleRerunAnalysis}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: '#C6CDD9', fontSize: 13.5, padding: '8px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.12)', background: 'none', cursor: 'pointer' }}
+            >
+              <RotateCcw size={14} /> Verificar otro anuncio
+            </button>
+          </div>
+        </header>
+
+        {/* Title + metadata row */}
+        <div style={{ padding: '26px 0 30px' }}>
+          <div style={{ fontFamily: "'IBM Plex Mono'", fontSize: 13, letterSpacing: '0.14em', color: '#35D48A', textTransform: 'uppercase' }}>
+            Informe de verificación
+          </div>
+          <h1 style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 'clamp(30px,4.4vw,46px)', letterSpacing: '-0.03em', margin: '12px 0 0', lineHeight: 1.05 }}>
+            {analysis.input_data?.address || 'Anuncio analizado'}
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 10, flexWrap: 'wrap', color: '#9AA3B2', fontSize: 14 }}>
+            {analysis.input_data?.address && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <MapPin size={13} style={{ color: '#6B7385' }} />
+                {analysis.input_data.address.split(',').slice(0, 2).join(',')}
+              </span>
+            )}
+            {analysis.input_data?.property_type && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Home size={13} style={{ color: '#6B7385' }} />
+                {analysis.input_data.property_type}
+              </span>
+            )}
+            {listingDomain && (
+              <span style={{ padding: '2px 8px', borderRadius: 5, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 12 }}>
+                {listingDomain}
+              </span>
+            )}
+            {analysis.input_data?.listing_url && (
+              <a href={analysis.input_data.listing_url} target="_blank" rel="noopener noreferrer"
+                style={{ color: '#35D48A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+                Ver anuncio original <ExternalLink size={12} />
+              </a>
+            )}
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
-          <div className="lg:col-span-2 space-y-6">
-            {/* Summary Card */}
-            {report && (
-            <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
-              <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Evaluación general
-              </h2>
-              <div className="flex flex-wrap justify-center gap-x-12 gap-y-6 mb-6">
-                <ScoreGauge score={report.authenticity_score} title="Autenticidad" theme={theme} />
-                <ScoreGauge score={report.quality_score} title="Calidad" theme={theme} />
+        {/* Verdict row */}
+        {report && (
+          <section style={{ display: 'grid', gridTemplateColumns: '1.15fr 0.85fr', gap: 18, marginBottom: 22 }}>
+            {/* Score card */}
+            <div style={{ border: '1px solid rgba(53,212,138,0.28)', borderRadius: 20, background: 'linear-gradient(180deg,rgba(53,212,138,0.06),rgba(255,255,255,0.01))', padding: '30px 32px', display: 'flex', alignItems: 'center', gap: 30, flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', width: 132, height: 132, flexShrink: 0 }}>
+                <div style={{ width: 132, height: 132, borderRadius: '50%', background: `conic-gradient(#35D48A ${authDeg}deg, rgba(255,255,255,0.08) 0)` }} />
+                <div style={{ position: 'absolute', inset: 11, borderRadius: '50%', background: '#0B0F16', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 42, color: '#35D48A', lineHeight: 1 }}>{authScore}</span>
+                  <span style={{ fontFamily: "'IBM Plex Mono'", fontSize: 11, color: '#6B7385', marginTop: 3 }}>Autenticidad</span>
+                </div>
               </div>
-              <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                <h3 className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Resumen
-                </h3>
-                <p className={`${theme === 'dark' ? 'text-gray-100' : 'text-gray-700'}`}>
-                  {report.sidebar_summary}
-                </p>
-              </div>
-            </div>
-            )}
-
-            {/* Map Card */}
-            <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg  p-6`}>
-              <div className="flex items-center space-x-2 mb-4">
-                <MapPin size={20} className="text-yellow-400" />
-                <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Verificación de ubicación
+              <div style={{ flex: 1, minWidth: 210 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 13px', borderRadius: 999, background: '#35D48A', color: '#08130D', fontWeight: 700, fontFamily: "'IBM Plex Mono'", fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  {authScore >= 70 ? 'Riesgo bajo' : authScore >= 40 ? 'Riesgo medio' : 'Riesgo alto'}
+                </div>
+                <h2 style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 22, margin: '14px 0 8px', letterSpacing: '-0.02em' }}>
+                  {report.sidebar_summary?.slice(0, 60) || 'Evaluación general'}
                 </h2>
+                <p style={{ color: '#AEB6C3', fontSize: 14.5, lineHeight: 1.6, margin: 0 }}>{report.sidebar_summary}</p>
               </div>
-              <MapComponent
-                address={analysis.input_data.address}
-                theme={theme}
-                neighborhoodData={neighborhoodData}
-                onLocationChange={() => { }}
-                isDraggable={false}
-              />
-
             </div>
 
+            {/* Quality card */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div style={{ ...card, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9AA3B2', fontSize: 14 }}>Calidad del anuncio</span>
+                  <span style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 30, color: '#35D48A' }}>
+                    {qualScore}<span style={{ fontSize: 15, color: '#5E6675' }}>/100</span>
+                  </span>
+                </div>
+                <div style={{ height: 8, borderRadius: 99, background: 'rgba(255,255,255,0.08)', marginTop: 14, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: qualScore + '%', borderRadius: 99, background: 'linear-gradient(90deg,#1F9E68,#35D48A)', animation: 'rpBar 1s ease both' }} />
+                </div>
+              </div>
+              {report.flags && (
+                <div style={{ ...card, display: 'flex', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      {[
+                        { label: 'positivas', color: '#35D48A', count: report.flags.filter((f: any) => f.category === 'Positive').length },
+                        { label: 'medias', color: '#F2B84B', count: report.flags.filter((f: any) => f.category === 'Medium').length },
+                        { label: 'altas', color: '#6B7385', count: report.flags.filter((f: any) => f.category === 'High').length },
+                      ].map((s, i) => (
+                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: s.color, fontWeight: 600, fontSize: 14 }}>
+                          <span style={{ width: 9, height: 9, borderRadius: '50%', background: s.color, display: 'inline-block' }} />
+                          {s.count} {s.label}
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ color: '#6B7385', fontSize: 12.5, marginTop: 6 }}>
+                      {report.flags.length} señales detectadas en {analysis_steps?.length ?? 0} verificaciones
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Main grid */}
+        <section style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 22, alignItems: 'start' }}>
+
+          {/* Left column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+            {/* Flags */}
             {report && <FlagsCard flags={report.flags} />}
 
-
-            {/* Suggested Actions */}
+            {/* Explanation */}
             {report && (
-            <div className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
-              <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Acciones recomendadas
-              </h2>
-              <div className="space-y-3">
-                {report.suggested_actions.map((action: string, index: number) => (
-                  <div key={index} className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center text-sm font-bold mt-0.5 flex-shrink-0">
-                      {index + 1}
-                    </div>
-                    <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      {action}
-                    </span>
-                  </div>
-                ))}
+              <div style={card}>
+                <h2 style={{ fontFamily: "'Space Grotesk'", fontWeight: 600, fontSize: 18, margin: '0 0 16px' }}>Explicación detallada</h2>
+                <p style={{ color: '#AEB6C3', fontSize: 15, lineHeight: 1.7, margin: 0 }}>{report.explanation}</p>
               </div>
-            </div>
-            )}
-            {report && (
-            <div className={`${theme === 'dark' ? 'text-gray-300 bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg p-6`}>
-              <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Explicación detallada
-              </h2>
-              <p>
-                {report.explanation}
-              </p>
-            </div>
             )}
 
-            <AnalysisRunbook steps={analysis_steps ?? []} theme={theme} />
+            {/* Analysis steps */}
+            <AnalysisRunbook steps={analysis_steps ?? []} theme="dark" />
 
           </div>
 
-          {/* Chat Interface - Right Side */}
-          <div className="lg:col-span-1 sticky top-6">
-            <div className={` ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg min-h-80 flex flex-col`}>
-
-
-              <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                <div className="flex items-center space-x-2">
-                  <MessageCircle size={20} className="text-yellow-400" />
-                  <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Haz preguntas
-                  </h2>
-                </div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Obtén explicaciones detalladas sobre el análisis
-                </p>
-              </div>
-              {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {chatMessages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] p-3 rounded-lg ${message.role === 'user'
-                        ? 'bg-yellow-400 text-gray-900'
-                        : theme === 'dark'
-                          ? 'bg-gray-700 text-gray-300'
-                          : 'bg-gray-100 text-gray-700'
-                        }`}
-                    >
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    </div>
-                  </div>
-                ))}
-                {isSending && chatMessages[chatMessages.length - 1].role === 'user' && (
-                  <div className="flex justify-start">
-                    <div className={`max-w-[80%] p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                      <LoadingSpinner size="sm" />
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-              {/* Chat Input */}
-              <div className={`p-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && !isSending && handleSendMessage()}
-                    placeholder="Pregunta sobre el análisis..."
-                    className={`flex-1 p-2 border rounded-lg text-sm ${theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                      }`}
-                    disabled={isSending}
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={!newMessage.trim() || isSending}
-                    className="px-3 py-2 bg-yellow-400 hover:bg-yellow-500 disabled:bg-gray-400 disabled:cursor-not-allowed text-gray-900 rounded-lg transition-colors text-sm font-medium"
-                  >
-                    Enviar
-                  </button>
-                </div>
-              </div>
-
-            </div>
+          {/* Right column — ListingSidebar */}
+          <div style={{ position: 'sticky', top: 20 }}>
+            <ListingSidebar analysis={analysis} neighborhoodData={neighborhoodData} />
           </div>
-        </div>
+        </section>
+
       </div>
+
+      {/* Floating chat */}
+      <FloatingChat
+        chatMessages={chatMessages}
+        isSending={isSending}
+        newMessage={newMessage}
+        onMessageChange={setNewMessage}
+        onSend={handleSendMessage}
+        scrollRef={scrollRef}
+        chatEndRef={chatEndRef}
+        analysisTitle={analysis.input_data?.address}
+      />
     </div>
   );
 };

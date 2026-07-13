@@ -61,6 +61,8 @@ export interface AnalysisStep {
   status: string;
   inputs_used: Record<string, any>;
   result: Record<string, any>;
+  risk_score?: number;
+  confidence?: number;
 }
 
 export interface Analysis {

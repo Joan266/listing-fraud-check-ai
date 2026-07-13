@@ -1,6 +1,4 @@
 import React from 'react';
-import { AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
-import { useAppSelector } from '../../hooks/redux'; // Assuming you have this for theme
 
 interface Flag {
   category: 'High' | 'Medium' | 'Positive' | string;
@@ -11,56 +9,77 @@ interface FlagsCardProps {
   flags: Flag[];
 }
 
-export const FlagsCard: React.FC<FlagsCardProps> = ({ flags }) => {
-  const { theme } = useAppSelector((state) => state.app);
+const FLAG_STYLES: Record<string, { color: string; bg: string; border: string; glyph: string }> = {
+  High:     { color: '#F16A6A', bg: 'rgba(241,106,106,0.08)', border: 'rgba(241,106,106,0.25)', glyph: '✕' },
+  Medium:   { color: '#F2B84B', bg: 'rgba(242,184,75,0.08)',  border: 'rgba(242,184,75,0.25)',  glyph: '⚠' },
+  Positive: { color: '#35D48A', bg: 'rgba(53,212,138,0.08)',  border: 'rgba(53,212,138,0.25)',  glyph: '✓' },
+};
 
-  // Helper to map category to icon and color
-  const getFlagStyle = (category: Flag['category']) => {
-    switch (category) {
-      case 'High':
-        return {
-          Icon: AlertTriangle,
-          color: 'text-red-500 dark:text-red-400',
-        };
-      case 'Medium':
-        return {
-          Icon: AlertCircle,
-          color: 'text-yellow-500 dark:text-yellow-400',
-        };
-      case 'Positive':
-        return {
-          Icon: CheckCircle,
-          color: 'text-green-500 dark:text-green-400',
-        };
-      default:
-        return {
-          Icon: AlertCircle,
-          color: 'text-gray-500 dark:text-gray-400',
-        };
-    }
-  };
-  
-  if (!flags || flags.length === 0) {
-    return null; // Don't render the card if there are no flags
-  }
+const DEFAULT_STYLE = { color: '#7A8496', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)', glyph: '–' };
+
+const CATEGORY_LABELS: Record<string, string> = {
+  High: 'ALTA',
+  Medium: 'MEDIA',
+  Positive: 'POSITIVA',
+};
+
+export const FlagsCard: React.FC<FlagsCardProps> = ({ flags }) => {
+  if (!flags || flags.length === 0) return null;
 
   return (
-    <div className={`border rounded-lg p-6 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-      <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Hallazgos clave
+    <div style={{
+      background: 'rgba(255,255,255,0.02)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: 16,
+      padding: '24px',
+    }}>
+      <h2 style={{
+        color: '#E7ECF3',
+        fontFamily: '"Space Grotesk", sans-serif',
+        fontSize: 18,
+        fontWeight: 600,
+        margin: '0 0 4px 0',
+      }}>
+        Señales detectadas
       </h2>
-      <div className="space-y-4">
+      <p style={{ color: '#8A93A3', fontSize: 13, margin: '0 0 16px' }}>
+        Cada hallazgo, clasificado por su impacto en el riesgo.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {flags.map((flag, index) => {
-          const { Icon, color } = getFlagStyle(flag.category);
+          const s = FLAG_STYLES[flag.category] ?? DEFAULT_STYLE;
+          const tagLabel = CATEGORY_LABELS[flag.category] ?? flag.category.toUpperCase();
           return (
-            <div key={index} className="flex items-start space-x-3">
-              <Icon size={20} className={`${color} mt-0.5 flex-shrink-0`} />
-              <div>
-                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{flag.category}</p>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {flag.description}
-                </p>
-              </div>
+            <div
+              key={index}
+              style={{
+                display: 'flex',
+                gap: 13,
+                padding: '13px 15px',
+                borderRadius: 12,
+                background: s.bg,
+                border: `1px solid ${s.border}`,
+                alignItems: 'center',
+              }}
+            >
+              <span style={{
+                fontFamily: '"IBM Plex Mono", monospace',
+                fontSize: 13,
+                color: s.color,
+                flexShrink: 0,
+              }}>{s.glyph}</span>
+              <span style={{ flex: 1, fontSize: 14, color: '#C6CDD9', lineHeight: 1.5 }}>
+                {flag.description}
+              </span>
+              <span style={{
+                fontFamily: "'IBM Plex Mono'",
+                fontSize: 10.5,
+                color: s.color,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}>
+                {tagLabel}
+              </span>
             </div>
           );
         })}
