@@ -6,13 +6,14 @@ const btnAnalyzeAnyway = document.getElementById("btn-analyze-anyway");
 const statusEl = document.getElementById("status");
 const pageTitleEl = document.getElementById("page-title");
 const pageUrlEl = document.getElementById("page-url");
-const apiUrlInput = document.getElementById("api-url");
+const apiUrlInput = document.getElementById("server-url");
 const flagsEl = document.getElementById("flags");
+const statusTextEl = statusEl ? statusEl.querySelector(".status-text") : null;
 
 // --- Helpers ---
 
 function setStatus(text, type = "") {
-  statusEl.textContent = text;
+  if (statusTextEl) statusTextEl.textContent = text;
   statusEl.className = `status ${type}`;
 }
 
@@ -105,7 +106,7 @@ Responde ÚNICAMENTE con el número, sin texto adicional.`,
 
   try {
     // Truncate to ~1500 chars to stay within Gemini Nano's context window
-    const result = await session.prompt(text.substring(0, 1500));
+    const result = await session.prompt("LISTING TEXT START:\n" + text.substring(0, 1500));
     const score = parseInt(result.trim(), 10);
     return Number.isNaN(score) ? null : Math.min(10, Math.max(0, score));
   } finally {
@@ -167,11 +168,11 @@ function showFlags(flags) {
     });
     flagsEl.appendChild(ul);
   }
-  flagsEl.style.display = "block";
+  flagsEl.classList.add("show");
 }
 
 function hideFlags() {
-  if (flagsEl) flagsEl.style.display = "none";
+  if (flagsEl) flagsEl.classList.remove("show");
 }
 
 // --- Core operations ---
@@ -272,7 +273,7 @@ function mergeImages(extractedData, images) {
 
 btnAnalyze.addEventListener("click", async () => {
   btnAnalyze.disabled = true;
-  btnAnalyzeAnyway.style.display = "none";
+  btnAnalyzeAnyway.classList.remove("show");
   hideFlags();
   resetPending();
   setStatus("Extrayendo contenido de la página...", "loading");
@@ -331,7 +332,7 @@ btnAnalyze.addEventListener("click", async () => {
       _pendingText = text;
       _pendingUrl = url;
       _pendingImages = images;
-      btnAnalyzeAnyway.style.display = "block";
+      btnAnalyzeAnyway.classList.add("show");
       btnAnalyze.disabled = false;
       return;
     }
@@ -372,3 +373,68 @@ btnAnalyzeAnyway.addEventListener("click", async () => {
     btnAnalyze.disabled = false;
   }
 });
+
+// --- Demo switcher (dev only — remove before publishing to store) ---
+
+(function () {
+  var demoBar = document.getElementById("demo-bar");
+  if (!demoBar) return;
+
+  var flagsEl2 = document.getElementById("flags");
+  var flagsClean = document.querySelector(".flags-clean");
+  var anyway = document.getElementById("btn-analyze-anyway");
+  var analyze = document.getElementById("btn-analyze");
+
+  var ICON_OK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>';
+  var ICON_ERR = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5"></path><path d="M12 16h.01"></path></svg>';
+
+  function demoReset() {
+    if (statusEl) statusEl.className = "status";
+    if (statusTextEl) statusTextEl.textContent = "";
+    if (statusEl) { var icon = statusEl.querySelector(".status-icon"); if (icon) icon.innerHTML = ""; }
+    if (flagsEl2) flagsEl2.classList.remove("show");
+    if (flagsClean) flagsClean.classList.remove("show");
+    if (anyway) anyway.classList.remove("show");
+    if (analyze) analyze.disabled = false;
+  }
+
+  var states = {
+    initial: function () { demoReset(); },
+    loading: function () {
+      demoReset();
+      if (analyze) analyze.disabled = true;
+      if (statusEl) statusEl.className = "status loading";
+      if (statusTextEl) statusTextEl.textContent = "Analizando el anuncio\u2026";
+    },
+    flags: function () {
+      demoReset();
+      if (flagsEl2) flagsEl2.classList.add("show");
+      if (anyway) anyway.classList.add("show");
+    },
+    clean: function () {
+      demoReset();
+      if (statusEl) statusEl.className = "status success";
+      var icon = statusEl ? statusEl.querySelector(".status-icon") : null;
+      if (icon) icon.innerHTML = ICON_OK;
+      if (statusTextEl) statusTextEl.textContent = "Verificado \u2014 riesgo bajo.";
+      if (flagsClean) flagsClean.classList.add("show");
+      if (anyway) { anyway.classList.add("show"); anyway.textContent = "Ver informe completo"; }
+    },
+    error: function () {
+      demoReset();
+      if (statusEl) statusEl.className = "status error";
+      var icon = statusEl ? statusEl.querySelector(".status-icon") : null;
+      if (icon) icon.innerHTML = ICON_ERR;
+      if (statusTextEl) statusTextEl.textContent = "No se pudo conectar con el servidor. Reintenta.";
+    }
+  };
+
+  demoBar.querySelectorAll("button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var fn = states[b.dataset.state];
+      if (fn) fn();
+    });
+  });
+
+  states.flags();
+})();
