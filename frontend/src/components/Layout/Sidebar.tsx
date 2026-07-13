@@ -1,166 +1,335 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { History, Plus, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
 import BrandLogo from '../UI/BrandLogo';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
-import { toggleSidebar, fetchHistoryAsync } from '../../store/appSlice';
+import { toggleSidebar } from '../../store/appSlice';
 
 const Sidebar: React.FC = () => {
-  const {
-    sidebarCollapsed,
-    sessionHistory,
-    currentAnalysisId,
-    theme,
-    sessionId, isLoading
-  } = useAppSelector((state) => state.app);
+  const { sidebarCollapsed, sessionHistory, currentAnalysisId, isLoading } =
+    useAppSelector((state) => state.app);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  const handleNewAnalysis = () => {
-    navigate('/');
-  };
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('es-ES', { month: 'short', day: 'numeric', year: 'numeric' });
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 70) return 'text-green-400';
-    if (score >= 50) return 'text-yellow-400';
-    return 'text-red-400';
+  const scoreColor = (score: number): string => {
+    if (score >= 70) return '#35D48A';
+    if (score >= 50) return '#F2B84B';
+    return '#F16A6A';
   };
 
   return (
-    <div className={`${sidebarCollapsed ? 'w-20' : 'w-80'} transition-all duration-300 ${theme === 'dark' ? 'bg-gray-900 border-r border-gray-800' : 'bg-white border-r'
-      } flex flex-col h-screen relative shadow-md`}>
-
+    <div
+      style={{
+        width: sidebarCollapsed ? 80 : 300,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        position: 'relative',
+        background: '#0B0F16',
+        borderRight: '1px solid rgba(255,255,255,0.07)',
+        transition: 'width 0.3s',
+      }}
+    >
+      {/* Collapse toggle — desktop only */}
       <button
         onClick={() => dispatch(toggleSidebar())}
-        className={`absolute -right-3 top-8 w-6 h-6 rounded-full hidden md:flex items-center justify-center transition-colors shadow-lg border ${theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 border-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100 border-gray-300'
-          }`}
+        className="hidden md:flex"
+        style={{
+          position: 'absolute',
+          right: -12,
+          top: 32,
+          width: 24,
+          height: 24,
+          borderRadius: '50%',
+          background: '#0C1017',
+          border: '1px solid rgba(255,255,255,0.14)',
+          color: '#9AA3B2',
+          cursor: 'pointer',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+          zIndex: 10,
+        }}
       >
-        {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
       </button>
 
-      <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
-        <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
-          <BrandLogo size={40} />
+      {/* Header */}
+      <div style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+            gap: 10,
+          }}
+        >
+          <BrandLogo size={36} />
           {!sidebarCollapsed && (
-            <div>
-              <h1 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Alqui<span className="text-blue-500">Seguro</span>
-              </h1>
-            </div>
+            <span
+              style={{
+                fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                fontWeight: 700,
+                fontSize: 17,
+                letterSpacing: '-0.02em',
+                color: '#E7ECF3',
+              }}
+            >
+              Alqui<span style={{ color: '#35D48A' }}>Seguro</span>
+            </span>
           )}
         </div>
       </div>
-      <div className="p-4">
 
+      {/* New analysis button */}
+      <div style={{ padding: 12 }}>
         <button
-          onClick={handleNewAnalysis}
-          disabled={isLoading} 
-          className={`
-            w-full py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 
-            rounded-lg font-semibold transition-all flex items-center 
-            transform hover:scale-105 
-            ${sidebarCollapsed ? 'justify-center px-2' : 'px-4 space-x-2'}
-            disabled:bg-gray-400 disabled:cursor-not-allowed // <-- These styles will apply when disabled
-          `}
+          onClick={() => navigate('/')}
+          disabled={isLoading}
+          style={{
+            width: '100%',
+            padding: sidebarCollapsed ? '10px 6px' : '10px 14px',
+            background: '#35D48A',
+            color: '#08130D',
+            fontWeight: 600,
+            fontSize: 14,
+            borderRadius: 10,
+            border: 'none',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            opacity: isLoading ? 0.5 : 1,
+            transition: 'background 0.15s, opacity 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            if (!isLoading) (e.currentTarget as HTMLButtonElement).style.background = '#5FE0A5';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = '#35D48A';
+          }}
         >
-          <Plus size={20} />
+          <Plus size={17} />
           {!sidebarCollapsed && <span>Nuevo análisis</span>}
         </button>
       </div>
 
-
-      <div className="flex-1 overflow-hidden flex flex-col">
+      {/* History list */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {!sidebarCollapsed && (
-          <div className={`px-4 pt-4 pb-2 border-b ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
-            <h2 className={`text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} flex items-center space-x-2`}>
-              <History size={14} />
-              <span>Análisis recientes</span>
+          <div
+            style={{
+              padding: '12px 16px 8px',
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+            }}
+          >
+            <h2
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 10.5,
+                fontWeight: 600,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: '#5E6675',
+                margin: 0,
+              }}
+            >
+              <History size={12} />
+              Análisis recientes
             </h2>
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+          }}
+        >
           {sessionHistory.map((analysis) => {
-            const isRunning = analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS';
+            const isRunning =
+              analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS';
             const isFailed = analysis.status === 'FAILED';
             const isCurrent = currentAnalysisId === analysis.id;
+            const hasScore =
+              analysis.final_report && 'authenticity_score' in analysis.final_report;
 
             return (
               <Link
                 key={analysis.id}
                 to={`/results/${analysis.id}`}
-                className={`
-                  block w-full p-3 rounded-lg border text-left transition-all 
-                  ${isFailed ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}
-                  ${isCurrent
-                    ? (theme === 'dark' ? 'text-white bg-yellow-400/10 border-yellow-400/30' : 'text-gray-900 bg-yellow-100 border-yellow-300')
-                    : (theme === 'dark' ? 'text-gray-200 bg-gray-800/50 border-gray-700/50 hover:bg-gray-700/70' : 'text-gray-900 bg-white border-gray-200 hover:bg-gray-100')
-                  }
-                `}
+                style={{
+                  display: 'block',
+                  padding: sidebarCollapsed ? '10px 6px' : '10px 12px',
+                  borderRadius: 10,
+                  textDecoration: 'none',
+                  border: `1px solid ${isCurrent ? 'rgba(53,212,138,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                  background: isCurrent
+                    ? 'rgba(53,212,138,0.07)'
+                    : 'rgba(255,255,255,0.02)',
+                  opacity: isFailed ? 0.45 : 1,
+                  pointerEvents: isFailed ? 'none' : 'auto',
+                  color: '#E7ECF3',
+                  transition: 'background 0.15s, border-color 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isCurrent && !isFailed)
+                    (e.currentTarget as HTMLAnchorElement).style.background =
+                      'rgba(255,255,255,0.05)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.background = isCurrent
+                    ? 'rgba(53,212,138,0.07)'
+                    : 'rgba(255,255,255,0.02)';
+                }}
               >
                 {!sidebarCollapsed ? (
                   <>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs opacity-75">
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 4,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, color: '#5E6675' }}>
                         {formatDate(analysis.created_at)}
                       </span>
-                      <div className="flex space-x-1.5">
-                        {analysis.status === 'COMPLETED' && analysis.final_report && 'authenticity_score' in analysis.final_report && (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {hasScore && analysis.final_report && (
                           <>
-                            <span className={`text-xs font-bold ${getScoreColor(analysis.final_report.authenticity_score)}`}>
-                              A:{analysis.final_report.authenticity_score}
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: scoreColor(
+                                  (analysis.final_report as { authenticity_score: number })
+                                    .authenticity_score
+                                ),
+                              }}
+                            >
+                              A:
+                              {
+                                (analysis.final_report as { authenticity_score: number })
+                                  .authenticity_score
+                              }
                             </span>
-                            <span className={`text-xs font-bold ${getScoreColor(analysis.final_report.quality_score)}`}>
-                              Q:{analysis.final_report.quality_score}
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: scoreColor(
+                                  (analysis.final_report as { quality_score: number })
+                                    .quality_score
+                                ),
+                              }}
+                            >
+                              Q:
+                              {
+                                (analysis.final_report as { quality_score: number })
+                                  .quality_score
+                              }
                             </span>
                           </>
                         )}
                         {isRunning && (
-                          <span className="text-xs font-medium text-blue-400 flex items-center">
-                            <Loader2 size={12} className="animate-spin mr-1" />
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: '#35D48A',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <Loader2 size={11} className="animate-spin" />
                             En curso
                           </span>
                         )}
                         {isFailed && (
-                          <span className="text-xs font-medium text-red-400 flex items-center">
-                            <AlertTriangle size={12} className="mr-1" />
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: '#F16A6A',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 3,
+                            }}
+                          >
+                            <AlertTriangle size={11} />
                             Fallido
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="text-sm font-medium truncate">
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 500,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        color: '#D4DAE4',
+                      }}
+                    >
                       {analysis.input_data.address || 'Dirección desconocida'}
                     </div>
-                    <div className="text-xs opacity-75 truncate">
+                    <div
+                      style={{
+                        fontSize: 11.5,
+                        color: '#5E6675',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        marginTop: 2,
+                      }}
+                    >
                       {analysis.input_data.property_type || 'Propiedad'}
                     </div>
                   </>
                 ) : (
-                  <div className="flex items-center justify-center">
-                    {analysis.final_report && 'authenticity_score' in analysis.final_report ? (
-                      <span className={`text-sm font-bold ${getScoreColor(analysis.final_report.authenticity_score)}`}>
-                        {analysis.final_report.authenticity_score}
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    {hasScore && analysis.final_report ? (
+                      <span
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: scoreColor(
+                            (analysis.final_report as { authenticity_score: number })
+                              .authenticity_score
+                          ),
+                        }}
+                      >
+                        {
+                          (analysis.final_report as { authenticity_score: number })
+                            .authenticity_score
+                        }
                       </span>
-                    ) : <History size={18} />}
+                    ) : (
+                      <History size={16} color="#5E6675" />
+                    )}
                   </div>
                 )}
               </Link>
             );
           })}
+
           {sessionHistory.length === 0 && !sidebarCollapsed && (
-            <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-              <History size={32} className="mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Sin análisis aún</p>
+            <div style={{ textAlign: 'center', padding: '32px 0', color: '#5E6675' }}>
+              <History size={26} style={{ margin: '0 auto 8px', opacity: 0.35, display: 'block' }} />
+              <p style={{ fontSize: 12.5, margin: 0 }}>Sin análisis aún</p>
             </div>
           )}
         </div>

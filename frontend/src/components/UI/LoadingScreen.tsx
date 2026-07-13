@@ -1,72 +1,29 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { Eye, UserCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import BrandLogo from './BrandLogo';
 import { useAppSelector } from '../../hooks/redux';
 
-// --- Sub-component for the Progress Bar ---
-const ProgressBar: React.FC<{ progress: number; theme: 'light' | 'dark' }> = ({ progress, theme }) => {
-  const progressRef = useRef<HTMLDivElement>(null);
+const TIPS = [
+  'Verifica siempre la identidad del propietario antes de realizar cualquier pago.',
+  'Nunca pagues una fianza mediante transferencias instantáneas de efectivo.',
+  'Confía en tu instinto. Si una oferta parece demasiado buena para ser real, probablemente lo sea.',
+  'Programa una videollamada para ver la propiedad y conocer al anfitrión.',
+];
 
-  useEffect(() => {
-    if (progressRef.current) {
-      gsap.to(progressRef.current, {
-        width: `${progress}%`,
-        duration: 0.5,
-        ease: 'power2.out',
-      });
-    }
-  }, [progress]);
-
-  return (
-    <div className="w-full justify-center flex items-center mb-8">
-      <div className={`w-64 md:w-96 bg-opacity-20 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2.5`}>
-        <div
-          ref={progressRef}
-          className="bg-yellow-400 h-2.5 rounded-full"
-          style={{ width: '0%' }}
-        />
-      </div>
-    </div>
-  );
-};
-
-// --- Main Loading Screen Component ---
 export const LoadingScreen: React.FC = () => {
+  const { loadingMessage } = useAppSelector((state) => state.app);
   const [progress, setProgress] = useState(0);
-  const { theme, loadingMessage } = useAppSelector((state) => state.app);
-  const [tip, setTip] = useState('');
-
-
-  const tips = [
-    'Verifica siempre la identidad del propietario antes de realizar cualquier pago.',
-    'Nunca pagues una fianza mediante transferencias instantáneas de efectivo.',
-    'Confía en tu instinto. Si una oferta parece demasiado buena para ser real, probablemente lo sea.',
-    'Programa una videollamada para ver la propiedad y conocer al anfitrión.'
-  ];
+  const [tipIndex, setTipIndex] = useState(0);
 
   useEffect(() => {
-    let progressInterval: ReturnType<typeof setInterval>;
-    let tipInterval: ReturnType<typeof setInterval>;
-
-    // Reset progress when loading starts
     setProgress(0);
-    setTip(tips[0]);
 
-    // Simulate a progress bar that moves but never quite reaches 100%
-    progressInterval = setInterval(() => {
-      setProgress(prev => Math.min(prev + Math.random() * 2, 95));
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => Math.min(prev + Math.random() * 2, 95));
     }, 800);
 
-    // Cycle through tips
-    tipInterval = setInterval(() => {
-      setTip(prevTip => {
-        const currentIndex = tips.indexOf(prevTip);
-        const nextIndex = (currentIndex + 1) % tips.length;
-        return tips[nextIndex];
-      });
-    }, 7000); // Change tip every 5 seconds
-
+    const tipInterval = setInterval(() => {
+      setTipIndex((prev) => (prev + 1) % TIPS.length);
+    }, 7000);
 
     return () => {
       clearInterval(progressInterval);
@@ -75,27 +32,112 @@ export const LoadingScreen: React.FC = () => {
   }, []);
 
   return (
-     <div className={`h-full flex items-center justify-center p-4 transition-colors duration-300 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
-       <div className="text-center max-w-lg mx-auto">
-
-        <div className="w-24 h-24 mx-auto mb-6 relative flex items-center justify-center">
-          <div className="absolute inset-0 border-2 border-yellow-400/30 rounded-full animate-ping"></div>
-          <div className="absolute inset-2 border-2 border-yellow-400/50 rounded-full animate-pulse"></div>
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        background: '#090C12',
+      }}
+    >
+      <div style={{ textAlign: 'center', maxWidth: 480, width: '100%' }}>
+        {/* Logo with glow rings */}
+        <div
+          style={{
+            width: 96,
+            height: 96,
+            margin: '0 auto 28px',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              border: '1.5px solid rgba(53,212,138,0.2)',
+              animation: 'asPulse 2s ease-in-out infinite',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              inset: 10,
+              borderRadius: '50%',
+              border: '1.5px solid rgba(53,212,138,0.38)',
+              animation: 'asPulse 2s ease-in-out infinite 0.35s',
+            }}
+          />
           <BrandLogo size={48} />
         </div>
 
-        <h2 className={`text-3xl mb-10 font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-700'} mb-3`}>{loadingMessage ? loadingMessage : "Cargando..."}</h2>
+        <h2
+          style={{
+            fontFamily: "'Space Grotesk', system-ui, sans-serif",
+            fontWeight: 700,
+            fontSize: 26,
+            letterSpacing: '-0.025em',
+            color: '#E7ECF3',
+            margin: '0 0 28px',
+          }}
+        >
+          {loadingMessage || 'Cargando…'}
+        </h2>
 
-        <ProgressBar progress={progress} theme={theme} />
-        
-        <div className="mt-12 text-center h-16">
-            <p className="text-sm font-semibold text-yellow-400 mb-2">CONSEJO</p>
-            <p className={`italic ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                "{tip}"
-            </p>
+        {/* Progress bar */}
+        <div
+          style={{
+            width: '100%',
+            maxWidth: 360,
+            margin: '0 auto 36px',
+            background: 'rgba(255,255,255,0.06)',
+            borderRadius: 99,
+            height: 8,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              borderRadius: 99,
+              background: 'linear-gradient(90deg, #1F9E68, #35D48A)',
+              width: `${progress}%`,
+              transition: 'width 0.5s ease-out',
+            }}
+          />
         </div>
 
-
+        {/* Tip */}
+        <div>
+          <p
+            style={{
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: 11,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: '#35D48A',
+              margin: '0 0 10px',
+            }}
+          >
+            Consejo
+          </p>
+          <p
+            style={{
+              fontStyle: 'italic',
+              color: '#9AA3B2',
+              fontSize: 14.5,
+              lineHeight: 1.65,
+              margin: 0,
+            }}
+          >
+            &ldquo;{TIPS[tipIndex]}&rdquo;
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,10 +6,45 @@
 
 :root {
   --font-display: 'Space Grotesk', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
-  --color-accent: #FACC15;
-  --color-accent-hover: #EAB308;
-  --color-brand: #3B82F6;
-  --color-brand-light: #60A5FA;
-  --color-brand-dark: #2563EB;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --color-bg: #090C12;
+  --color-accent: #35D48A;
+  --color-accent-hover: #5FE0A5;
+  --color-accent-ink: #08130D;
+  --color-brand: #35D48A;
+  --color-warn: #F2B84B;
+  --color-danger: #F16A6A;
+  --color-text: #E7ECF3;
+  --color-text-dim: #9AA3B2;
+  --color-text-faint: #6B7385;
 }
+
+body {
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--color-bg);
+  background-image:
+    linear-gradient(rgba(53,212,138,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(53,212,138,0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+a { color: var(--color-accent); text-decoration: none; }
+a:hover { color: var(--color-accent-hover); }
+::selection { background: rgba(53,212,138,0.28); }
+textarea::placeholder { color: #5A6373; }
+input::placeholder { color: #5A6373; }
+
+@keyframes asPulse { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
+@keyframes asSpin { to { transform: rotate(360deg); } }
+@keyframes asRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes asFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes asDrift { 0% { transform: translate(-4%,-2%) scale(1); } 50% { transform: translate(4%,3%) scale(1.08); } 100% { transform: translate(-4%,-2%) scale(1); } }
+@keyframes asScanline { 0% { top: 0; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+@keyframes anRow { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes rpPanel { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes rpMsg { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes rpDot { 0%,80%,100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+@keyframes rpBar { from { width: 0; } }

@@ -5,7 +5,12 @@ export default {
     extend: {
       fontFamily: {
         display: ['Space Grotesk', 'sans-serif'],
-        body: ['DM Sans', 'sans-serif'],
+        body: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'monospace'],
+      },
+      colors: {
+        accent: '#35D48A',
+        ink: '#08130D',
       },
     },
   },

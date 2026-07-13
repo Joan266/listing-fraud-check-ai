@@ -15,196 +15,129 @@ interface PriceAnalysisStepProps {
   theme?: 'light' | 'dark';
 }
 
-const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, result, theme = 'light' }) => {
-  const getVerdictIcon = (verdict: string) => {
-    switch (verdict?.toLowerCase()) {
-      case 'reasonable': return <CheckCircle className="w-6 h-6 text-green-500" />;
-      case 'suspicious': return <AlertTriangle className="w-6 h-6 text-yellow-500" />;
-      case 'unreasonable': return <XCircle className="w-6 h-6 text-red-500" />;
-      default: return <DollarSign className="w-6 h-6 text-gray-500" />;
-    }
-  };
+const CARD: React.CSSProperties = {
+  padding: '16px',
+  borderRadius: 12,
+  background: 'rgba(255,255,255,0.025)',
+  border: '1px solid rgba(255,255,255,0.06)',
+};
 
-  const getVerdictColor = (verdict: string) => {
-    switch (verdict?.toLowerCase()) {
-      case 'reasonable': return 'text-green-500';
-      case 'suspicious': return 'text-yellow-500';
-      case 'unreasonable': return 'text-red-500';
-      default: return 'text-gray-500';
-    }
-  };
+const VERDICT_STYLES: Record<string, { color: string; bg: string; border: string }> = {
+  reasonable:   { color: '#35D48A', bg: 'rgba(53,212,138,0.08)',  border: 'rgba(53,212,138,0.25)' },
+  suspicious:   { color: '#F2B84B', bg: 'rgba(242,184,75,0.08)',  border: 'rgba(242,184,75,0.25)' },
+  unreasonable: { color: '#F16A6A', bg: 'rgba(241,106,106,0.08)', border: 'rgba(241,106,106,0.25)' },
+};
+const DEFAULT_VERDICT = { color: '#7A8496', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)' };
 
-  const getVerdictBg = (verdict: string) => {
-    switch (verdict?.toLowerCase()) {
-      case 'reasonable': 
-        return theme === 'dark' ? 'bg-green-900/30 border-green-700' : 'bg-green-50 border-green-200';
-      case 'suspicious': 
-        return theme === 'dark' ? 'bg-yellow-900/30 border-yellow-700' : 'bg-yellow-50 border-yellow-200';
-      case 'unreasonable': 
-        return theme === 'dark' ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-200';
-      default: 
-        return theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200';
-    }
-  };
+const VerdictIcon: React.FC<{ verdict: string }> = ({ verdict }) => {
+  const v = verdict?.toLowerCase();
+  if (v === 'reasonable')   return <CheckCircle style={{ width: 20, height: 20, color: '#35D48A' }} />;
+  if (v === 'suspicious')   return <AlertTriangle style={{ width: 20, height: 20, color: '#F2B84B' }} />;
+  if (v === 'unreasonable') return <XCircle style={{ width: 20, height: 20, color: '#F16A6A' }} />;
+  return <DollarSign style={{ width: 20, height: 20, color: '#7A8496' }} />;
+};
 
-  // Extract price from price_details string
-  const extractPrice = (priceDetails: string) => {
-    const match = priceDetails.match(/€\s*([0-9,]+)/);
-    return match ? match[0] : priceDetails;
-  };
+const extractPrice = (s: string) => { const m = s.match(/€\s*([0-9,]+)/); return m ? m[0] : s; };
+const extractDuration = (s: string) => {
+  const w = s.match(/(\d+)\s*week/i);
+  const d = s.match(/(\d+)\s*day/i);
+  const n = s.match(/(\d+)\s*night/i);
+  if (w) return `${w[1]} week${w[1] !== '1' ? 's' : ''}`;
+  if (d) return `${d[1]} day${d[1] !== '1' ? 's' : ''}`;
+  if (n) return `${n[1]} night${n[1] !== '1' ? 's' : ''}`;
+  return 'Duración de la estancia';
+};
+const extractGuests = (s: string) => { const m = s.match(/(\d+)\s*adult/i); return m ? `${m[1]} adultos` : 'Huéspedes'; };
+const extractAccommodation = (s: string, fallback?: string) => {
+  const suite = s.match(/(\d+)\s*suite/i);
+  const room  = s.match(/(\d+)\s*room/i);
+  if (suite) return `${suite[1]} suite${suite[1] !== '1' ? 's' : ''}`;
+  if (room)  return `${room[1]} room${room[1] !== '1' ? 's' : ''}`;
+  return fallback || 'Alojamiento';
+};
+const truncate = (text: string, max = 200) => text.length <= max ? text : text.slice(0, max) + '…';
 
-  // Extract duration from price_details
-  const extractDuration = (priceDetails: string) => {
-    const weekMatch = priceDetails.match(/(\d+)\s*week/i);
-    const dayMatch = priceDetails.match(/(\d+)\s*day/i);
-    const nightMatch = priceDetails.match(/(\d+)\s*night/i);
-    
-    if (weekMatch) return `${weekMatch[1]} week${weekMatch[1] !== '1' ? 's' : ''}`;
-    if (dayMatch) return `${dayMatch[1]} day${dayMatch[1] !== '1' ? 's' : ''}`;
-    if (nightMatch) return `${nightMatch[1]} night${nightMatch[1] !== '1' ? 's' : ''}`;
-    return 'Duración de la estancia';
-  };
+const PriceAnalysisStep: React.FC<PriceAnalysisStepProps> = ({ inputs_used, result, theme: _theme = 'dark' }) => {
+  const price    = inputs_used.price_details ?? '';
+  const verdict  = result.verdict ?? 'unknown';
+  const vs       = VERDICT_STYLES[verdict.toLowerCase()] ?? DEFAULT_VERDICT;
 
-  // Extract guests from price_details
-  const extractGuests = (priceDetails: string) => {
-    const match = priceDetails.match(/(\d+)\s*adult/i);
-    return match ? `${match[1]} adultos` : 'Huéspedes';
-  };
-
-  // Extract accommodation type from price_details
-  const extractAccommodation = (priceDetails: string) => {
-    const suiteMatch = priceDetails.match(/(\d+)\s*suite/i);
-    const roomMatch = priceDetails.match(/(\d+)\s*room/i);
-    
-    if (suiteMatch) return `${suiteMatch[1]} suite${suiteMatch[1] !== '1' ? 's' : ''}`;
-    if (roomMatch) return `${roomMatch[1]} room${roomMatch[1] !== '1' ? 's' : ''}`;
-    return inputs_used.property_type || 'Alojamiento';
-  };
-
-  // Truncate description for display
-  const truncateDescription = (text: string, maxLength: number = 200) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-  };
+  const iconColor = '#F2B84B';
+  const iconStyle = { width: 18, height: 18, color: iconColor, flexShrink: 0 as const };
 
   return (
-    <div className="space-y-6">
-      {/* Price Overview */}
-      <div className={`p-6 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center gap-4 mb-6">
-          <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-yellow-400/20' : 'bg-yellow-100'}`}>
-            <DollarSign className={`w-6 h-6 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Price overview card */}
+      <div style={{ ...CARD, padding: '20px 20px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+          <div style={{ padding: 10, borderRadius: 10, background: 'rgba(242,184,75,0.1)', flexShrink: 0 }}>
+            <DollarSign style={{ width: 22, height: 22, color: '#F2B84B' }} />
           </div>
           <div>
-            <h4 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {inputs_used.price_details ? extractPrice(inputs_used.price_details) : 'Precio no disponible'}
+            <h4 style={{ color: '#E7ECF3', fontFamily: '"Space Grotesk", sans-serif', fontSize: 20, fontWeight: 700, margin: 0 }}>
+              {price ? extractPrice(price) : 'Precio no disponible'}
             </h4>
-            <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              {inputs_used.price_details ? extractDuration(inputs_used.price_details) : 'Duración no especificada'}
+            <p style={{ color: '#9AA3B2', fontSize: 13, margin: '2px 0 0' }}>
+              {price ? extractDuration(price) : 'Duración no especificada'}
             </p>
           </div>
         </div>
 
-        {/* Booking Details Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* Property Type */}
-          <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <Home className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-              <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Propiedad
-              </span>
+        {/* Detail grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
+          {[
+            { Icon: Home,     label: 'Propiedad', value: extractAccommodation(price, inputs_used.property_type) },
+            { Icon: Users,    label: 'Huéspedes', value: extractGuests(price) },
+            { Icon: Calendar, label: 'Duración',  value: extractDuration(price) },
+            { Icon: MapPin,   label: 'Ubicación',  value: inputs_used.address ? inputs_used.address.split(',')[0] : 'No especificada' },
+          ].map(({ Icon, label, value }) => (
+            <div key={label} style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+                <Icon style={iconStyle} />
+                <span style={{ color: '#E7ECF3', fontWeight: 600, fontSize: 13 }}>{label}</span>
+              </div>
+              <p style={{ color: '#9AA3B2', fontSize: 13, margin: 0 }}>{value}</p>
             </div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-              {extractAccommodation(inputs_used.price_details || '')}
-            </p>
-          </div>
-
-          {/* Guests */}
-          <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <Users className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-              <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Huéspedes
-              </span>
-            </div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-              {extractGuests(inputs_used.price_details || '')}
-            </p>
-          </div>
-
-          {/* Duration */}
-          <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-              <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Duración
-              </span>
-            </div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-              {extractDuration(inputs_used.price_details || '')}
-            </p>
-          </div>
-
-          {/* Location */}
-          <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <MapPin className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-              <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Ubicación
-              </span>
-            </div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} line-clamp-2`}>
-              {inputs_used.address ? inputs_used.address.split(',')[0] : 'Ubicación no especificada'}
-            </p>
-          </div>
+          ))}
         </div>
 
-        {/* Price Verdict */}
-        <div className={`p-4 rounded-lg border ${getVerdictBg(result.verdict || 'unknown')}`}>
-          <div className="flex items-center gap-3 mb-3">
-            {getVerdictIcon(result.verdict || 'unknown')}
+        {/* Verdict */}
+        <div style={{ padding: '14px 16px', borderRadius: 10, background: vs.bg, border: `1px solid ${vs.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: result.reason ? 8 : 0 }}>
+            <VerdictIcon verdict={verdict} />
             <div>
-              <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Análisis de precio
-              </span>
-              <p className={`text-lg font-semibold ${getVerdictColor(result.verdict || 'unknown')}`}>
-                {result.verdict || 'Unknown'}
-              </p>
+              <span style={{ color: '#9AA3B2', fontSize: 12, display: 'block' }}>Análisis de precio</span>
+              <span style={{ color: vs.color, fontWeight: 700, fontSize: 15 }}>{verdict}</span>
             </div>
           </div>
           {result.reason && (
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-              {result.reason}
-            </p>
+            <p style={{ color: '#C6CDD9', fontSize: 13, margin: 0, lineHeight: 1.5 }}>{result.reason}</p>
           )}
         </div>
       </div>
 
-      {/* Property Description */}
+      {/* Description */}
       {inputs_used.description && (
-        <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h5 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        <div style={CARD}>
+          <h5 style={{ color: '#E7ECF3', fontWeight: 600, fontSize: 14, margin: '0 0 10px 0' }}>
             Descripción de la propiedad
           </h5>
-          <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} leading-relaxed`}>
-            {truncateDescription(inputs_used.description)}
+          <p style={{ color: '#9AA3B2', fontSize: 13, margin: 0, lineHeight: 1.6 }}>
+            {truncate(inputs_used.description)}
           </p>
         </div>
       )}
 
-      {/* Full Address */}
+      {/* Full address */}
       {inputs_used.address && (
-        <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <div className="flex items-start gap-3">
-            <MapPin className={`w-5 h-5 mt-0.5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
+        <div style={CARD}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <MapPin style={{ ...iconStyle, marginTop: 1 }} />
             <div>
-              <h5 className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <h5 style={{ color: '#E7ECF3', fontWeight: 600, fontSize: 14, margin: '0 0 6px 0' }}>
                 Dirección completa
               </h5>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                {inputs_used.address}
-              </p>
+              <p style={{ color: '#9AA3B2', fontSize: 13, margin: 0 }}>{inputs_used.address}</p>
             </div>
           </div>
         </div>

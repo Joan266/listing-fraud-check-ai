@@ -14,146 +14,105 @@ interface UrlForensicsStepProps {
   theme?: 'light' | 'dark';
 }
 
-const UrlForensicsStep: React.FC<UrlForensicsStepProps> = ({ inputs_used, result, theme = 'light' }) => {
-  // Extract relevant data from potentially nested objects
-  const extractDomainAge = (domainData: any) => {
-    if (!domainData) return null;
-    if (typeof domainData === 'object') {
-      return {
-        years: domainData.reason || domainData.age || 0,
-        status: (!domainData.is_new)
-      };
-    }
-    return null;
+const CARD: React.CSSProperties = {
+  padding: '16px',
+  borderRadius: 12,
+  background: 'rgba(255,255,255,0.02)',
+  border: '1px solid rgba(255,255,255,0.07)',
+};
+
+const LABEL: React.CSSProperties = { color: '#E7ECF3', fontWeight: 600, fontSize: 14, margin: 0 };
+const DIM: React.CSSProperties = { color: '#9AA3B2', fontSize: 13, margin: '4px 0 0 0' };
+
+const StatusIcon: React.FC<{ ok: boolean }> = ({ ok }) =>
+  ok
+    ? <CheckCircle style={{ width: 16, height: 16, color: '#35D48A', flexShrink: 0 }} />
+    : <AlertTriangle style={{ width: 16, height: 16, color: '#F2B84B', flexShrink: 0 }} />;
+
+const UrlForensicsStep: React.FC<UrlForensicsStepProps> = ({ inputs_used, result, theme = 'dark' }) => {
+  const extractDomainAge = (d: any) => {
+    if (!d || typeof d !== 'object') return null;
+    return { years: d.reason || d.age || 0, status: !d.is_new };
   };
 
-  const extractBlacklistCheck = (blacklistData: any) => {
-    if (!blacklistData) return null;
-    if (typeof blacklistData === 'object') {
-      return {
-        clean: blacklistData.is_blacklisted === false,
-      };
-    }
-    return null;
+  const extractBlacklistCheck = (d: any) => {
+    if (!d || typeof d !== 'object') return null;
+    return { clean: d.is_blacklisted === false };
   };
 
-  const extractArchiveCheck = (archiveData: any) => {
-    if (!archiveData) return null;
-    if (typeof archiveData === 'object') {
-      return {
-        found: archiveData.found !== false,
-        consistent: archiveData.consistent !== false
-      };
-    }
-    return null;
+  const extractArchiveCheck = (d: any) => {
+    if (!d || typeof d !== 'object') return null;
+    return { found: d.found !== false, consistent: d.consistent !== false };
   };
 
-  const domainAge = extractDomainAge(result.domain_age);
-  const blacklistCheck = extractBlacklistCheck(result.blacklist_check);
-  const archiveCheck = extractArchiveCheck(result.archive_check);
+  const domainAge    = extractDomainAge(result.domain_age);
+  const blacklist    = extractBlacklistCheck(result.blacklist_check);
+  const archive      = extractArchiveCheck(result.archive_check);
 
-  const getStatusIcon = (status: Boolean) => {
-    if (status) {
-      return <CheckCircle className="w-5 h-5 text-green-500" />;
-    }
-    return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
-  };
-
-  const getDomainFromUrl = (url: string) => {
-    try {
-      return new URL(url).hostname;
-    } catch {
-      return url;
-    }
-  };
+  const getDomain = (url: string) => { try { return new URL(url).hostname; } catch { return url; } };
 
   if (!inputs_used.listing_url) {
     return (
-      <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`}>
-        <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-          No se proporcionó URL para el análisis
-        </p>
+      <div style={CARD}>
+        <p style={{ color: '#9AA3B2', margin: 0 }}>No se proporcionó URL para el análisis</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* URL Preview */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div>
-        <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          URL analizada
-        </h4>
+        <h4 style={{ ...LABEL, marginBottom: 12 }}>URL analizada</h4>
         <UrlPreview
           url={inputs_used.listing_url}
-          title={`Anuncio en ${getDomainFromUrl(inputs_used.listing_url)}`}
+          title={`Anuncio en ${getDomain(inputs_used.listing_url)}`}
           description="Anuncio de alquiler bajo análisis forense"
           theme={theme}
         />
       </div>
 
-      {/* Forensics Results */}
       <div>
-        <h4 className={`font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Resultados del análisis de seguridad
-        </h4>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Domain Age */}
+        <h4 style={{ ...LABEL, marginBottom: 16 }}>Resultados del análisis de seguridad</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
           {domainAge && (
-            <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <div className="flex items-center gap-3 mb-2">
-                <Clock className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Antigüedad del dominio</span>
-                {getStatusIcon(domainAge.status)}
+            <div style={CARD}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Clock style={{ width: 16, height: 16, color: '#F2B84B', flexShrink: 0 }} />
+                <span style={LABEL}>Antigüedad</span>
+                <StatusIcon ok={domainAge.status} />
               </div>
-              <div className="flex items-center justify-between">
-                <span className={`text-medium font-semibold ${domainAge.status ? 'text-green-500' : 'text-red-500'}`}>
-                  {domainAge.years}
-                </span>
-              </div>
-              <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {domainAge.status ? 'Dominio establecido' : 'Dominio nuevo'}
+              <p style={{ color: domainAge.status ? '#35D48A' : '#F16A6A', fontWeight: 600, fontSize: 14, margin: 0 }}>
+                {domainAge.years}
               </p>
+              <p style={DIM}>{domainAge.status ? 'Dominio establecido' : 'Dominio nuevo'}</p>
             </div>
           )}
 
-          {/* Blacklist Check */}
-          {blacklistCheck && (
-            <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <div className="flex items-center gap-3 mb-2">
-                <Shield className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Lista negra</span>
-                {getStatusIcon(blacklistCheck.clean)}
+          {blacklist && (
+            <div style={CARD}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Shield style={{ width: 16, height: 16, color: '#F2B84B', flexShrink: 0 }} />
+                <span style={LABEL}>Lista negra</span>
+                <StatusIcon ok={blacklist.clean} />
               </div>
-              <div className="flex items-center justify-between">
-                <span className={`text-lg font-semibold ${blacklistCheck.clean ? 'text-green-500' : 'text-red-500'}`}>
-                  {blacklistCheck.clean ? 'Limpio' : 'Listado'}
-                </span>
-              </div>
-              <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {blacklistCheck.clean ? 'No aparece en listas negras' : 'Encontrado en listas negras'}
+              <p style={{ color: blacklist.clean ? '#35D48A' : '#F16A6A', fontWeight: 600, fontSize: 14, margin: 0 }}>
+                {blacklist.clean ? 'Limpio' : 'Listado'}
               </p>
+              <p style={DIM}>{blacklist.clean ? 'No aparece en listas negras' : 'Encontrado en listas negras'}</p>
             </div>
           )}
 
-          {/* Archive Check */}
-          {archiveCheck && (
-            <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <div className="flex items-center gap-3 mb-2">
-                <Archive className={`w-5 h-5 ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'}`} />
-                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Historial de archivo</span>
-
-                {getStatusIcon(archiveCheck.found)}
+          {archive && (
+            <div style={CARD}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Archive style={{ width: 16, height: 16, color: '#F2B84B', flexShrink: 0 }} />
+                <span style={LABEL}>Historial</span>
+                <StatusIcon ok={archive.found} />
               </div>
-              <div className="flex items-center justify-between">
-                <span className={`text-lg font-semibold ${archiveCheck.found ? 'text-green-500' : 'text-yellow-500'}`}>
-                  {archiveCheck.found ? 'Encontrado' : 'No encontrado'}
-                </span>
-              </div>
-              <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {archiveCheck.consistent ? 'Historial consistente' : 'Datos inconsistentes'}
+              <p style={{ color: archive.found ? '#35D48A' : '#F2B84B', fontWeight: 600, fontSize: 14, margin: 0 }}>
+                {archive.found ? 'Encontrado' : 'No encontrado'}
               </p>
+              <p style={DIM}>{archive.consistent ? 'Historial consistente' : 'Datos inconsistentes'}</p>
             </div>
           )}
         </div>

@@ -5,13 +5,12 @@ import { Menu } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from './hooks/redux';
 import { fetchHistoryAsync } from './store/appSlice';
 import Sidebar from './components/Layout/Sidebar';
-import ThemeToggle from './components/Layout/ThemeToggle';
 import { LandingPage } from './pages/LandingPage';
 import ReviewPage from './pages/ReviewPage';
 import ResultsPage from './pages/ResultsPage';
 
 const App: React.FC = () => {
-  const { theme, error, sessionHistory, sessionId } = useAppSelector((state) => state.app);
+  const { error, sessionHistory, sessionId } = useAppSelector((state) => state.app);
   const dispatch = useAppDispatch();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -32,23 +31,30 @@ const App: React.FC = () => {
     }
   }, [error]);
 
-  useEffect(() => {
-    document.body.className = theme;
-  }, [theme]);
+  const hasSidebar = sessionHistory.length > 0;
 
   return (
-    <div className={`flex h-screen overflow-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'}`}>
-
+    <div
+      style={{
+        display: 'flex',
+        height: '100vh',
+        overflow: 'auto',
+        background: '#090C12',
+        fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
+        color: '#E7ECF3',
+      }}
+      className="scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
+    >
       {/* Mobile backdrop */}
-      {sessionHistory.length > 0 && mobileMenuOpen && (
+      {hasSidebar && mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/60 z-40 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
-      {/* Sidebar: only visible when there's history */}
-      {sessionHistory.length > 0 && (
+      {/* Sidebar: only when there's history */}
+      {hasSidebar && (
         <div className={`
           fixed inset-y-0 left-0 z-50 transition-transform duration-300
           md:static md:translate-x-0
@@ -58,21 +64,27 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className={`${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'} border-b px-6 py-4 flex items-center`}>
-          {sessionHistory.length > 0 && (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Mobile header — only when sidebar exists */}
+        {hasSidebar && (
+          <header style={{
+            background: 'rgba(9,12,18,0.95)',
+            borderBottom: '1px solid rgba(255,255,255,0.07)',
+            padding: '14px 20px',
+            display: 'flex',
+            alignItems: 'center',
+          }}>
             <button
-              className={`md:hidden p-1.5 rounded-lg ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-600 hover:bg-gray-100'}`}
+              className="md:hidden p-1.5 rounded-lg text-gray-400 hover:bg-white/05"
               onClick={() => setMobileMenuOpen(true)}
               aria-label="Open menu"
             >
               <Menu size={22} />
             </button>
-          )}
-          <div className="flex-1" />
-          <ThemeToggle />
-        </header>
-        <main className="flex-1 overflow-auto">
+          </header>
+        )}
+
+        <main style={{ flex: 1, overflowY: 'auto' }}>
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/review" element={<ReviewPage />} />
@@ -80,14 +92,16 @@ const App: React.FC = () => {
           </Routes>
         </main>
       </div>
+
       <Toaster
         position="top-right"
         toastOptions={{
           duration: 4000,
           style: {
-            background: theme === 'dark' ? '#1F2937' : '#FFFFFF',
-            color: theme === 'dark' ? '#F3F4F6' : '#1F2937',
-            border: theme === 'dark' ? '1px solid #374151' : '1px solid #E5E7EB',
+            background: '#0C1017',
+            color: '#E7ECF3',
+            border: '1px solid rgba(255,255,255,0.1)',
+            fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
           },
         }}
       />

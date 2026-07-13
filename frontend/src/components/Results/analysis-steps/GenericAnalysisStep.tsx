@@ -1,5 +1,4 @@
 import React from 'react';
-import { FileText, AlertCircle, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import UrlCarousel from '../../UI/UrlCarousel';
 import ImageCarousel from '../../UI/ImageCarousel';
 
@@ -12,145 +11,200 @@ interface GenericAnalysisStepProps {
   theme?: 'light' | 'dark';
 }
 
-const GenericAnalysisStep: React.FC<GenericAnalysisStepProps> = ({ 
-  job_name, 
-  description, 
-  status, 
-  inputs_used, 
-  result, 
-  theme = 'light' 
-}) => {
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'COMPLETED': return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'ERROR': return <XCircle className="w-5 h-5 text-red-500" />;
-      default: return <AlertCircle className="w-5 h-5 text-yellow-500" />;
-    }
-  };
+const isUrl = (str: string): boolean => {
+  try { new URL(str); return true; } catch { return false; }
+};
 
-  const formatJobName = (snakeCaseName: string): string => {
-    return snakeCaseName
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
+const isImageUrl = (str: string): boolean =>
+  isUrl(str) && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(str);
 
-  // Helper to detect URLs
-  const isUrl = (str: string): boolean => {
-    try {
-      new URL(str);
-      return true;
-    } catch {
-      return false;
-    }
+function extractUrls(obj: any): string[] {
+  const urls: string[] = [];
+  const traverse = (item: any) => {
+    if (typeof item === 'string' && isUrl(item) && !isImageUrl(item)) urls.push(item);
+    else if (Array.isArray(item)) item.forEach(traverse);
+    else if (typeof item === 'object' && item !== null) Object.values(item).forEach(traverse);
   };
+  traverse(obj);
+  return [...new Set(urls)];
+}
 
-  // Helper to detect image URLs
-  const isImageUrl = (str: string): boolean => {
-    return isUrl(str) && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(str);
+function extractImages(obj: any): string[] {
+  const images: string[] = [];
+  const traverse = (item: any) => {
+    if (typeof item === 'string' && isImageUrl(item)) images.push(item);
+    else if (Array.isArray(item)) item.forEach(traverse);
+    else if (typeof item === 'object' && item !== null) Object.values(item).forEach(traverse);
   };
+  traverse(obj);
+  return [...new Set(images)];
+}
 
-  // Extract URLs and images from data
-  const extractUrls = (obj: any): string[] => {
-    const urls: string[] = [];
-    const traverse = (item: any) => {
-      if (typeof item === 'string' && isUrl(item) && !isImageUrl(item)) {
-        urls.push(item);
-      } else if (Array.isArray(item)) {
-        item.forEach(traverse);
-      } else if (typeof item === 'object' && item !== null) {
-        Object.values(item).forEach(traverse);
-      }
-    };
-    traverse(obj);
-    return [...new Set(urls)]; // Remove duplicates
-  };
-
-  const extractImages = (obj: any): string[] => {
-    const images: string[] = [];
-    const traverse = (item: any) => {
-      if (typeof item === 'string' && isImageUrl(item)) {
-        images.push(item);
-      } else if (Array.isArray(item)) {
-        item.forEach(traverse);
-      } else if (typeof item === 'object' && item !== null) {
-        Object.values(item).forEach(traverse);
-      }
-    };
-    traverse(obj);
-    return [...new Set(images)]; // Remove duplicates
-  };
-
-  // Filter out large/nested data and focus on key metrics
-  const getRelevantData = (data: any) => {
-    if (!data || typeof data !== 'object') return data;
-    
-    const relevant: any = {};
-    Object.entries(data).forEach(([key, value]) => {
-      // Skip very large objects or arrays
-      if (Array.isArray(value) && value.length > 10) {
-        relevant[key] = `${value.length} elementos`;
-      } else if (typeof value === 'object' && value !== null) {
-        const keys = Object.keys(value);
-        if (keys.length > 5) {
-          // Show only key metrics for large objects
-          const keyMetrics = ['score', 'status', 'count', 'rating', 'percentage', 'level', 'result'];
-          const filtered: any = {};
-          const valueRecord = value as Record<string, any>;
-          keyMetrics.forEach(metric => {
-            if (valueRecord[metric] !== undefined) {
-              filtered[metric] = valueRecord[metric];
-            }
-          });
-          relevant[key] = Object.keys(filtered).length > 0 ? filtered : `${keys.length} propiedades`;
-        } else {
-          relevant[key] = value;
-        }
-      } else {
-        relevant[key] = value;
-      }
-    });
-    return relevant;
-  };
-
-  const renderValue = (value: any): React.ReactNode => {
-    if (typeof value === 'object' && value !== null) {
+/** Renders a result value in a readable way (avoids giant JSON blobs). */
+function renderValue(value: any): React.ReactNode {
+  if (value === null || value === undefined) return <span style={{ color: '#5E6675' }}>—</span>;
+  if (typeof value === 'boolean') return (
+    <span style={{ color: value ? '#35D48A' : '#F16A6A', fontWeight: 600 }}>{value ? 'Sí' : 'No'}</span>
+  );
+  if (typeof value === 'string') {
+    // Long error strings — truncate with tooltip-like display
+    if (value.length > 200) return (
+      <span style={{ color: '#F2B84B', fontFamily: "'IBM Plex Mono'", fontSize: 11, lineHeight: 1.5 }}>
+        {value.slice(0, 200)}…
+      </span>
+    );
+    return <span style={{ color: '#C6CDD9' }}>{value}</span>;
+  }
+  if (typeof value === 'number') return <span style={{ color: '#35D48A', fontWeight: 600 }}>{value}</span>;
+  if (Array.isArray(value)) {
+    // Array of items that all have 'error' — show as error list
+    if (value.length > 0 && value.every(item => item && typeof item === 'object' && 'error' in item)) {
       return (
-        <pre className={`text-xs ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} whitespace-pre-wrap`}>
-          {JSON.stringify(value, null, 2)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+          {value.map((item, i) => (
+            <div key={i} style={{ padding: '8px 10px', background: 'rgba(241,106,106,0.06)', border: '1px solid rgba(241,106,106,0.2)', borderRadius: 8 }}>
+              <div style={{ fontFamily: "'IBM Plex Mono'", fontSize: 11, color: '#F16A6A', marginBottom: 3 }}>Error #{i + 1}</div>
+              <div style={{ fontSize: 12, color: '#AEB6C3', lineHeight: 1.45 }}>
+                {typeof item.error === 'string' ? item.error.split('\n')[0].slice(0, 120) : 'Error desconocido'}
+              </div>
+              {item.url && (
+                <div style={{ fontFamily: "'IBM Plex Mono'", fontSize: 10, color: '#5E6675', marginTop: 4, wordBreak: 'break-all' }}>{item.url}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (value.length > 8) return <span style={{ color: '#9AA3B2' }}>{value.length} elementos</span>;
+    return (
+      <pre style={{ fontFamily: "'IBM Plex Mono'", fontSize: 11.5, color: '#C6CDD9', whiteSpace: 'pre-wrap', margin: 0 }}>
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    );
+  }
+  if (typeof value === 'object') {
+    const keys = Object.keys(value);
+    if (keys.length > 6) {
+      const important = ['score', 'status', 'count', 'rating', 'found', 'result', 'error'];
+      const filtered: Record<string, any> = {};
+      important.forEach(k => { if (value[k] !== undefined) filtered[k] = value[k]; });
+      return (
+        <pre style={{ fontFamily: "'IBM Plex Mono'", fontSize: 11.5, color: '#C6CDD9', whiteSpace: 'pre-wrap', margin: 0 }}>
+          {JSON.stringify(Object.keys(filtered).length > 0 ? filtered : `{${keys.length} campos}`, null, 2)}
         </pre>
       );
     }
-    return <span>{String(value)}</span>;
-  };
+    return (
+      <pre style={{ fontFamily: "'IBM Plex Mono'", fontSize: 11.5, color: '#C6CDD9', whiteSpace: 'pre-wrap', margin: 0 }}>
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    );
+  }
+  return <span style={{ color: '#C6CDD9' }}>{String(value)}</span>;
+}
 
+const sectionCard: React.CSSProperties = {
+  padding: '14px 16px',
+  borderRadius: 12,
+  background: 'rgba(255,255,255,0.02)',
+  border: '1px solid rgba(255,255,255,0.07)',
+};
+
+const sectionLabel: React.CSSProperties = {
+  fontFamily: "'Space Grotesk'",
+  fontWeight: 600,
+  fontSize: 13.5,
+  color: '#E7ECF3',
+  marginBottom: 12,
+};
+
+const rowLabel: React.CSSProperties = {
+  fontSize: 12.5,
+  color: '#6B7385',
+  fontFamily: "'IBM Plex Mono'",
+  textTransform: 'capitalize' as const,
+  flexShrink: 0,
+};
+
+const GenericAnalysisStep: React.FC<GenericAnalysisStepProps> = ({
+  job_name,
+  description,
+  status,
+  inputs_used,
+  result,
+  theme = 'dark',
+}) => {
   const urls = extractUrls({ ...inputs_used, ...result });
   const images = extractImages({ ...inputs_used, ...result });
-  const relevantResult = getRelevantData(result);
-  const relevantInputs = getRelevantData(inputs_used);
 
-  // Create URL previews for carousel
   const urlPreviews = urls.map(url => ({
     url,
-    title: `Analysis URL - ${formatJobName(job_name)}`,
+    title: `Analysis URL - ${job_name.replace(/_/g, ' ')}`,
     description: `URL analyzed during ${description.toLowerCase()}`,
   }));
-
-  // Create image items for carousel
   const imageItems = images.map(url => ({
     url,
-    title: `Analysis Image - ${formatJobName(job_name)}`,
+    title: `Analysis Image - ${job_name.replace(/_/g, ' ')}`,
   }));
 
+  // Top-level error on the result object
+  const topLevelError = result?.error && typeof result.error === 'string' ? result.error : null;
+
+  // Filter inputs: skip image URLs (shown in carousel) and large arrays
+  const inputEntries = Object.entries(inputs_used || {}).filter(([, v]) => {
+    if (typeof v === 'string' && isImageUrl(v)) return false;
+    if (Array.isArray(v) && v.every(i => typeof i === 'string' && isImageUrl(i))) return false;
+    return true;
+  });
+
+  const resultEntries = Object.entries(result || {}).filter(([k]) => k !== 'error' || !topLevelError);
+
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* ERROR banner */}
+      {status === 'ERROR' && (
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(241,106,106,0.07)', border: '1px solid rgba(241,106,106,0.25)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F16A6A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+            <circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/>
+          </svg>
+          <div>
+            <div style={{ fontFamily: "'IBM Plex Mono'", fontSize: 12, color: '#F16A6A', fontWeight: 500 }}>Verificación fallida</div>
+            <div style={{ fontSize: 13, color: '#AEB6C3', marginTop: 4, lineHeight: 1.5 }}>
+              {topLevelError || 'Este paso no se pudo completar. Puede deberse a un error de API o datos insuficientes.'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SKIPPED banner */}
+      {status === 'SKIPPED' && (
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7A8496" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14"/>
+          </svg>
+          <span style={{ fontSize: 13, color: '#7A8496' }}>Paso omitido — no había datos suficientes para ejecutar esta verificación.</span>
+        </div>
+      )}
+
+      {/* Soft-failure warning */}
+      {status === 'COMPLETED' && topLevelError && (
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(242,184,75,0.06)', border: '1px solid rgba(242,184,75,0.25)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2B84B" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+            <path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+            <path d="M12 9v4"/><path d="M12 17h.01"/>
+          </svg>
+          <div>
+            <div style={{ fontFamily: "'IBM Plex Mono'", fontSize: 12, color: '#F2B84B', fontWeight: 500 }}>Resultado parcial</div>
+            <div style={{ fontSize: 13, color: '#AEB6C3', marginTop: 4, lineHeight: 1.5 }}>{topLevelError}</div>
+          </div>
+        </div>
+      )}
 
       {/* URL Carousel */}
       {urlPreviews.length > 0 && (
         <div>
-          <h5 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            URLs analizadas
-          </h5>
+          <div style={sectionLabel}>URLs analizadas</div>
           <UrlCarousel urls={urlPreviews} theme={theme} />
         </div>
       )}
@@ -158,49 +212,20 @@ const GenericAnalysisStep: React.FC<GenericAnalysisStepProps> = ({
       {/* Image Carousel */}
       {imageItems.length > 0 && (
         <div>
-          <h5 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Imágenes analizadas
-          </h5>
+          <div style={sectionLabel}>Imágenes analizadas</div>
           <ImageCarousel images={imageItems} theme={theme} />
         </div>
       )}
 
-      {/* Results Summary */}
-      {Object.keys(relevantResult).length > 0 && (
-        <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h5 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Resultados del análisis
-          </h5>
-          <div className="space-y-3">
-            {Object.entries(relevantResult).map(([key, value]) => (
-              <div key={key} className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
-                <div className="flex justify-between items-start">
-                  <span className={`font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {key.replace(/_/g, ' ')}
-                  </span>
-                  <div className={`ml-4 text-right max-w-xs ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {renderValue(value)}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Inputs Used (if relevant) */}
-      {Object.keys(relevantInputs).length > 0 && (
-        <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h5 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Parámetros de entrada
-          </h5>
-          <div className="space-y-2">
-            {Object.entries(relevantInputs).map(([key, value]) => (
-              <div key={key} className="flex justify-between items-center">
-                <span className={`text-sm font-medium capitalize ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {key.replace(/_/g, ' ')}:
-                </span>
-                <div className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'} ml-4 text-right max-w-xs`}>
+      {/* Results */}
+      {resultEntries.length > 0 && (
+        <div style={sectionCard}>
+          <div style={sectionLabel}>Resultados del análisis</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {resultEntries.map(([key, value]) => (
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '10px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <span style={rowLabel}>{key.replace(/_/g, ' ')}</span>
+                <div style={{ flex: 1, textAlign: 'right', minWidth: 0 }}>
                   {renderValue(value)}
                 </div>
               </div>
@@ -208,6 +233,24 @@ const GenericAnalysisStep: React.FC<GenericAnalysisStepProps> = ({
           </div>
         </div>
       )}
+
+      {/* Inputs */}
+      {inputEntries.length > 0 && (
+        <div style={sectionCard}>
+          <div style={sectionLabel}>Parámetros de entrada</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {inputEntries.map(([key, value]) => (
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                <span style={rowLabel}>{key.replace(/_/g, ' ')}:</span>
+                <div style={{ flex: 1, textAlign: 'right', minWidth: 0 }}>
+                  {renderValue(value)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
