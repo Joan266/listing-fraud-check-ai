@@ -179,6 +179,8 @@ const appSlice = createSlice({
         const index = state.sessionHistory.findIndex(a => a.id === action.payload.id);
         if (index !== -1) {
           state.sessionHistory[index] = action.payload;
+        } else {
+          state.sessionHistory.unshift(action.payload);
         }
         if (action.payload.status === 'COMPLETED' || action.payload.status === 'FAILED') {
           state.isLoading = false;

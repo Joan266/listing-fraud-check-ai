@@ -122,6 +122,19 @@ def process_q_and_a(full_context: dict) -> dict:
     prompt = load_prompt("post_analysis_chat_prompt")
     context_str = json.dumps(full_context, indent=2)
     return _call_gemini(ADVANCED_MODEL, [prompt, context_str])
+def analyze_cross_platform_results(search_results: list, address: str) -> dict:
+    """
+    Analyzes Google search results for a property address to detect duplicate
+    or inconsistent listings across platforms.
+    """
+    prompt = load_prompt("analyze_cross_platform_prompt")
+    context = f"Property address: {address}\n\nSearch results:\n" + "\n".join([
+        f"- Title: {r.get('title')}\n  URL: {r.get('link')}\n  Snippet: {r.get('snippet')}"
+        for r in search_results
+    ])
+    return _call_gemini(FAST_MODEL, [prompt, _wrap_user_data(context)])
+
+
 def filter_suspicious_urls(url_data: list) -> dict:
     """
     Uses Gemini to analyze a list of URLs and page titles to determine

@@ -133,25 +133,12 @@ def start_full_analysis(check_id_arg):
     reverse_search_job = analysis_heavy_queue.enqueue(tasks.job_reverse_image_search, check_id_str, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
     
     # --- Layer 2: Enqueue jobs that depend on Layer 1 jobs ---
-    place_details_job = analysis_fast_queue.enqueue(tasks.job_place_details, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
     reputation_job = analysis_fast_queue.enqueue(tasks.job_reputation_check, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
-    neighborhood_job = analysis_fast_queue.enqueue(tasks.job_neighborhood_analysis, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
-    land_registry_job = analysis_fast_queue.enqueue(tasks.job_land_registry_check, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
-    ai_detection_job = analysis_heavy_queue.enqueue(tasks.job_ai_image_detection, check_id_str, depends_on=reverse_search_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
-    
-    # --- Layer 3: Enqueue the "meta-analysis" job that synthesizes Layer 1/2 results ---
-    online_presence_job = analysis_fast_queue.enqueue(
-        tasks.job_online_presence_analysis,
-        check_id_str,
-        depends_on=[host_profile_job, reputation_job, reverse_search_job, url_forensics_job],
-        on_failure=handle_job_failure,
-        on_success=_handle_job_success,
-        result_ttl=3600
-    )
+    iban_check_job = analysis_fast_queue.enqueue(tasks.job_iban_country_check, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
+    cross_platform_job = analysis_fast_queue.enqueue(tasks.job_address_cross_platform_search, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
 
     # --- Final Step: The finalizer depends on all "leaf" jobs in the tree ---
     all_final_dependencies = [
-        # Independent jobs
         url_forensics_job,
         plagiarism_job,
         description_analysis_job,
@@ -159,13 +146,10 @@ def start_full_analysis(check_id_arg):
         reverse_search_job,
         reviews_job,
         price_sanity_job,
-        # Dependent jobs
-        place_details_job,
-        neighborhood_job,
-        ai_detection_job,
-        land_registry_job,
-        # The meta-analysis job
-        online_presence_job
+        host_profile_job,
+        reputation_job,
+        iban_check_job,
+        cross_platform_job,
     ]
 
     analysis_fast_queue.enqueue(

@@ -6,17 +6,16 @@ The finalizer aggregates weighted scores and applies compound rules.
 
 # Weights for each job (must sum to ~1.0 for normalization)
 WEIGHTS: dict[str, float] = {
-    "reverse_image_search": 0.18,
-    "ai_image_detection": 0.10,
+    "reverse_image_search": 0.20,
+    "iban_country_check": 0.15,
+    "communication_analysis": 0.13,
+    "price_sanity_check": 0.12,
     "url_forensics": 0.10,
     "description_analysis": 0.10,
-    "communication_analysis": 0.12,
-    "price_sanity_check": 0.12,
-    "description_plagiarism_check": 0.08,
+    "description_plagiarism_check": 0.10,
     "reputation_check": 0.08,
-    "host_profile_check": 0.06,
-    "online_presence_analysis": 0.06,
-    "land_registry_check": 0.06,
+    "address_cross_platform_search": 0.07,
+    "host_profile_check": 0.05,
 }
 
 # Compound rules: combinations of signals that amplify risk
@@ -46,15 +45,21 @@ COMPOUND_RULES: list[dict] = [
         "bonus_score": 18,
     },
     {
-        "name": "no_registry_plus_new_host",
-        "conditions": ["land_registry_check", "host_profile_check"],
-        "description": "Property not found in national land registry with new host account",
-        "bonus_score": 10,
+        "name": "iban_mismatch_plus_low_price",
+        "conditions": ["iban_country_check", "price_sanity_check"],
+        "description": "Foreign IBAN combined with suspiciously low price — classic advance-fee scam",
+        "bonus_score": 20,
+    },
+    {
+        "name": "iban_mismatch_plus_pressure",
+        "conditions": ["iban_country_check", "communication_analysis"],
+        "description": "Foreign IBAN combined with pressure tactics in communication",
+        "bonus_score": 15,
     },
     {
         "name": "verified_safe",
-        "conditions": ["host_profile_check", "reputation_check", "geocode"],
-        "description": "Verified host with clean history and confirmed address",
+        "conditions": ["host_profile_check", "reputation_check"],
+        "description": "Verified host with clean reputation history",
         "bonus_score": -15,
     },
 ]
@@ -86,16 +91,6 @@ def calculate_job_risk_score(job_name: str, result: dict, status: str) -> dict:
         else:
             score = 0
             confidence = 0.8
-
-    elif job_name == "ai_image_detection":
-        items = result.get("ai_detection_results", [])
-        ai_count = sum(1 for item in items if isinstance(item, dict) and item.get("verdict") == "AI Generated")
-        if ai_count > 0:
-            score = min(30 + ai_count * 15, 80)
-            confidence = 0.6  # AI detection is less reliable
-        else:
-            score = 0
-            confidence = 0.6
 
     elif job_name == "url_forensics":
         domain_age = result.get("domain_age", {})
@@ -174,28 +169,28 @@ def calculate_job_risk_score(job_name: str, result: dict, status: str) -> dict:
         score = min(score, 70)
         confidence = 0.7
 
-    elif job_name == "online_presence_analysis":
-        verdict = result.get("verdict", result.get("sentiment", "Neutral"))
-        if verdict in ("Suspicious", "Negative"):
+    elif job_name == "iban_country_check":
+        if result.get("is_suspicious"):
+            score = 85
+            confidence = 0.9
+        elif result.get("ibans_found", 0) > 0:
+            score = 0
+            confidence = 0.9  # IBAN found and matches country — positive signal
+        else:
+            score = 0
+            confidence = 0.0  # No IBAN found, can't assess
+
+    elif job_name == "address_cross_platform_search":
+        verdict = result.get("verdict", "not_evaluable")
+        if verdict == "suspicious":
             score = 65
             confidence = 0.7
-        elif verdict == "Mixed":
-            score = 35
-            confidence = 0.6
-        else:
+        elif verdict == "legitimate":
             score = 0
-            confidence = 0.6
-
-    elif job_name == "land_registry_check":
-        if result.get("found"):
-            score = 0  # Property exists in registry — positive signal
-            confidence = 0.9
-        elif result.get("error"):
-            score = 0
-            confidence = 0.0  # Can't draw conclusions
-        else:
-            score = 45  # Not found in registry — moderate concern
             confidence = 0.7
+        else:
+            score = 0
+            confidence = 0.0  # not_evaluable — excluded from weighted average
 
     return {"risk_score": min(score, 100), "confidence": round(confidence, 2)}
 

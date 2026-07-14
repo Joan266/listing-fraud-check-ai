@@ -8,7 +8,8 @@ from app.db.models import FraudCheck
 logger = logging.getLogger(__name__)
 from app.utils.helpers import generate_hash, get_nested
 from app.workers.queues import redis_conn
-from app.services import google_search, image_analysis, gemini_analysis, google_apis, url_analysis, catastro, france_cadastre, uk_land_registry
+import re
+from app.services import google_search, image_analysis, gemini_analysis, google_apis, url_analysis
 from app.db.session import SessionLocal 
 from urllib.parse import urlparse
 import rq
@@ -93,126 +94,6 @@ def job_geocode(check_id_arg):
             "result": {"error_message": str(e)}
         }
         
-def job_place_details(check_id_arg: str):
-    """
-    Worker job that fetches Place Details. It depends on job_geocode.
-    """
-    # --- 1. Define Job Metadata ---
-    job_name = "place_details"
-    job_description = "Fetches rich details (ratings, reviews, etc.) for a verified location from the Google Places API."
-    
-    try:
-        current_job = rq.get_current_job()
-        geocode_result = current_job.dependency.result
-    except Exception as e:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "SKIPPED",
-            "inputs_used": {"dependency_error": str(e)},
-            "result": {"reason": "Could not get result from geocode dependency."}
-        }
-
-    place_id = get_nested(geocode_result, ["result", "place_id"])
-    inputs = {"place_id": place_id} 
-
-    if not place_id:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "SKIPPED",
-            "inputs_used": inputs,
-            "result": {"reason": "No Place ID found in geocode result."}
-        }
-    
-    try:
-        def task(data):
-            return google_apis.get_place_details(data["place_id"])
-
-        task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task)
-        
-        if task_result.get("error"):
-            raise Exception(task_result.get("error"))
-
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "COMPLETED",
-            "inputs_used": inputs,
-            "result": task_result
-        }
-    except Exception as e:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "ERROR",
-            "inputs_used": inputs,
-            "result": {"error_message": str(e)}
-        }
-   
-def job_neighborhood_analysis(check_id_arg):
-    """
-    Runs a neighborhood analysis and returns a standardized AnalysisStep result.
-    """
-    # --- 1. Define Job Metadata ---
-    job_name = "neighborhood_analysis"
-    job_description = "Searches for nearby points of interest (supermarkets, parks, etc.) to analyze the area's character."
-
-    try:
-        current_job = rq.get_current_job()
-        geocode_result = current_job.dependency.result
-        coordinates = get_nested(geocode_result, ["result", "coordinates"])
-    except Exception as e:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "SKIPPED",
-            "inputs_used": {"dependency_error": str(e)},
-            "result": {"reason": "Could not get result from geocode dependency."}
-        }
-    
-    inputs = {"coordinates": coordinates}
-
-    # --- 3. Handle SKIPPED Case ---
-    if not coordinates:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "SKIPPED",
-            "inputs_used": inputs,
-            "result": {"reason": "No coordinates were found in the geocode result."}
-        }
-
-    # --- 4. Handle COMPLETED and ERROR Cases ---
-    try:
-        def task(data):
-            return google_apis.get_neighborhood_analysis(data["coordinates"])
-
-        task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task)
-
-        if task_result.get("error"):
-            raise Exception(task_result.get("error"))
-
-        # Keep total count (valuable signal) but trim places list for frontend
-        for category in task_result.values():
-            if isinstance(category, dict) and "places" in category:
-                category["places"] = category["places"][:3]
-
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "COMPLETED",
-            "inputs_used": inputs,
-            "result": task_result
-        }
-    except Exception as e:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "ERROR",
-            "inputs_used": inputs,
-            "result": {"error_message": str(e)}
-        }
 
 def job_reputation_check(check_id_arg):
     """
@@ -648,80 +529,6 @@ def job_reverse_image_search(check_id_arg):
             "result": {"error_message": str(e)}
         }
 
-def job_ai_image_detection(check_id_arg):
-    """
-    Checks for AI artifacts on images not already flagged as reused.
-    """
-    job_name = "ai_image_detection"
-    job_description = "Uses an advanced AI model to analyze unique images for signs of AI generation."
-    
-    try:
-        # 1. Get the result from the dependency job (reverse_image_search)
-        current_job = rq.get_current_job()
-        reverse_search_result = current_job.dependency.result
-        
-        # Safely get the list of result objects
-        reverse_search_items = get_nested(reverse_search_result, ["result", "reverse_search_results"], default=[])
-
-        # 2. Filter for images that were NOT flagged as reused
-        images_to_check = [
-            item['url'] for item in reverse_search_items 
-            if isinstance(item, dict) and not item.get('is_reused') and 'url' in item
-        ]
-        
-        inputs = {"image_urls": images_to_check}
-
-    except Exception as e:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "ERROR",
-            "inputs_used": {"dependency_error": str(e)},
-            "result": {"reason": "Failed to get or parse dependency result."}
-        }
-
-    # SKIPPED Case: No unique images left to analyze
-    if not images_to_check:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "SKIPPED",
-            "inputs_used": inputs,
-            "result": {"reason": "No unique images to check after reverse image search."}
-        }
-    
-    try:
-        def task(data):
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                results = list(executor.map(image_analysis.check_for_ai_artifacts, data["image_urls"]))
-            return {"ai_detection_results": results}
-
-        task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task)
-
-        if isinstance(task_result, dict) and task_result.get("error"):
-            raise Exception(task_result.get("error"))
-
-        ai_results = task_result.get("ai_detection_results", [])
-        all_failed = bool(ai_results) and all(
-            r.get("verdict") == "Error" for r in ai_results if isinstance(r, dict)
-        )
-        step_status = "ERROR" if all_failed else "COMPLETED"
-
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": step_status,
-            "inputs_used": inputs,
-            "result": task_result
-        }
-    except Exception as e:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "ERROR",
-            "inputs_used": inputs,
-            "result": {"error_message": str(e)}
-        }
 
 def job_price_sanity_check(check_id_arg):
     """Performs a price sanity check using Gemini."""
@@ -785,67 +592,6 @@ def job_price_sanity_check(check_id_arg):
             "result": {"error_message": str(e)}
         }
 
-def job_online_presence_analysis(check_id_arg):
-    """
-    Synthesizes the host profile, reputation, and image search results into a
-    single online presence verdict using an advanced AI model.
-    """
-    job_name = "online_presence_analysis"
-    job_description = "Synthesizes multiple data points (host profile, web reputation, image reuse) into a single verdict on the listing's online presence."
-    
-    if isinstance(check_id_arg, str):
-        check_id = uuid.UUID(check_id_arg)
-    else:
-        check_id = check_id_arg
-
-    try:
-        current_job = rq.get_current_job()
-        dependencies = current_job.fetch_dependencies()
-        dependency_results = [dep.result for dep in dependencies]
-        
-        # We expect three dependencies: host_profile, reputation_check, and reverse_image_search
-        if len(dependency_results) < 4:
-            raise Exception("Missing one or more dependencies for online presence analysis.")
-
-        inputs = {
-            "host_profile_result": dependency_results[0].get("result", {}),
-            "reputation_check_result": dependency_results[1].get("result", {}),
-            "reverse_image_search_result": dependency_results[2].get("result", {}),
-            "url_forensics_result": dependency_results[3].get("result", {}),
-        }
-    except Exception as e:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "ERROR",
-            "inputs_used": {"dependency_error": str(e)},
-            "result": {"reason": "Failed to gather dependency results."}
-        }
-
-    try:
-        def task(data):
-            return gemini_analysis.synthesize_online_presence(data)
-
-        task_result = _run_cached_job(str(check_id), job_name, inputs, task)
-
-        if task_result.get("error"):
-            raise Exception(task_result.get("error"))
-
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "COMPLETED",
-            "inputs_used": inputs,
-            "result": task_result
-        }
-    except Exception as e:
-        return {
-            "job_name": job_name,
-            "description": job_description,
-            "status": "ERROR",
-            "inputs_used": inputs,
-            "result": {"error_message": str(e)}
-        }
 def job_host_profile_check(check_id_arg):
     """
     Performs a simple, rule-based check on the host's profile data.
@@ -905,21 +651,18 @@ def job_host_profile_check(check_id_arg):
             "result": {"error_message": str(e)}
         }
 
-def job_land_registry_check(check_id_arg):
+def job_iban_country_check(check_id_arg):
     """
-    Verifies the property exists in the relevant national land registry.
-    Dispatches to Spain (Catastro), France (Geoplateforme), or UK (HM Land Registry)
-    based on the country_code from geocoding.
+    Extracts IBAN numbers from communication text and flags if the bank country
+    doesn't match the property country — a strong fraud indicator.
     """
-    job_name = "land_registry_check"
-    job_description = "Verifies the property exists in the national land registry for the detected country."
+    job_name = "iban_country_check"
+    job_description = "Detects IBAN numbers in communication and flags if the bank country doesn't match the property location."
 
     try:
         current_job = rq.get_current_job()
         geocode_result = current_job.dependency.result
         country_code = get_nested(geocode_result, ["result", "country_code"], default="")
-        coordinates = get_nested(geocode_result, ["result", "coordinates"])
-        postal_code = get_nested(geocode_result, ["result", "postal_code"], default="")
     except Exception as e:
         return {
             "job_name": job_name,
@@ -929,54 +672,136 @@ def job_land_registry_check(check_id_arg):
             "result": {"reason": "Could not get result from geocode dependency."},
         }
 
-    inputs = {"country_code": country_code, "coordinates": coordinates, "postal_code": postal_code}
-
-    # Dispatch by country
-    if country_code == "es":
-        if not coordinates:
-            return {
-                "job_name": job_name,
-                "description": job_description,
-                "status": "SKIPPED",
-                "inputs_used": inputs,
-                "result": {"reason": "No coordinates available for Spanish Catastro lookup."},
-            }
-        task_fn = lambda data: catastro.lookup_by_coordinates(
-            data["coordinates"]["lat"], data["coordinates"]["lng"]
-        )
-    elif country_code == "fr":
-        if not coordinates:
-            return {
-                "job_name": job_name,
-                "description": job_description,
-                "status": "SKIPPED",
-                "inputs_used": inputs,
-                "result": {"reason": "No coordinates available for French cadastre lookup."},
-            }
-        task_fn = lambda data: france_cadastre.lookup_by_coordinates(
-            data["coordinates"]["lat"], data["coordinates"]["lng"]
-        )
-    elif country_code == "gb":
-        if not postal_code:
-            return {
-                "job_name": job_name,
-                "description": job_description,
-                "status": "SKIPPED",
-                "inputs_used": inputs,
-                "result": {"reason": "No postcode available for UK Land Registry lookup."},
-            }
-        task_fn = lambda data: uk_land_registry.lookup_by_postcode(data["postal_code"])
+    if isinstance(check_id_arg, str):
+        check_id = uuid.UUID(check_id_arg)
     else:
+        check_id = check_id_arg
+
+    db = SessionLocal()
+    try:
+        check = db.query(FraudCheck).filter(FraudCheck.id == check_id).first()
+        if not check:
+            return {"error": "Check not found"}
+        inputs = {
+            "communication_text": check.input_data.get("communication_text"),
+            "country_code": country_code,
+        }
+    finally:
+        db.close()
+
+    if not inputs["communication_text"]:
         return {
             "job_name": job_name,
             "description": job_description,
             "status": "SKIPPED",
             "inputs_used": inputs,
-            "result": {"reason": f"Land registry check not available for {country_code}"},
+            "result": {"reason": "No communication text provided."},
         }
 
     try:
-        task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task_fn)
+        # Normalize text: remove spaces/dashes, uppercase to match IBAN format
+        text_clean = re.sub(r'[\s\-]', '', inputs["communication_text"].upper())
+        # IBAN: 2-letter country + 2 check digits + up to 30 alphanumeric chars
+        iban_pattern = r'[A-Z]{2}\d{2}[A-Z0-9]{11,30}'
+        ibans_found = re.findall(iban_pattern, text_clean)
+
+        if not ibans_found:
+            return {
+                "job_name": job_name,
+                "description": job_description,
+                "status": "SKIPPED",
+                "inputs_used": inputs,
+                "result": {"reason": "No IBAN found in communication text."},
+            }
+
+        mismatches = []
+        for iban in ibans_found:
+            iban_country = iban[:2].lower()
+            if country_code and iban_country != country_code.lower():
+                mismatches.append({
+                    "iban_prefix": iban[:8] + "...",
+                    "iban_country": iban_country.upper(),
+                    "property_country": country_code.upper(),
+                })
+
+        if mismatches:
+            return {
+                "job_name": job_name,
+                "description": job_description,
+                "status": "COMPLETED",
+                "inputs_used": inputs,
+                "result": {
+                    "is_suspicious": True,
+                    "mismatches": mismatches,
+                    "reason": f"IBAN country ({mismatches[0]['iban_country']}) does not match property country ({mismatches[0]['property_country']}).",
+                },
+            }
+
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "COMPLETED",
+            "inputs_used": inputs,
+            "result": {
+                "is_suspicious": False,
+                "ibans_found": len(ibans_found),
+                "reason": "IBAN country matches property country.",
+            },
+        }
+
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": inputs,
+            "result": {"error_message": str(e)},
+        }
+
+
+def job_address_cross_platform_search(check_id_arg):
+    """
+    Searches the verified property address on the web to detect if it appears
+    on multiple platforms with different hosts or inconsistent details.
+    """
+    job_name = "address_cross_platform_search"
+    job_description = "Searches the property address online to detect duplicate listings by different hosts."
+
+    try:
+        current_job = rq.get_current_job()
+        geocode_result = current_job.dependency.result
+        formatted_address = get_nested(geocode_result, ["result", "formatted_address"])
+    except Exception as e:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "ERROR",
+            "inputs_used": {"dependency_error": str(e)},
+            "result": {"reason": "Could not get result from geocode dependency."},
+        }
+
+    inputs = {"formatted_address": formatted_address}
+
+    if not formatted_address:
+        return {
+            "job_name": job_name,
+            "description": job_description,
+            "status": "SKIPPED",
+            "inputs_used": inputs,
+            "result": {"reason": "No verified address available."},
+        }
+
+    try:
+        def task(data):
+            results = google_search.search_web(f'"{data["formatted_address"]}"')
+            if not results:
+                return {"verdict": "not_evaluable", "reason": "No results found for this address.", "platforms_found": []}
+            return gemini_analysis.analyze_cross_platform_results(results, data["formatted_address"])
+
+        task_result = _run_cached_job(str(check_id_arg), job_name, inputs, task)
+
+        if task_result.get("error"):
+            raise Exception(task_result.get("error"))
 
         return {
             "job_name": job_name,

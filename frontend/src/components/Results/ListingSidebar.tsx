@@ -25,12 +25,6 @@ const ListingSidebar: React.FC<ListingSidebarProps> = ({ analysis, neighborhoodD
   // Acciones
   const actions: string[] = report?.suggested_actions ?? [];
 
-  // Catastro
-  const landStep = analysis.analysis_steps?.find(s => s.job_name === 'land_registry_check');
-  const catastralRef: string | null = landStep?.result?.catastral_ref
-    ?? (landStep?.result?.pc1 ? `${landStep.result.pc1}${landStep.result.pc2 ?? ''}` : null);
-  const catastroVerified = landStep?.result?.found === true;
-
   // Nearby stats
   const nearby = [
     { label: 'Transporte',    count: neighborhoodData?.transit_stations?.count ?? 0 },
@@ -111,7 +105,7 @@ const ListingSidebar: React.FC<ListingSidebarProps> = ({ analysis, neighborhoodD
         </div>
       )}
 
-      {/* C. Map + catastro + nearby */}
+      {/* C. Map + nearby */}
       <div style={{ borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
         <div style={{ height: 180 }}>
           <MapComponent
@@ -123,19 +117,6 @@ const ListingSidebar: React.FC<ListingSidebarProps> = ({ analysis, neighborhoodD
           />
         </div>
         <div style={{ padding: '16px 18px' }}>
-          {catastroVerified && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#35D48A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 6 9 17l-5-5"/>
-              </svg>
-              <span style={{ fontSize: 12.5, color: '#9AA3B2' }}>Dirección verificada en el Catastro</span>
-            </div>
-          )}
-          {catastralRef && (
-            <div style={{ fontFamily: "'IBM Plex Mono'", fontSize: 11, color: '#6B7385', marginBottom: 12 }}>
-              {catastralRef}
-            </div>
-          )}
           {nearby.some(n => n.count > 0) && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
               {nearby.map((item, i) => (

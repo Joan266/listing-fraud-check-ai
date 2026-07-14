@@ -9,7 +9,8 @@ interface MapControlsProps {
   mapType: 'roadmap' | 'satellite';
   onMapTypeChange: (type: 'roadmap' | 'satellite') => void;
   className?: string;
-  placeDetailsUrl?:string;
+  placeDetailsUrl?: string;
+  showLocationFilters?: boolean;
 }
 
 
@@ -19,7 +20,8 @@ const MapControls: React.FC<MapControlsProps> = ({
   theme,
   mapType,
   onMapTypeChange,
-  className = ''
+  className = '',
+  showLocationFilters = true,
 }) => {
   const getLocationConfig = (type: LocationType) => {
     const baseConfig = {
@@ -84,7 +86,7 @@ const MapControls: React.FC<MapControlsProps> = ({
       </div>
 
       {/* Location Filters */}
-      <div className="space-y-2">
+      {showLocationFilters && <div className="space-y-2">
         <h3 className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Mostrar ubicaciones</h3>
         <div className="grid grid-cols-4 gap-2">
           {(Object.keys(filters) as LocationType[]).map((type) => {
@@ -110,7 +112,7 @@ const MapControls: React.FC<MapControlsProps> = ({
             );
           })}
         </div>
-      </div>
+      </div>}
     </div>
   );
 };

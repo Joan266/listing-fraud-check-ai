@@ -45,6 +45,7 @@ const ResultsPage: React.FC = () => {
   const { isPolling } = useAppSelector(state => state.app);
   const [isSending, setIsSending] = useState(false);
   const [newMessage, setNewMessage] = useState('');
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -52,8 +53,10 @@ const ResultsPage: React.FC = () => {
   useEffect(() => {
     if (analysisId) {
       dispatch(setCurrentAnalysisId(analysisId));
-      if (!isPolling && analysis && (analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS')) {
-        dispatch(pollAnalysisStatus(analysisId));
+      if (!isPolling && (!analysis || analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS')) {
+        dispatch(pollAnalysisStatus(analysisId)).unwrap().catch((err: Error) => {
+          setFetchError(err.message || 'No se pudo cargar el análisis.');
+        });
       }
     }
   }, [analysisId, analysis, isPolling, dispatch]);
@@ -104,6 +107,22 @@ const ResultsPage: React.FC = () => {
   const { sessionId } = useAppSelector(state => state.app);
 
   if (!analysis || analysis.status === 'PENDING' || analysis.status === 'IN_PROGRESS') {
+    if (fetchError) {
+      return (
+        <div style={{ minHeight: '100vh', background: '#090C12', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, color: '#E7ECF3' }}>
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#F16A6A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+          </svg>
+          <h2 style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 22, margin: 0 }}>Análisis no disponible</h2>
+          <p style={{ color: '#9AA3B2', fontSize: 15, margin: 0, textAlign: 'center', maxWidth: 360 }}>
+            Este análisis no existe o fue creado en otra sesión del navegador.
+          </p>
+          <button onClick={() => navigate('/')} style={{ marginTop: 8, padding: '10px 22px', borderRadius: 10, background: '#35D48A', color: '#08130D', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer' }}>
+            Verificar otro anuncio
+          </button>
+        </div>
+      );
+    }
     if (analysisId) return <AnalysisProgress checkId={analysisId} sessionId={sessionId} />;
     return <LoadingScreen />;
   }

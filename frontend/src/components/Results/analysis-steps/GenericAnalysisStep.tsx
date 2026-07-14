@@ -15,8 +15,17 @@ const isUrl = (str: string): boolean => {
   try { new URL(str); return true; } catch { return false; }
 };
 
-const isImageUrl = (str: string): boolean =>
-  isUrl(str) && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(str);
+const isImageUrl = (str: string): boolean => {
+  if (!isUrl(str)) return false;
+  if (/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(str)) return true;
+  // CDN image handlers that pass the real image URL as a query param
+  try {
+    for (const val of new URL(str).searchParams.values()) {
+      if (/\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(val)) return true;
+    }
+  } catch { /* ignore */ }
+  return false;
+};
 
 function extractUrls(obj: any): string[] {
   const urls: string[] = [];

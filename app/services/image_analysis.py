@@ -87,26 +87,18 @@ def reverse_image_search(image_url: str) -> dict:
                 "url": image_url
             }
 
-        # Exact copies found on non-rental domains — genuinely suspicious
+        # Exact copies found on non-rental domains — flag directly without Gemini
+        # (passing all pages_with_matching_images to Gemini caused false positives
+        # because it included YouTube/news pages that Gemini classified as suspicious)
         logger.info("[reverse_image_search] external full-match domains: %s", external_matches)
-        url_data_to_filter = [
-            {"url": page.url, "title": page.page_title}
-            for page in detection.pages_with_matching_images
+        suspicious_urls = [
+            img.url for img in detection.full_matching_images
+            if urlparse(img.url).netloc in set(external_matches)
         ]
-        classification_result = gemini_analysis.filter_suspicious_urls(url_data_to_filter)
-        suspicious_urls = classification_result.get("suspicious_urls", [])
-
-        if suspicious_urls:
-            return {
-                "is_reused": True,
-                "reason": f"Exact copy of this image found on {len(suspicious_urls)} unrelated page(s).",
-                "suspicious_urls": suspicious_urls,
-                "url": image_url
-            }
-
         return {
-            "is_reused": False,
-            "reason": "Image found on other sites, but they appear to be legitimate rental or travel platforms.",
+            "is_reused": True,
+            "reason": f"Exact copy of this image found on {len(external_matches)} non-rental site(s): {', '.join(list(external_matches)[:3])}.",
+            "suspicious_urls": suspicious_urls or list(external_matches),
             "url": image_url
         }
     except Exception as e:

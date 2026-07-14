@@ -162,6 +162,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ address, theme, onLocationC
         theme={theme}
         mapType={mapType}
         onMapTypeChange={setMapType}
+        showLocationFilters={!!neighborhoodData}
       />
       <div className='h-96'>
         {isLoaded ? (

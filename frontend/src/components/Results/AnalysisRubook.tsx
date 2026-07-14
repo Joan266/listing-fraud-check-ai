@@ -19,20 +19,17 @@ const getRiskColor = (score: number) =>
 
 const JOB_LABELS: Record<string, string> = {
   geocode: 'Verificación de dirección',
-  place_details: 'Detalles del lugar (Places)',
-  neighborhood_analysis: 'Análisis del barrio',
   reputation_check: 'Reputación del anfitrión',
   description_plagiarism_check: 'Plagio de la descripción',
   description_analysis: 'Análisis de la descripción',
   communication_analysis: 'Análisis de comunicación',
   listing_reviews_analysis: 'Análisis de reseñas',
   reverse_image_search: 'Búsqueda inversa de imágenes',
-  ai_image_detection: 'Detección de imágenes IA',
   price_sanity_check: 'Coherencia de precio',
   host_profile_check: 'Perfil del anfitrión',
-  online_presence_analysis: 'Presencia online',
   url_forensics: 'Análisis forense de URL',
-  land_registry_check: 'Registro de la propiedad',
+  iban_country_check: 'Verificación de IBAN',
+  address_cross_platform_search: 'Búsqueda en otras plataformas',
 };
 
 /**
