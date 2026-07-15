@@ -40,7 +40,7 @@ def job_geocode(check_id_arg):
     """
     # --- 1. Define Job Metadata ---
     job_name = "geocode"
-    job_description = "Validates the property address using Google Maps Geocode API and gathers location details."
+    job_description = "Valida la dirección del inmueble con la API de Geocoding de Google Maps y obtiene detalles de ubicación."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -100,7 +100,7 @@ def job_reputation_check(check_id_arg):
     Checks host reputation and returns a standardized AnalysisStep result.
     """
     job_name = "reputation_check"
-    job_description = "Searches the web for reports or reviews linked to the host's contact information."
+    job_description = "Busca en la web informes o reseñas vinculados a los datos de contacto del anfitrión."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -189,7 +189,7 @@ def job_reputation_check(check_id_arg):
 def job_description_plagiarism_check(check_id_arg):
     """Checks for description plagiarism and returns a standardized AnalysisStep result."""
     job_name = "description_plagiarism_check"
-    job_description = "Performs an exact-match web search to see if the listing description has been copied from other sites."
+    job_description = "Realiza una búsqueda exacta en la web para detectar si la descripción del anuncio ha sido copiada de otros sitios."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -249,7 +249,7 @@ def job_url_forensics(check_id_arg):
     Performs domain age, blacklist, and archive checks on the listing URL in parallel.
     """
     job_name = "url_forensics"
-    job_description = "Performs domain age, blacklist, and archive checks on the listing URL."
+    job_description = "Comprueba la antigüedad del dominio, listas negras y archivos históricos de la URL del anuncio."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -316,7 +316,7 @@ def job_description_analysis(check_id_arg):
     """
     # --- 1. Define Job Metadata ---
     job_name = "description_analysis"
-    job_description = "Analyzes the listing description for red flags like pressure tactics or vague details."
+    job_description = "Analiza la descripción del anuncio en busca de señales de alerta como tácticas de presión o detalles vagos."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -372,7 +372,7 @@ def job_communication_analysis(check_id_arg):
     """
     # --- 1. Define Job Metadata ---
     job_name = "communication_analysis"
-    job_description = "Analyzes communication text for fraudulent themes like risky payment requests."
+    job_description = "Analiza el texto de comunicación en busca de patrones de fraude como solicitudes de pago de alto riesgo."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -427,7 +427,7 @@ def job_communication_analysis(check_id_arg):
 def job_listing_reviews_analysis(check_id_arg):
     """Analyzes a limited number of the listing's own reviews."""
     job_name = "listing_reviews_analysis"
-    job_description = "Analyzes user-provided reviews for sentiment and potential red flags."
+    job_description = "Analiza las reseñas del anuncio para detectar sentimiento negativo y posibles señales de fraude."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -478,7 +478,7 @@ def job_listing_reviews_analysis(check_id_arg):
 def job_reverse_image_search(check_id_arg):
     """Performs reverse image search on a limited number of images."""
     job_name = "reverse_image_search"
-    job_description = "Searches the web for each image to detect if they have been stolen or reused from other listings, which is a common scam tactic."
+    job_description = "Busca cada imagen en la web para detectar si ha sido robada o reutilizada de otros anuncios, una táctica habitual en estafas."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -533,7 +533,7 @@ def job_reverse_image_search(check_id_arg):
 def job_price_sanity_check(check_id_arg):
     """Performs a price sanity check using Gemini."""
     job_name = "price_sanity_check"
-    job_description = "Analyzes the listing price in the context of its location, type, and description to detect if it's suspiciously high or low."
+    job_description = "Analiza el precio del anuncio según su ubicación, tipo y descripción para detectar si es sospechosamente bajo o alto."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -597,7 +597,7 @@ def job_host_profile_check(check_id_arg):
     Performs a simple, rule-based check on the host's profile data.
     """
     job_name = "host_profile_check"
-    job_description = "Checks the host's profile for red flags like being unverified or very new."
+    job_description = "Comprueba el perfil del anfitrión en busca de señales de alerta como cuenta no verificada o muy reciente."
     
     if isinstance(check_id_arg, str):
         check_id = uuid.UUID(check_id_arg)
@@ -657,7 +657,7 @@ def job_iban_country_check(check_id_arg):
     doesn't match the property country — a strong fraud indicator.
     """
     job_name = "iban_country_check"
-    job_description = "Detects IBAN numbers in communication and flags if the bank country doesn't match the property location."
+    job_description = "Detecta números IBAN en la comunicación y alerta si el país del banco no coincide con la ubicación del inmueble."
 
     try:
         current_job = rq.get_current_job()
@@ -684,26 +684,42 @@ def job_iban_country_check(check_id_arg):
             return {"error": "Check not found"}
         inputs = {
             "communication_text": check.input_data.get("communication_text"),
+            "iban": check.input_data.get("iban"),
             "country_code": country_code,
         }
     finally:
         db.close()
 
-    if not inputs["communication_text"]:
+    has_communication = bool(inputs["communication_text"])
+    has_direct_iban = bool(inputs["iban"])
+
+    if not has_communication and not has_direct_iban:
         return {
             "job_name": job_name,
             "description": job_description,
             "status": "SKIPPED",
             "inputs_used": inputs,
-            "result": {"reason": "No communication text provided."},
+            "result": {"reason": "No communication text or IBAN provided."},
         }
 
     try:
-        # Normalize text: remove spaces/dashes, uppercase to match IBAN format
-        text_clean = re.sub(r'[\s\-]', '', inputs["communication_text"].upper())
-        # IBAN: 2-letter country + 2 check digits + up to 30 alphanumeric chars
         iban_pattern = r'[A-Z]{2}\d{2}[A-Z0-9]{11,30}'
-        ibans_found = re.findall(iban_pattern, text_clean)
+        ibans_found: list[str] = []
+
+        # Direct IBAN field takes priority
+        if has_direct_iban:
+            direct_clean = re.sub(r'[\s\-]', '', inputs["iban"].upper())
+            direct_matches = re.findall(iban_pattern, direct_clean)
+            ibans_found.extend(direct_matches)
+
+        # Also scan communication text
+        if has_communication:
+            text_clean = re.sub(r'[\s\-]', '', inputs["communication_text"].upper())
+            ibans_found.extend(re.findall(iban_pattern, text_clean))
+
+        # Deduplicate preserving order
+        seen: set[str] = set()
+        ibans_found = [x for x in ibans_found if not (x in seen or seen.add(x))]  # type: ignore[func-returns-value]
 
         if not ibans_found:
             return {
@@ -711,7 +727,7 @@ def job_iban_country_check(check_id_arg):
                 "description": job_description,
                 "status": "SKIPPED",
                 "inputs_used": inputs,
-                "result": {"reason": "No IBAN found in communication text."},
+                "result": {"reason": "No IBAN found in provided data."},
             }
 
         mismatches = []
@@ -765,7 +781,7 @@ def job_address_cross_platform_search(check_id_arg):
     on multiple platforms with different hosts or inconsistent details.
     """
     job_name = "address_cross_platform_search"
-    job_description = "Searches the property address online to detect duplicate listings by different hosts."
+    job_description = "Busca la dirección del inmueble en otras plataformas para detectar anuncios duplicados de distintos anfitriones."
 
     try:
         current_job = rq.get_current_job()

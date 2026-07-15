@@ -49,14 +49,31 @@ function extractImages(obj: any): string[] {
   return [...new Set(images)];
 }
 
-/** Renders a result value in a readable way (avoids giant JSON blobs). */
-function renderValue(value: any): React.ReactNode {
+/** Renders a result value in a readable structured way (no raw JSON). */
+function renderValue(value: any, depth = 0): React.ReactNode {
   if (value === null || value === undefined) return <span style={{ color: '#5E6675' }}>—</span>;
   if (typeof value === 'boolean') return (
     <span style={{ color: value ? '#35D48A' : '#F16A6A', fontWeight: 600 }}>{value ? 'Sí' : 'No'}</span>
   );
   if (typeof value === 'string') {
-    // Long error strings — truncate with tooltip-like display
+    if (isUrl(value)) {
+      try {
+        const u = new URL(value);
+        const path = u.pathname.length > 1
+          ? u.pathname.slice(0, 30) + (u.pathname.length > 30 ? '…' : '')
+          : '';
+        return (
+          <a
+            href={value}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#7DB8FF', fontSize: 12, fontFamily: "'IBM Plex Mono'", textDecoration: 'none', wordBreak: 'break-all' }}
+          >
+            {u.hostname.replace(/^www\./, '')}{path}
+          </a>
+        );
+      } catch { /* fall through */ }
+    }
     if (value.length > 200) return (
       <span style={{ color: '#F2B84B', fontFamily: "'IBM Plex Mono'", fontSize: 11, lineHeight: 1.5 }}>
         {value.slice(0, 200)}…
@@ -65,9 +82,11 @@ function renderValue(value: any): React.ReactNode {
     return <span style={{ color: '#C6CDD9' }}>{value}</span>;
   }
   if (typeof value === 'number') return <span style={{ color: '#35D48A', fontWeight: 600 }}>{value}</span>;
+
   if (Array.isArray(value)) {
-    // Array of items that all have 'error' — show as error list
-    if (value.length > 0 && value.every(item => item && typeof item === 'object' && 'error' in item)) {
+    if (value.length === 0) return <span style={{ color: '#5E6675' }}>—</span>;
+    // All-error arrays
+    if (value.every(item => item && typeof item === 'object' && 'error' in item)) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
           {value.map((item, i) => (
@@ -84,29 +103,78 @@ function renderValue(value: any): React.ReactNode {
         </div>
       );
     }
-    if (value.length > 8) return <span style={{ color: '#9AA3B2' }}>{value.length} elementos</span>;
-    return (
-      <pre style={{ fontFamily: "'IBM Plex Mono'", fontSize: 11.5, color: '#C6CDD9', whiteSpace: 'pre-wrap', margin: 0 }}>
-        {JSON.stringify(value, null, 2)}
-      </pre>
-    );
-  }
-  if (typeof value === 'object') {
-    const keys = Object.keys(value);
-    if (keys.length > 6) {
-      const important = ['score', 'status', 'count', 'rating', 'found', 'result', 'error'];
-      const filtered: Record<string, any> = {};
-      important.forEach(k => { if (value[k] !== undefined) filtered[k] = value[k]; });
+    if (value.length > 12) return <span style={{ color: '#9AA3B2' }}>{value.length} elementos</span>;
+    // Primitive arrays → url chips or pill list
+    if (value.every(i => typeof i !== 'object' || i === null)) {
+      const allUrls = value.every(i => typeof i === 'string' && isUrl(i as string));
+      if (allUrls) {
+        return (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 2 }}>
+            {(value as string[]).map((url, i) => {
+              let hostname = url;
+              try { hostname = new URL(url).hostname.replace(/^www\./, ''); } catch {}
+              return (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ padding: '2px 8px', borderRadius: 5, background: 'rgba(125,184,255,0.08)', border: '1px solid rgba(125,184,255,0.2)', fontSize: 12, color: '#7DB8FF', textDecoration: 'none', fontFamily: "'IBM Plex Mono'" }}
+                >
+                  {hostname}
+                </a>
+              );
+            })}
+          </div>
+        );
+      }
       return (
-        <pre style={{ fontFamily: "'IBM Plex Mono'", fontSize: 11.5, color: '#C6CDD9', whiteSpace: 'pre-wrap', margin: 0 }}>
-          {JSON.stringify(Object.keys(filtered).length > 0 ? filtered : `{${keys.length} campos}`, null, 2)}
-        </pre>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 2 }}>
+          {value.map((item, i) => (
+            <span key={i} style={{ padding: '2px 8px', borderRadius: 5, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 12, color: '#C6CDD9' }}>
+              {String(item)}
+            </span>
+          ))}
+        </div>
       );
     }
+    // Object arrays → nested cards
     return (
-      <pre style={{ fontFamily: "'IBM Plex Mono'", fontSize: 11.5, color: '#C6CDD9', whiteSpace: 'pre-wrap', margin: 0 }}>
-        {JSON.stringify(value, null, 2)}
-      </pre>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+        {value.map((item, i) => (
+          <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            {typeof item === 'object' && item !== null
+              ? renderValue(item, depth + 1)
+              : <span style={{ color: '#C6CDD9' }}>{String(item)}</span>}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (typeof value === 'object') {
+    const entries = Object.entries(value);
+    if (entries.length === 0) return <span style={{ color: '#5E6675' }}>—</span>;
+    // For deeply nested objects, compact them
+    const important = ['score', 'status', 'count', 'rating', 'found', 'result', 'error', 'is_suspicious', 'reason', 'match', 'verdict'];
+    const toShow = entries.length > 8
+      ? entries.filter(([k]) => important.includes(k)).slice(0, 6)
+      : entries;
+    const hidden = entries.length - toShow.length;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: depth > 0 ? 3 : 5 }}>
+        {toShow.map(([k, v]) => (
+          <div key={k} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 11, color: '#6B7385', fontFamily: "'IBM Plex Mono'", flexShrink: 0, textTransform: 'capitalize', minWidth: 80 }}>
+              {k.replace(/_/g, ' ')}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>{renderValue(v, depth + 1)}</div>
+          </div>
+        ))}
+        {hidden > 0 && (
+          <span style={{ fontSize: 11, color: '#5E6675', fontFamily: "'IBM Plex Mono'" }}>+{hidden} campos más</span>
+        )}
+      </div>
     );
   }
   return <span style={{ color: '#C6CDD9' }}>{String(value)}</span>;

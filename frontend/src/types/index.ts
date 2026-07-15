@@ -28,6 +28,7 @@ export interface ExtractedData {
   description?: string;
   image_urls?: string[];
   communication_text?: string;
+  iban?: string;
   host_email?: string;
   host_phone?: string;
   reviews?: Array<{ [key: string]: any }>;

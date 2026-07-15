@@ -301,7 +301,7 @@ const ReviewPage: React.FC = () => {
           <div ref={setCardRef(2)} style={{ ...card, ...cardInitialStyle }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <MessageSquare size={20} style={{ color: '#35D48A' }} />
-              <h2 style={{ fontFamily: "'Space Grotesk'", fontWeight: 600, fontSize: 18, margin: 0 }}>Comunicaciones</h2>
+              <h2 style={{ fontFamily: "'Space Grotesk'", fontWeight: 600, fontSize: 18, margin: 0 }}>Comunicaciones y pago</h2>
             </div>
             <textarea value={editableData.communication_text || ''} onChange={(e) => handleInputChange('communication_text', e.target.value)}
               rows={4} placeholder="Pega aquí los mensajes o comunicaciones con el anfitrión..."
@@ -310,6 +310,25 @@ const ReviewPage: React.FC = () => {
               onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
             />
             {hasExtractedData && !isFieldFilled(editableData.communication_text) && emptyHint}
+
+            <div style={{ marginTop: 16 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4, color: '#C6CDD9' }}>
+                IBAN solicitado para el pago{hasExtractedData && isFieldFilled(editableData.iban) && autoFilledBadge}
+              </label>
+              <p style={{ fontSize: 12, color: '#6B7385', margin: '0 0 8px' }}>
+                Si el anfitrión ha pedido transferencia, pega aquí el IBAN. Un país de banco diferente al del inmueble es señal de fraude.
+              </p>
+              <input
+                type="text"
+                value={editableData.iban || ''}
+                onChange={(e) => handleInputChange('iban', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                placeholder="Ej: ES9121000418450200051332"
+                style={{ ...inputStyle, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.05em' }}
+                onFocus={e => { e.currentTarget.style.borderColor = 'rgba(53,212,138,0.5)'; }}
+                onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+              />
+              {hasExtractedData && !isFieldFilled(editableData.iban) && emptyHint}
+            </div>
           </div>
 
           {/* Image URLs */}

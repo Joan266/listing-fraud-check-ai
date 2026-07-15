@@ -1,9 +1,12 @@
 import uuid
 import json
+import logging
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.db.models import Chat, ChatMessage, FraudCheck
 from app.services import gemini_analysis
+
+logger = logging.getLogger(__name__)
 
 def process_q_and_a(session_id: str, chat_id: uuid.UUID, user_message: dict, db: Session) -> dict:
     """
@@ -16,9 +19,9 @@ def process_q_and_a(session_id: str, chat_id: uuid.UUID, user_message: dict, db:
     
     # Prevent abuse by limiting the number of follow-up questions
     if chat.message_count >= 15:
-        ai_response_text = "You've reached the message limit for this analysis. To check another listing, please start a new session."
+        ai_response_text = "Has alcanzado el límite de mensajes para este análisis. Para verificar otro anuncio, inicia una nueva sesión."
         return {
-            "chat_id": str(chat.id), 
+            "chat_id": str(chat.id),
             "response": {"role": "assistant", "content": ai_response_text}
         }
 
@@ -46,7 +49,9 @@ def process_q_and_a(session_id: str, chat_id: uuid.UUID, user_message: dict, db:
  
     # Call the AI to get a reasoned answer
     ai_response_json = gemini_analysis.process_q_and_a(full_context)
-    ai_response_text = ai_response_json.get("response_text", "I'm sorry, I had trouble processing that request.")
+    if "error" in ai_response_json:
+        logger.error(f"Chat Q&A Gemini error for chat {chat_id}: {ai_response_json['error']}")
+    ai_response_text = ai_response_json.get("response_text", "Lo siento, tuve un problema al procesar tu pregunta. Por favor, inténtalo de nuevo.")
 
     # Save the AI's response to the database
     db.add(ChatMessage(chat_id=chat.id, role="assistant", content=ai_response_text))

@@ -46,13 +46,14 @@ def _call_gemini(model_name: str, content: list, is_json_response: bool = True, 
         if not is_json_response:
             return response.text
 
-        # Use robust regex to find and parse JSON
-        json_match = re.search(r'```json\s*(\{.*?\})\s*```', response.text, re.DOTALL)
-        if json_match:
-            return json.loads(json_match.group(1))
-        return json.loads(response.text.strip())
+        raw = response.text.strip()
+        # Strip code fences if present, then parse the full block as JSON
+        code_block = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', raw)
+        json_str = code_block.group(1) if code_block else raw
+        return json.loads(json_str)
 
     except Exception as e:
+        logger.error(f"Gemini API call failed (model={model_name}): {e}")
         return {"error": f"Gemini API call failed: {e}"}
     
 # --- Functions for individual jobs (use the FAST model) ---
@@ -117,11 +118,11 @@ def extract_data_from_text(raw_text: str) -> dict:
 
 def process_q_and_a(full_context: dict) -> dict:
     """
-    Handles post-analysis Q&A using the advanced model for better reasoning.
+    Handles post-analysis Q&A. Uses the fast model for low-latency chat responses.
     """
     prompt = load_prompt("post_analysis_chat_prompt")
     context_str = json.dumps(full_context, indent=2)
-    return _call_gemini(ADVANCED_MODEL, [prompt, context_str])
+    return _call_gemini(FAST_MODEL, [prompt, context_str])
 def analyze_cross_platform_results(search_results: list, address: str) -> dict:
     """
     Analyzes Google search results for a property address to detect duplicate

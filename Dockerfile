@@ -20,4 +20,7 @@ COPY ./app /app/app
 
 # Define el comando para ejecutar la aplicación usando gunicorn.
 # Esta es la forma "shell" que permite que la variable $PORT se reemplace correctamente.
-CMD exec gunicorn -k uvicorn.workers.UvicornWorker -w 2 --timeout 120 --bind "0.0.0.0:${PORT}" app.main:app
+COPY start.sh .
+RUN sed -i 's/\r$//' start.sh && chmod +x start.sh
+
+CMD ["/bin/bash", "./start.sh"]

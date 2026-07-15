@@ -107,7 +107,7 @@ const ListingSidebar: React.FC<ListingSidebarProps> = ({ analysis, neighborhoodD
 
       {/* C. Map + nearby */}
       <div style={{ borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
-        <div style={{ height: 180 }}>
+        <div style={{ height: 240 }}>
           <MapComponent
             address={analysis.input_data.address}
             theme="dark"
@@ -118,7 +118,7 @@ const ListingSidebar: React.FC<ListingSidebarProps> = ({ analysis, neighborhoodD
         </div>
         <div style={{ padding: '16px 18px' }}>
           {nearby.some(n => n.count > 0) && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', marginBottom: 14 }}>
               {nearby.map((item, i) => (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 16, color: '#35D48A' }}>{fmt(item.count)}</span>
@@ -127,6 +127,35 @@ const ListingSidebar: React.FC<ListingSidebarProps> = ({ analysis, neighborhoodD
               ))}
             </div>
           )}
+          {analysis.input_data.address && (() => {
+            const q = encodeURIComponent(analysis.input_data.address);
+            return (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <a
+                  href={`https://maps.google.com/maps?q=${q}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 0', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', fontSize: 12, color: '#AEB6C3', textDecoration: 'none', fontFamily: "'IBM Plex Mono'" }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  Google Maps
+                </a>
+                <a
+                  href={`https://maps.google.com/maps?layer=c&q=${q}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 0', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', fontSize: 12, color: '#AEB6C3', textDecoration: 'none', fontFamily: "'IBM Plex Mono'" }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+                  </svg>
+                  Ver calle
+                </a>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -139,11 +168,11 @@ const ListingSidebar: React.FC<ListingSidebarProps> = ({ analysis, neighborhoodD
           {sampleReviews.map((review: any, i: number) => (
             <div key={i} style={{ borderLeft: '2px solid rgba(53,212,138,0.3)', paddingLeft: 13, marginBottom: 14 }}>
               <p style={{ fontStyle: 'italic', color: '#C6CDD9', fontSize: 13, margin: '0 0 5px', lineHeight: 1.5 }}>
-                "{review.text || review.comment || String(review)}"
+                "{review.review_text || review.text || review.comment || ''}"
               </p>
-              {(review.author || review.name) && (
+              {(review.reviewer_name || review.author || review.name) && (
                 <span style={{ fontFamily: "'IBM Plex Mono'", fontSize: 11, color: '#6B7385' }}>
-                  — {review.author || review.name}
+                  — {review.reviewer_name || review.author || review.name}
                 </span>
               )}
             </div>

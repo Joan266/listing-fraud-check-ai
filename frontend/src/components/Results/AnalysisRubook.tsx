@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import UrlForensicsStep from './analysis-steps/UrlForensicStep';
 import PriceAnalysisStep from './analysis-steps/PriceAnalysisSteps';
 import ReviewsAnalysisStep from './analysis-steps/ReviewsAnalysisStep';
+import ReverseImageSearchStep from './analysis-steps/ReverseImageSearchStep';
 import GenericAnalysisStep from './analysis-steps/GenericAnalysisStep';
 
 interface AnalysisStep {
@@ -137,6 +138,7 @@ export const AnalysisRunbook: React.FC<AnalysisRunbookProps> = ({ steps, theme =
       case 'url_forensics': return <UrlForensicsStep {...props} />;
       case 'price_sanity_check': return <PriceAnalysisStep {...props} />;
       case 'listing_reviews_analysis': return <ReviewsAnalysisStep {...props} />;
+      case 'reverse_image_search': return <ReverseImageSearchStep {...props} />;
       default: return (
         <GenericAnalysisStep
           job_name={step.job_name}
@@ -224,15 +226,27 @@ export const AnalysisRunbook: React.FC<AnalysisRunbookProps> = ({ steps, theme =
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 10, paddingLeft: 42 }}>
                     <div style={{ flex: 1, maxWidth: 220 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'IBM Plex Mono'", fontSize: 10.5, color: '#6B7385', marginBottom: 4 }}>
-                        <span>Riesgo</span><span>{step.risk_score ?? 0}/100</span>
+                        <span>Señal de riesgo</span>
+                        <span style={{ color: getRiskColor(step.risk_score ?? 0), fontWeight: 600 }}>
+                          {(step.risk_score ?? 0) === 0
+                            ? 'Ninguna'
+                            : (step.risk_score ?? 0) < 31
+                              ? `Baja (${step.risk_score}/100)`
+                              : (step.risk_score ?? 0) < 61
+                                ? `Media (${step.risk_score}/100)`
+                                : `Alta (${step.risk_score}/100)`}
+                        </span>
                       </div>
                       <div style={{ height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${step.risk_score ?? 0}%`, borderRadius: 99, background: getRiskColor(step.risk_score ?? 0) }} />
                       </div>
                     </div>
-                    <span style={{ fontFamily: "'IBM Plex Mono'", fontSize: 10.5, color: '#5E6675', whiteSpace: 'nowrap' }}>
-                      confianza {(step.confidence ?? 0).toFixed(1)}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <span style={{ fontFamily: "'IBM Plex Mono'", fontSize: 10, color: '#5E6675' }}>fiabilidad</span>
+                      <span style={{ fontFamily: "'IBM Plex Mono'", fontSize: 11, color: '#8A93A3', fontWeight: 600 }}>
+                        {((step.confidence ?? 0) * 100).toFixed(0)}%
+                      </span>
+                    </div>
                   </div>
                 )}
               </button>

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_PASSWORD: Optional[str] = None
     REDIS_DB: int = 0
+    REDIS_SSL: bool = False
 
     # Google Services
     GOOGLE_API_KEY: str

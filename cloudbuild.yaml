@@ -1,7 +1,7 @@
-# cloudbuild.yaml para el despliegue automatizado
+# cloudbuild.yaml — NoPiques · my-vector-search-project
 
 steps:
-  # Paso 1: Construir la imagen de la API para Cloud Run
+  # Paso 1: Construir imagen API
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
@@ -12,28 +12,12 @@ steps:
       - '.'
     id: 'Build API'
 
-  # Paso 2: Subir la imagen de la API
+  # Paso 2: Subir imagen API
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/listing-fraud-repo/listing-fraud-check-api:latest']
     id: 'Push API'
 
-  # Paso 3: Construir la imagen del Worker para Compute Engine
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'build'
-      - '-t'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/listing-fraud-repo/listing-fraud-worker:latest'
-      - '-f'
-      - 'worker.Dockerfile'
-      - '.'
-    id: 'Build Worker'
-
-  # Paso 4: Subir la imagen del Worker
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/listing-fraud-repo/listing-fraud-worker:latest']
-    id: 'Push Worker'
-
-# Paso 5: Desplegar la imagen de la API en Cloud Run (versión corregida)
+  # Paso 3: Desplegar API en Cloud Run (incluye worker en el mismo contenedor)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
@@ -46,10 +30,10 @@ steps:
       - 'us-central1'
       - '--platform'
       - 'managed'
-      - '--vpc-connector'
-      - 'safelease-connector'
       - '--allow-unauthenticated'
-      - '--service-account=api-service-account@${PROJECT_ID}.iam.gserviceaccount.com' 
-      - '--set-secrets=DATABASE_URL=db-url:latest,GOOGLE_API_KEY=google-api-key:latest,GOOGLE_GEMINI_API_KEY=google-gemini-api-key:latest,GOOGLE_SEARCH_ENGINE_ID=google-search-engine-id:latest,JWT_SECRET=jwt-secret:latest,REDIS_HOST=redis-host:latest'
-      - '--set-env-vars=ENVIRONMENT=production,BACKEND_CORS_ORIGINS=https://safelease-23cf0.web.app'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--set-secrets=DATABASE_URL=db-url:latest,GOOGLE_API_KEY=google-api-key:latest,GOOGLE_GEMINI_API_KEY=google-gemini-api-key:latest,GOOGLE_SEARCH_ENGINE_ID=google-search-engine-id:latest,JWT_SECRET=jwt-secret:latest,REDIS_HOST=redis-host:latest,REDIS_PASSWORD=redis-password:latest'
+      - '--set-env-vars=ENVIRONMENT=production,REDIS_SSL=true,REDIS_PORT=6379,BACKEND_CORS_ORIGINS=https://nopiques.vercel.app'
     id: 'Deploy API'
+
