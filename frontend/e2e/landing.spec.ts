@@ -6,8 +6,8 @@ test.describe('Landing Page', () => {
   });
 
   test('displays brand name and hero', async ({ page }) => {
-    await expect(page.getByText('AlquiSeguro').first()).toBeVisible();
-    const heroHeading = page.getByRole('heading', { name: /dudas.*firmar/i });
+    await expect(page.getByText('NoPiques').first()).toBeVisible();
+    const heroHeading = page.getByRole('heading', { name: /dudas.*reservar/i });
     await expect(heroHeading).toBeVisible();
   });
 
@@ -73,7 +73,7 @@ test.describe('Landing Page', () => {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     const footer = page.locator('footer');
     await expect(footer).toBeVisible();
-    await expect(footer.locator('text=AlquiSeguro')).toBeVisible();
+    await expect(footer.locator('text=NoPiques')).toBeVisible();
   });
 
   test('"skip and fill manually" link navigates to /review', async ({ page }) => {

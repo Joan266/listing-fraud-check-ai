@@ -144,14 +144,14 @@ const ResultsPage: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', background: 'radial-gradient(1100px 620px at 50% -10%, rgba(53,212,138,0.09), transparent 60%), #090C12', position: 'relative' }}>
-      <div ref={containerRef} style={{ maxWidth: 1120, margin: '0 auto', padding: '0 28px 80px', position: 'relative' }}>
+      <div ref={containerRef} style={{ maxWidth: 1440, margin: '0 auto', padding: '0 40px 80px', position: 'relative' }}>
 
         {/* Nav */}
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
             <BrandLogo size={32} />
             <span style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 19, letterSpacing: '-0.02em' }}>
-              Alqui<span style={{ color: '#35D48A' }}>Seguro</span>
+              No<span style={{ color: '#35D48A' }}>Piques</span>
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -217,16 +217,13 @@ const ResultsPage: React.FC = () => {
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 13px', borderRadius: 999, background: '#35D48A', color: '#08130D', fontWeight: 700, fontFamily: "'IBM Plex Mono'", fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                   {authScore >= 70 ? 'Riesgo bajo' : authScore >= 40 ? 'Riesgo medio' : 'Riesgo alto'}
                 </div>
-                <h2 style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 22, margin: '14px 0 8px', letterSpacing: '-0.02em' }}>
-                  {report.sidebar_summary?.slice(0, 60) || 'Evaluación general'}
-                </h2>
-                <p style={{ color: '#AEB6C3', fontSize: 14.5, lineHeight: 1.6, margin: 0 }}>{report.sidebar_summary}</p>
+                <p style={{ color: '#AEB6C3', fontSize: 14.5, lineHeight: 1.6, margin: '14px 0 0' }}>{report.sidebar_summary}</p>
               </div>
             </div>
 
             {/* Quality card */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <div style={{ ...card, flex: 1 }}>
+              <div style={card}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                   <span style={{ color: '#9AA3B2', fontSize: 14 }}>Calidad del anuncio</span>
                   <span style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 30, color: '#35D48A' }}>

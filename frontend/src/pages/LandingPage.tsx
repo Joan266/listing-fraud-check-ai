@@ -23,7 +23,7 @@ const EXT_ICONS     = [Download, Cpu, Zap];
 const STACK: Array<{ name: string; role: Record<string, string>; icon: string }> = [
   { name: 'React',        role: { es: 'UI',                 en: 'UI'                  }, icon: 'https://cdn.simpleicons.org/react/61DAFB'       },
   { name: 'Redux',        role: { es: 'Estado',             en: 'State'               }, icon: 'https://cdn.simpleicons.org/redux/764ABC'       },
-  { name: 'Tailwind CSS', role: { es: 'Estilos',            en: 'Styling'             }, icon: 'https://cdn.simpleicons.org/tailwindcss/06B6D4' },
+  { name: 'TypeScript',   role: { es: 'Tipos · DX',         en: 'Types · DX'          }, icon: 'https://cdn.simpleicons.org/typescript/3178C6'   },
   { name: 'FastAPI',      role: { es: 'API · Python',       en: 'API · Python'        }, icon: 'https://cdn.simpleicons.org/fastapi/009688'     },
   { name: 'PostgreSQL',   role: { es: 'Base de datos',      en: 'Database'            }, icon: 'https://cdn.simpleicons.org/postgresql/4169E1'  },
   { name: 'Redis + RQ',   role: { es: 'Colas de trabajos',  en: 'Job queues'          }, icon: 'https://cdn.simpleicons.org/redis/FF4438'       },
@@ -31,7 +31,7 @@ const STACK: Array<{ name: string; role: Record<string, string>; icon: string }>
   { name: 'Google Maps',  role: { es: 'Geocoding · Places', en: 'Geocoding · Places'  }, icon: 'https://cdn.simpleicons.org/googlemaps/4285F4'  },
   { name: 'Cloud Run',    role: { es: 'Despliegue API',     en: 'API deploy'          }, icon: 'https://cdn.simpleicons.org/googlecloud/4285F4' },
   { name: 'Docker',       role: { es: 'Contenedores',       en: 'Containers'          }, icon: 'https://cdn.simpleicons.org/docker/2496ED'      },
-  { name: 'Firebase',     role: { es: 'Hosting frontend',   en: 'Frontend hosting'    }, icon: 'https://cdn.simpleicons.org/firebase/DD2C00'    },
+  { name: 'Vite',         role: { es: 'Build tool',         en: 'Build tool'          }, icon: 'https://cdn.simpleicons.org/vite/646CFF'        },
   { name: 'Python',       role: { es: 'Backend · workers',  en: 'Backend · workers'   }, icon: 'https://cdn.simpleicons.org/python/3776AB'      },
 ];
 
@@ -76,6 +76,13 @@ export const LandingPage: React.FC = () => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [listingText, setListingText]   = useState('');
   const [listingUrl, setListingUrl]     = useState('');
+  const [isMobile, setIsMobile]         = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   const t = translations[lang];
 
@@ -156,38 +163,42 @@ export const LandingPage: React.FC = () => {
         animation: 'asDrift 16s ease-in-out infinite',
       }} />
 
-      <div style={{ position: 'relative', maxWidth: '1180px', margin: '0 auto', padding: '0 28px' }}>
+      <div style={{ position: 'relative', maxWidth: '1180px', margin: '0 auto', padding: isMobile ? '0 16px' : '0 28px' }}>
 
         {/* ── Nav ──────────────────────────────────────────────────────────── */}
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <BrandLogo size={34} />
             <span style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontWeight: 700, fontSize: 19, letterSpacing: '-0.02em' }}>
-              Alqui<span style={{ color: '#35D48A' }}>Seguro</span>
+              No<span style={{ color: '#35D48A' }}>Piques</span>
             </span>
           </div>
 
           <nav style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <a href="#como"      style={{ color: '#9AA3B2', fontSize: 14, textDecoration: 'none' }}>{t.nav.comoFunciona}</a>
-            <a href="#extension" style={{ color: '#9AA3B2', fontSize: 14, textDecoration: 'none' }}>{t.nav.extension}</a>
-            <a href="#capas"     style={{ color: '#9AA3B2', fontSize: 14, textDecoration: 'none' }}>{t.nav.verificaciones}</a>
-            <a href="#stack"     style={{ color: '#9AA3B2', fontSize: 14, textDecoration: 'none' }}>{t.nav.stack}</a>
+            {!isMobile && (
+              <>
+                <a href="#como"      style={{ color: '#9AA3B2', fontSize: 14, textDecoration: 'none' }}>{t.nav.comoFunciona}</a>
+                <a href="#extension" style={{ color: '#9AA3B2', fontSize: 14, textDecoration: 'none' }}>{t.nav.extension}</a>
+                <a href="#capas"     style={{ color: '#9AA3B2', fontSize: 14, textDecoration: 'none' }}>{t.nav.verificaciones}</a>
+                <a href="#stack"     style={{ color: '#9AA3B2', fontSize: 14, textDecoration: 'none' }}>{t.nav.stack}</a>
 
-            {/* ES / EN toggle */}
-            <div style={{ display: 'flex', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, overflow: 'hidden' }}>
-              {(['es', 'en'] as Lang[]).map((l) => (
-                <button key={l} onClick={() => setLang(l)} style={{
-                  padding: '5px 11px', border: 'none', cursor: 'pointer',
-                  background: lang === l ? 'rgba(53,212,138,0.14)' : 'transparent',
-                  color: lang === l ? '#35D48A' : '#6B7385',
-                  fontSize: 12, fontWeight: 600,
-                  textTransform: 'uppercase', letterSpacing: '0.07em',
-                  transition: 'background 0.15s, color 0.15s',
-                }}>
-                  {l}
-                </button>
-              ))}
-            </div>
+                {/* ES / EN toggle */}
+                <div style={{ display: 'flex', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, overflow: 'hidden' }}>
+                  {(['es', 'en'] as Lang[]).map((l) => (
+                    <button key={l} onClick={() => setLang(l)} style={{
+                      padding: '5px 11px', border: 'none', cursor: 'pointer',
+                      background: lang === l ? 'rgba(53,212,138,0.14)' : 'transparent',
+                      color: lang === l ? '#35D48A' : '#6B7385',
+                      fontSize: 12, fontWeight: 600,
+                      textTransform: 'uppercase', letterSpacing: '0.07em',
+                      transition: 'background 0.15s, color 0.15s',
+                    }}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             <button onClick={scrollToForm} style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
@@ -200,7 +211,7 @@ export const LandingPage: React.FC = () => {
         </header>
 
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
-        <section style={{ padding: '72px 0 28px', textAlign: 'center', animation: 'asRise 0.6s ease both' }}>
+        <section style={{ padding: isMobile ? '40px 0 16px' : '72px 0 28px', textAlign: 'center', animation: 'asRise 0.6s ease both' }}>
           {/* Badge */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 9,
@@ -265,7 +276,7 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* ── Stat strip ───────────────────────────────────────────────────── */}
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, margin: '56px 0 0' }}>
+        <section style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: 16, margin: '56px 0 0' }}>
           {t.stats.map((stat, i) => (
             <div key={i} style={{
               border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16,
@@ -285,7 +296,7 @@ export const LandingPage: React.FC = () => {
             <div style={S.monoLabel}>{t.como.label}</div>
             <h2 style={S.sectionTitle}>{t.como.title}</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: 20 }}>
             {t.como.steps.map((step, i) => {
               const Icon = STEP_ICONS[i];
               return (
@@ -321,7 +332,7 @@ export const LandingPage: React.FC = () => {
           <div style={{
             border: '1px solid rgba(255,255,255,0.09)', borderRadius: 24,
             background: 'linear-gradient(180deg,rgba(53,212,138,0.05),rgba(255,255,255,0.008))',
-            padding: '48px 44px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 44, alignItems: 'center',
+            padding: isMobile ? '24px 20px' : '48px 44px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 44, alignItems: 'center',
           }}>
             <div>
               <div style={{ ...S.monoLabel, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
@@ -334,6 +345,21 @@ export const LandingPage: React.FC = () => {
               <p style={{ color: '#9AA3B2', fontSize: 16.5, lineHeight: 1.65, margin: '0 0 24px' }}>
                 {t.ext.subtitle}
               </p>
+
+              {/* Flow stepper */}
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginBottom: 20, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '10px 14px' }}>
+                {[
+                  lang === 'es' ? 'Abre Idealista' : 'Open Idealista',
+                  lang === 'es' ? 'Clic en el icono' : 'Click the icon',
+                  lang === 'es' ? 'Ve las señales' : 'See the flags',
+                ].map((text, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {i > 0 && <span style={{ color: '#35D48A', fontSize: 11, margin: '0 4px' }}>→</span>}
+                    <span style={{ width: 17, height: 17, borderRadius: '50%', background: 'rgba(53,212,138,0.15)', border: '1px solid rgba(53,212,138,0.3)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#35D48A', flexShrink: 0 }}>{i + 1}</span>
+                    <span style={{ fontSize: 12, color: '#9AA3B2', whiteSpace: 'nowrap' }}>{text}</span>
+                  </div>
+                ))}
+              </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 30 }}>
                 {t.ext.bullets.map((b, i) => {
@@ -416,7 +442,7 @@ export const LandingPage: React.FC = () => {
                           <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z" /><path d="m9 12 2 2 4-4" />
                         </svg>
                       </div>
-                      <span style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontWeight: 700, fontSize: 12 }}>AlquiSeguro</span>
+                      <span style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontWeight: 700, fontSize: 12 }}>NoPiques</span>
                       <span style={{ marginLeft: 'auto', fontSize: 8, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#8A93A3', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 99, padding: '2px 5px' }}>Ext</span>
                     </div>
                     <div style={{ padding: '10px 12px' }}>
@@ -449,7 +475,7 @@ export const LandingPage: React.FC = () => {
               {t.capas.subtitle}
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 16 }}>
             {t.capas.features.map((f, i) => {
               const Icon = FEATURE_ICONS[i];
               return (
@@ -490,7 +516,7 @@ export const LandingPage: React.FC = () => {
             background: 'linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.008))',
             overflow: 'hidden', boxShadow: '0 40px 120px rgba(0,0,0,0.5)',
           }}>
-            <div style={{ padding: '38px 42px 0', textAlign: 'center' }}>
+            <div style={{ padding: isMobile ? '24px 20px 0' : '38px 42px 0', textAlign: 'center' }}>
               <div style={S.monoLabel}>{t.form.label}</div>
               <h2 style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontWeight: 700, fontSize: 'clamp(26px,3.4vw,38px)', letterSpacing: '-0.03em', margin: '12px 0 6px', color: '#E7ECF3' }}>
                 {t.form.title}
@@ -500,7 +526,7 @@ export const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ padding: '30px 42px 42px' }}>
+            <div style={{ padding: isMobile ? '24px 20px 20px' : '30px 42px 42px' }}>
               {/* Mode toggle */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
                 <div style={{ display: 'inline-flex', borderRadius: 9, padding: 3, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -594,9 +620,6 @@ export const LandingPage: React.FC = () => {
                       </>
                     )}
                   </button>
-                  <span style={{ color: '#6B7385', fontSize: 13, fontFamily: "'IBM Plex Mono', monospace" }}>
-                    {t.form.privacy}
-                  </span>
                 </div>
               </form>
 
@@ -616,7 +639,7 @@ export const LandingPage: React.FC = () => {
           <div style={{
             border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24,
             background: 'linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.008))',
-            padding: '48px 44px',
+            padding: isMobile ? '24px 20px' : '48px 44px',
           }}>
             {/* Header row */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 36 }}>
@@ -636,7 +659,7 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* 4-col grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 14 }}>
               {STACK.map((tech) => (
                 <div key={tech.name} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
@@ -670,7 +693,7 @@ export const LandingPage: React.FC = () => {
             <BrandLogo size={28} />
             <div>
               <div style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontWeight: 700, fontSize: 15.5 }}>
-                Alqui<span style={{ color: '#35D48A' }}>Seguro</span>
+                No<span style={{ color: '#35D48A' }}>Piques</span>
               </div>
               <div style={{ color: '#6B7385', fontSize: 12 }}>{t.footer.tagline}</div>
             </div>
