@@ -7,8 +7,7 @@
       "VITE_API_BASE_URL": "https://listing-fraud-check-api-999434601012.us-central1.run.app"
     }
   },
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
