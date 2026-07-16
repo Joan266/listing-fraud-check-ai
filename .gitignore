@@ -21,6 +21,7 @@ fraudcheck.db-journal
 
 # Archivos de configuración
 *.json
+!vercel.json
 env.yaml
 docker-compose.yml
 
