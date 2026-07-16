@@ -1,0 +1,10 @@
+{
+  "installCommand": "cd frontend && npm install",
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/dist",
+  "build": {
+    "env": {
+      "VITE_API_BASE_URL": "https://listing-fraud-check-api-999434601012.us-central1.run.app"
+    }
+  }
+}
