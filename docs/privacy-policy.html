@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de Privacidad — NoPiques</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    max-width: 720px;
+    margin: 60px auto;
+    padding: 0 24px 80px;
+    color: #1a1a2e;
+    line-height: 1.7;
+    font-size: 16px;
+  }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; color: #0d1117; }
+  .updated { font-size: 14px; color: #666; margin-bottom: 40px; }
+  h2 { font-size: 18px; font-weight: 600; margin-top: 36px; margin-bottom: 8px; color: #0d1117; }
+  p { margin: 0 0 16px; }
+  ul { margin: 0 0 16px; padding-left: 24px; }
+  li { margin-bottom: 6px; }
+  a { color: #1a7f4b; }
+  .brand { color: #1a7f4b; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1><span class="brand">NoPiques</span> — Política de Privacidad</h1>
+<p class="updated">Última actualización: julio de 2026</p>
+
+<h2>1. Quién somos</h2>
+<p>
+  <strong>NoPiques</strong> es una extensión de Chrome que analiza anuncios de alquiler y venta de propiedades
+  para detectar posibles indicios de fraude. El servicio es operado por Joan Alemany.
+  Para cualquier consulta puedes escribir a
+  <a href="mailto:joanalemany26@gmail.com">joanalemany26@gmail.com</a>.
+</p>
+
+<h2>2. Qué datos se procesan</h2>
+<p>Cuando activas el análisis de un anuncio, la extensión procesa:</p>
+<ul>
+  <li><strong>URL del anuncio</strong> — la dirección de la página que estás visitando.</li>
+  <li><strong>Texto del anuncio</strong> — el contenido visible de la página (título, descripción, precio, etc.).</li>
+  <li><strong>URLs de imágenes</strong> — enlaces a las fotos del anuncio (no las imágenes descargadas).</li>
+</ul>
+<p>
+  <strong>No se recogen</strong> datos personales del usuario: no se almacena nombre, dirección de correo,
+  dirección IP, identificador de dispositivo ni ningún otro dato que permita identificarte.
+</p>
+<p>
+  La extensión genera un <strong>session ID aleatorio</strong> (UUID) almacenado localmente en el navegador.
+  Este identificador no está vinculado a ninguna cuenta ni permite trazar la identidad del usuario.
+</p>
+
+<h2>3. Cómo se usan los datos</h2>
+<p>Los datos del anuncio se envían a dos servicios para el análisis de fraude:</p>
+<ul>
+  <li>
+    <strong>API de NoPiques</strong> (alojada en Google Cloud Run, región us-central1):
+    extrae campos estructurados del anuncio (precio, localización, contacto, etc.) y aplica
+    heurísticas de detección de fraude.
+  </li>
+  <li>
+    <strong>Google Gemini API</strong>: la API de NoPiques utiliza Gemini para analizar el texto
+    e imágenes del anuncio. Los datos se procesan según la
+    <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">política de uso de Google Gemini</a>.
+  </li>
+</ul>
+<p>
+  Adicionalmente, si tienes Chrome 138+ con Gemini Nano disponible, parte del análisis inicial
+  se realiza <strong>en tu dispositivo</strong>, sin enviar datos a ningún servidor externo.
+</p>
+
+<h2>4. Retención de datos</h2>
+<p>
+  El contenido del anuncio analizado <strong>no se almacena de forma persistente</strong> en los servidores
+  de NoPiques más allá del tiempo necesario para generar la respuesta de análisis.
+  El session ID local se conserva en tu navegador y puedes eliminarlo borrando los datos de la extensión
+  desde la configuración de Chrome.
+</p>
+
+<h2>5. Compartición con terceros</h2>
+<p>
+  No vendemos ni cedemos datos a terceros. El único tercero que procesa datos del anuncio es
+  Google (a través de Gemini API), en los términos descritos en el punto 3.
+</p>
+
+<h2>6. Seguridad</h2>
+<p>
+  Todas las comunicaciones entre la extensión y la API de NoPiques se realizan mediante
+  HTTPS (TLS). El servicio está alojado en Google Cloud Run con certificado gestionado por Google.
+</p>
+
+<h2>7. Permisos de la extensión</h2>
+<p>La extensión solicita los siguientes permisos de Chrome:</p>
+<ul>
+  <li><strong>activeTab</strong>: para leer el contenido de la pestaña activa cuando el usuario pulsa "Analizar".</li>
+  <li><strong>scripting</strong>: para inyectar el script de extracción de contenido en la página.</li>
+  <li><strong>storage</strong>: para guardar localmente el session ID y la URL del servidor.</li>
+  <li><strong>tabs</strong>: para abrir la aplicación de resultados en una nueva pestaña.</li>
+</ul>
+
+<h2>8. Tus derechos</h2>
+<p>
+  Como no almacenamos datos personales vinculados a tu identidad, no es posible ejercer derechos
+  de acceso, rectificación o supresión sobre datos individuales. Si tienes alguna duda, contáctanos
+  en <a href="mailto:joanalemany26@gmail.com">joanalemany26@gmail.com</a>.
+</p>
+
+<h2>9. Cambios en esta política</h2>
+<p>
+  Cualquier actualización de esta política se publicará en esta misma página con la fecha de la
+  última modificación. El uso continuado de la extensión tras los cambios implica la aceptación
+  de la nueva política.
+</p>
+
+</body>
+</html>

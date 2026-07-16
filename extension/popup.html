@@ -186,18 +186,7 @@
   .settings input::placeholder { color: var(--text-faint); }
   .settings .hint { font-size: 10.5px; color: var(--text-faint); margin-top: 6px; line-height: 1.4; }
 
-  /* ---------- DEMO SWITCHER ---------- */
-  #demo-bar {
-    display: flex; gap: 5px; padding: 8px 10px;
-    background: #060a15; border-top: 1px dashed rgba(53,212,138,0.3); flex-wrap: wrap;
-  }
-  #demo-bar span { font-size: 9px; color: var(--accent); align-self: center; letter-spacing: 0.05em; text-transform: uppercase; margin-right: 2px; }
-  #demo-bar button {
-    font-family: inherit; font-size: 10.5px; color: var(--text-dim);
-    background: rgba(255,255,255,0.06); border: 1px solid var(--border);
-    border-radius: 6px; padding: 4px 8px; cursor: pointer;
-  }
-  #demo-bar button:hover { color: var(--text); border-color: var(--text-dim); }
+
 </style>
 </head>
 <body>
@@ -295,16 +284,6 @@
       <div class="hint">Solo cámbialo si ejecutas tu propia instancia del backend.</div>
     </div>
   </details>
-
-  <!-- DEMO SWITCHER — borrar en producción -->
-  <div id="demo-bar">
-    <span>Demo</span>
-    <button data-state="initial">Inicial</button>
-    <button data-state="loading">Cargando</button>
-    <button data-state="flags">Con señales</button>
-    <button data-state="clean">Sin señales</button>
-    <button data-state="error">Error</button>
-  </div>
 
   <script src="popup.js"></script>
 

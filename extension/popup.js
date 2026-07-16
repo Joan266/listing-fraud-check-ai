@@ -1,4 +1,4 @@
-const DEFAULT_API_URL = "http://localhost:8000";
+const DEFAULT_API_URL = "https://listing-fraud-check-api-999434601012.us-central1.run.app";
 const API_ENDPOINT = "/api/v1/extract-data";
 
 const btnAnalyze = document.getElementById("btn-analyze");
@@ -181,7 +181,11 @@ async function openApp(extractedData, sourceUrl, apiUrl) {
   const parsedApiUrl = validateHttpUrl(apiUrl);
   if (!parsedApiUrl) throw new Error("URL del servidor no válida.");
 
-  const appOrigin = `${parsedApiUrl.protocol}//${parsedApiUrl.hostname}:5173`;
+  const PRODUCTION_APP_URL = "https://nopiques.vercel.app";
+  const isProduction = apiUrl.startsWith("https://listing-fraud-check-api");
+  const appOrigin = isProduction
+    ? PRODUCTION_APP_URL
+    : `${parsedApiUrl.protocol}//${parsedApiUrl.hostname}:5173`;
   const parsedAppUrl = validateHttpUrl(`${appOrigin}/?from_extension=true`);
   if (!parsedAppUrl) throw new Error("No se pudo construir la URL de la aplicación.");
 
@@ -320,7 +324,7 @@ btnAnalyze.addEventListener("click", async () => {
         showFlags([`IA local: puntuación de riesgo ${aiScore}/10`]);
         setStatus(`IA local: riesgo ${aiScore}/10. Enviando al servidor...`, "loading");
         const extractedData = await fetchExtractedData(text, url, apiUrl);
-        setStatus("Datos extraídos. Abriendo FraudCheck.ai...", "success");
+        setStatus("Datos extraídos. Abriendo NoPiques...", "success");
         await openApp(mergeImages(extractedData, images), url, apiUrl);
         return;
       }
@@ -345,7 +349,7 @@ btnAnalyze.addEventListener("click", async () => {
 
     // Stage 2: Backend extraction
     const extractedData = await fetchExtractedData(text, url, apiUrl);
-    setStatus("Datos extraídos. Abriendo FraudCheck.ai...", "success");
+    setStatus("Datos extraídos. Abriendo NoPiques...", "success");
     await openApp(mergeImages(extractedData, images), url, apiUrl);
   } catch (err) {
     setStatus(err.message, "error");
@@ -365,7 +369,7 @@ btnAnalyzeAnyway.addEventListener("click", async () => {
   try {
     const apiUrl = apiUrlInput.value.trim().replace(/\/+$/, "") || DEFAULT_API_URL;
     const extractedData = await fetchExtractedData(_pendingText, _pendingUrl, apiUrl);
-    setStatus("Datos extraídos. Abriendo FraudCheck.ai...", "success");
+    setStatus("Datos extraídos. Abriendo NoPiques...", "success");
     await openApp(mergeImages(extractedData, _pendingImages), _pendingUrl, apiUrl);
   } catch (err) {
     setStatus(err.message, "error");
@@ -374,67 +378,3 @@ btnAnalyzeAnyway.addEventListener("click", async () => {
   }
 });
 
-// --- Demo switcher (dev only — remove before publishing to store) ---
-
-(function () {
-  var demoBar = document.getElementById("demo-bar");
-  if (!demoBar) return;
-
-  var flagsEl2 = document.getElementById("flags");
-  var flagsClean = document.querySelector(".flags-clean");
-  var anyway = document.getElementById("btn-analyze-anyway");
-  var analyze = document.getElementById("btn-analyze");
-
-  var ICON_OK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>';
-  var ICON_ERR = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5"></path><path d="M12 16h.01"></path></svg>';
-
-  function demoReset() {
-    if (statusEl) statusEl.className = "status";
-    if (statusTextEl) statusTextEl.textContent = "";
-    if (statusEl) { var icon = statusEl.querySelector(".status-icon"); if (icon) icon.innerHTML = ""; }
-    if (flagsEl2) flagsEl2.classList.remove("show");
-    if (flagsClean) flagsClean.classList.remove("show");
-    if (anyway) anyway.classList.remove("show");
-    if (analyze) analyze.disabled = false;
-  }
-
-  var states = {
-    initial: function () { demoReset(); },
-    loading: function () {
-      demoReset();
-      if (analyze) analyze.disabled = true;
-      if (statusEl) statusEl.className = "status loading";
-      if (statusTextEl) statusTextEl.textContent = "Analizando el anuncio\u2026";
-    },
-    flags: function () {
-      demoReset();
-      if (flagsEl2) flagsEl2.classList.add("show");
-      if (anyway) anyway.classList.add("show");
-    },
-    clean: function () {
-      demoReset();
-      if (statusEl) statusEl.className = "status success";
-      var icon = statusEl ? statusEl.querySelector(".status-icon") : null;
-      if (icon) icon.innerHTML = ICON_OK;
-      if (statusTextEl) statusTextEl.textContent = "Verificado \u2014 riesgo bajo.";
-      if (flagsClean) flagsClean.classList.add("show");
-      if (anyway) { anyway.classList.add("show"); anyway.textContent = "Ver informe completo"; }
-    },
-    error: function () {
-      demoReset();
-      if (statusEl) statusEl.className = "status error";
-      var icon = statusEl ? statusEl.querySelector(".status-icon") : null;
-      if (icon) icon.innerHTML = ICON_ERR;
-      if (statusTextEl) statusTextEl.textContent = "No se pudo conectar con el servidor. Reintenta.";
-    }
-  };
-
-  demoBar.querySelectorAll("button").forEach(function (b) {
-    b.addEventListener("click", function () {
-      var fn = states[b.dataset.state];
-      if (fn) fn();
-    });
-  });
-
-  states.flags();
-})();

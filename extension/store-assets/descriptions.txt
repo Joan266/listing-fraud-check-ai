@@ -1,0 +1,42 @@
+===========================
+SHORT DESCRIPTION (≤132 chars)
+===========================
+Detecta fraudes en anuncios de alquiler y compraventa antes de que caigas en la trampa. Análisis con IA en segundos.
+
+
+===========================
+LONG DESCRIPTION (~400 words)
+===========================
+NoPiques analiza anuncios inmobiliarios y de alquiler vacacional en tiempo real para detectar señales de fraude antes de que respondas, pagues o reserves.
+
+¿Cómo funciona?
+Activa la extensión en cualquier anuncio (Idealista, Fotocasa, Airbnb, Booking, Wallapop, Milanuncios y más), pulsa "Analizar" y en segundos obtienes un informe con todas las señales de alerta detectadas.
+
+Qué detecta NoPiques:
+• Precio anormalmente bajo para la zona — el cebo clásico de las estafas de alquiler.
+• Solicitud de pago anticipado o transferencia antes de la visita.
+• Métodos de pago sospechosos (Western Union, wire transfer, Bizum a desconocidos).
+• Imágenes reutilizadas de otros anuncios o sacadas de internet.
+• Datos de contacto fuera de la plataforma (email o teléfono en el cuerpo del anuncio).
+• Lenguaje de urgencia: "solo hoy", "última oportunidad", "urgente".
+• Inconsistencias entre el texto y las fotos.
+• Señales de traducción automática o descripción genérica copiada.
+
+Tecnología de análisis en tres capas:
+1. Filtro de red flags por expresiones regulares — instantáneo, sin enviar nada al servidor.
+2. Análisis con Gemini Nano en tu propio dispositivo (Chrome 138+) — IA local, cero coste, cero envío de datos externos.
+3. Análisis completo con Gemini via API NoPiques — para los casos con señales detectadas o cuando quieres un informe detallado.
+
+Plataformas soportadas:
+Idealista · Fotocasa · Pisos.com · Habitaclia · Airbnb · Booking · VRBO · Expedia · Tripadvisor · Milanuncios · Wallapop — y cualquier página con un anuncio visible.
+
+Privacidad:
+NoPiques no recoge datos personales. Solo se procesa el texto e imágenes del anuncio que tú decides analizar. No hay cuentas, no hay tracking, no hay cookies de seguimiento. Consulta la política de privacidad completa en: https://joan266.github.io/listing-fraud-check-ai/privacy-policy.html
+
+Para quién es NoPiques:
+— Buscas piso de alquiler en una ciudad nueva y quieres ir seguro.
+— Vas a reservar un apartamento vacacional y la oferta parece demasiado buena.
+— Ves un anuncio de segunda mano que te genera dudas.
+— Ayudas a familiares o amigos a validar anuncios antes de pagar.
+
+No piques. Analiza primero.

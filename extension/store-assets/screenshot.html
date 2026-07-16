@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>NoPiques — Store Screenshot</title>
+<style>
+  :root {
+    --bg-page: #0A0F1A;
+    --bg-popup: #090C12;
+    --bg-raise: #0C1017;
+    --bg-input: #0A0E15;
+    --border: rgba(255,255,255,0.1);
+    --border-strong: rgba(255,255,255,0.18);
+    --text: #E7ECF3;
+    --text-dim: #9AA3B2;
+    --text-faint: #6B7385;
+    --accent: #35D48A;
+    --accent-hover: #5FE0A5;
+    --accent-ink: #08130D;
+    --danger: #F16A6A;
+    --danger-bg: rgba(241,106,106,0.09);
+    --danger-border: rgba(241,106,106,0.32);
+    --success: #35D48A;
+    --success-bg: rgba(53,212,138,0.09);
+    --success-border: rgba(53,212,138,0.32);
+    --warn: #F2B84B;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 1280px;
+    height: 800px;
+    overflow: hidden;
+    background: var(--bg-page);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  /* ── Layout ─────────────────────────── */
+  .scene {
+    display: flex;
+    width: 1280px;
+    height: 800px;
+    align-items: center;
+  }
+
+  /* Left branding panel */
+  .branding {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 0 64px;
+    gap: 20px;
+  }
+
+  .brand-logo {
+    width: 56px; height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(150deg, #35D48A, #1F9E68);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 28px rgba(53,212,138,0.35);
+  }
+
+  .brand-name {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--text);
+  }
+  .brand-name span { color: var(--accent); }
+
+  .brand-tagline {
+    font-size: 18px;
+    color: var(--text-dim);
+    max-width: 380px;
+    line-height: 1.5;
+  }
+
+  .brand-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(53,212,138,0.1);
+    border: 1px solid rgba(53,212,138,0.3);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  /* Right popup panel */
+  .popup-wrap {
+    width: 400px;
+    margin-right: 80px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  /* Glow behind popup */
+  .popup-wrap::before {
+    content: "";
+    position: absolute;
+    inset: -60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(53,212,138,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Popup ───────────────────────────── */
+  .popup {
+    position: relative;
+    z-index: 1;
+    width: 340px;
+    margin: 0 auto;
+    background: var(--bg-popup);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.06),
+      0 24px 64px rgba(0,0,0,0.7),
+      0 4px 24px rgba(0,0,0,0.4);
+    background-image:
+      radial-gradient(420px 180px at 50% -40px, rgba(53,212,138,0.08), transparent 70%),
+      radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: auto, 22px 22px;
+    background-position: center top, -11px -11px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header .logo {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: linear-gradient(150deg, #35D48A, #1F9E68);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(53,212,138,0.28);
+  }
+  .header .brand { font-weight: 700; font-size: 16px; letter-spacing: -0.02em; flex: 1; }
+  .header .brand span { color: var(--accent); }
+  .header .badge {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--text-dim);
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+    padding: 3px 8px; border-radius: 999px;
+  }
+
+  .body { padding: 16px; }
+
+  .listing {
+    background: var(--bg-raise); border: 1px solid var(--border);
+    border-radius: 11px; padding: 12px 13px; margin-bottom: 14px;
+  }
+  .listing .eyebrow {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px;
+  }
+  .page-title {
+    font-weight: 600; font-size: 14px; line-height: 1.35; color: var(--text);
+  }
+  .page-url {
+    display: block; font-size: 11.5px; color: var(--text-dim); margin-top: 5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  .btn {
+    width: 100%; display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; border: none; border-radius: 10px; font-family: inherit;
+    font-weight: 600; font-size: 14px; padding: 12px 16px; cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--accent); color: var(--accent-ink);
+    box-shadow: 0 6px 18px rgba(53,212,138,0.22);
+  }
+  .btn-primary-disabled {
+    background: rgba(53,212,138,0.28); color: rgba(8,19,13,0.55);
+    box-shadow: none;
+  }
+  .btn-secondary {
+    background: transparent; color: var(--text-dim);
+    border: 1px solid var(--border-strong); margin-top: 9px;
+  }
+
+  .status {
+    display: flex; align-items: center; gap: 10px; font-size: 13px;
+    line-height: 1.4; padding: 11px 13px; border-radius: 10px;
+    margin-top: 14px; border: 1px solid transparent;
+  }
+  .status.loading { color: var(--text-dim); background: rgba(255,255,255,0.05); border-color: var(--border); }
+  .status.success { color: var(--success); background: var(--success-bg); border-color: var(--success-border); }
+  .status.error { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-border); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 15px; height: 15px; flex-shrink: 0; border-radius: 50%;
+    border: 2px solid rgba(53,212,138,0.25); border-top-color: var(--accent);
+    animation: spin 0.7s linear infinite;
+  }
+
+  .flags-box {
+    margin-top: 14px; background: var(--danger-bg);
+    border: 1px solid var(--danger-border); border-radius: 11px;
+    padding: 13px 14px;
+  }
+  .flags-head {
+    display: flex; align-items: center; gap: 8px; font-weight: 700;
+    font-size: 13px; color: var(--danger); margin-bottom: 10px;
+  }
+  .flags-list { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+  .flags-list li { display: flex; gap: 9px; font-size: 12.5px; line-height: 1.5; color: #fecaca; }
+
+  .flags-clean {
+    display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500;
+    color: var(--success); background: var(--success-bg); border: 1px solid var(--success-border);
+    border-radius: 11px; padding: 13px 14px; margin-top: 14px;
+  }
+
+  /* ── State visibility ──────────────────── */
+  /* Default: show initial */
+  .state-initial .show-loading,
+  .state-initial .show-flags,
+  .state-initial .show-clean { display: none; }
+
+  .state-loading .show-initial,
+  .state-loading .show-flags,
+  .state-loading .show-clean { display: none; }
+
+  .state-flags .show-initial,
+  .state-flags .show-loading,
+  .state-flags .show-clean { display: none; }
+
+  .state-clean .show-initial,
+  .state-clean .show-loading,
+  .state-clean .show-flags-box { display: none; }
+
+  /* Background scene decoration */
+  .decoration {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .decoration-circle {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(53,212,138,0.06) 0%, transparent 70%);
+  }
+  .deco-1 { width: 600px; height: 600px; top: -200px; left: -200px; }
+  .deco-2 { width: 400px; height: 400px; bottom: -100px; right: 200px; background: radial-gradient(circle, rgba(53,212,138,0.04) 0%, transparent 70%); }
+</style>
+</head>
+<body>
+
+<div class="scene" id="scene">
+
+  <!-- Background decoration -->
+  <div class="decoration">
+    <div class="decoration-circle deco-1"></div>
+    <div class="decoration-circle deco-2"></div>
+  </div>
+
+  <!-- Left: Branding -->
+  <div class="branding">
+    <div class="brand-logo">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#08130D" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"></path>
+        <path d="m9 12 2 2 4-4"></path>
+      </svg>
+    </div>
+
+    <div class="brand-name">No<span>Piques</span></div>
+
+    <div class="brand-tagline" id="branding-tagline">
+      Analiza anuncios de alquiler y compraventa antes de caer en una estafa.
+    </div>
+
+    <div class="brand-pill" id="branding-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"></path>
+        <path d="m9 12 2 2 4-4"></path>
+      </svg>
+      <span id="pill-text">Detección inteligente de fraude</span>
+    </div>
+  </div>
+
+  <!-- Right: Popup -->
+  <div class="popup-wrap">
+    <div class="popup" id="popup-root">
+
+      <div class="header">
+        <div class="logo">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#08130D" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"></path>
+            <path d="m9 12 2 2 4-4"></path>
+          </svg>
+        </div>
+        <div class="brand">No<span>Piques</span></div>
+        <div class="badge">Extensión</div>
+      </div>
+
+      <div class="body">
+
+        <div class="listing">
+          <div class="eyebrow">Anuncio activo</div>
+          <div class="page-title">Ático reformado en el centro — 450 €/mes todo incluido</div>
+          <span class="page-url">idealista.com/inmueble/98472013</span>
+        </div>
+
+        <!-- initial state: active button -->
+        <button class="btn btn-primary show-initial">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"></path>
+            <path d="m9 12 2 2 4-4"></path>
+          </svg>
+          Analizar este anuncio
+        </button>
+
+        <!-- loading state: disabled button + spinner -->
+        <button class="btn btn-primary btn-primary-disabled show-loading">
+          Analizar este anuncio
+        </button>
+        <div class="status loading show-loading">
+          <div class="spinner"></div>
+          <span>Analizando el anuncio…</span>
+        </div>
+
+        <!-- flags state -->
+        <button class="btn btn-primary btn-primary-disabled show-flags">
+          Analizar este anuncio
+        </button>
+        <div class="flags-box show-flags-box">
+          <div class="flags-head">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path>
+              <path d="M12 9v4"></path><path d="M12 17h.01"></path>
+            </svg>
+            3 señales de alerta detectadas
+          </div>
+          <ul class="flags-list">
+            <li>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2B84B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path>
+                <path d="M12 9v4"></path><path d="M12 17h.01"></path>
+              </svg>
+              Precio muy por debajo del mercado de la zona.
+            </li>
+            <li>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2B84B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path>
+                <path d="M12 9v4"></path><path d="M12 17h.01"></path>
+              </svg>
+              Solicitud de transferencia antes de la visita.
+            </li>
+            <li>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2B84B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path>
+                <path d="M12 9v4"></path><path d="M12 17h.01"></path>
+              </svg>
+              Foto reutilizada en 4 anuncios no relacionados.
+            </li>
+          </ul>
+        </div>
+        <button class="btn btn-secondary show-flags">Ver informe completo igualmente</button>
+
+        <!-- clean state -->
+        <button class="btn btn-primary show-clean">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"></path>
+            <path d="m9 12 2 2 4-4"></path>
+          </svg>
+          Analizar este anuncio
+        </button>
+        <div class="flags-clean show-clean">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 6 9 17l-5-5"></path>
+          </svg>
+          Sin señales de alerta. Este anuncio parece legítimo.
+        </div>
+        <button class="btn btn-secondary show-clean">Ver informe completo igualmente</button>
+
+      </div><!-- /body -->
+    </div><!-- /popup -->
+  </div><!-- /popup-wrap -->
+
+</div><!-- /scene -->
+
+<script>
+  const STATES = {
+    initial: {
+      stateClass: "state-initial",
+      tagline: "Analiza anuncios de alquiler y compraventa antes de caer en una estafa.",
+      pill: "Detección inteligente de fraude"
+    },
+    loading: {
+      stateClass: "state-loading",
+      tagline: "La extensión extrae el texto e imágenes del anuncio automáticamente.",
+      pill: "Análisis en curso…"
+    },
+    flags: {
+      stateClass: "state-flags",
+      tagline: "Detecta señales de fraude que el ojo humano pasa por alto.",
+      pill: "3 señales de alerta detectadas"
+    },
+    clean: {
+      stateClass: "state-clean",
+      tagline: "Anuncio limpio. Sin señales de estafa detectadas.",
+      pill: "Anuncio verificado — riesgo bajo"
+    }
+  };
+
+  function applyState(name) {
+    const cfg = STATES[name] || STATES.initial;
+    const scene = document.getElementById("scene");
+    // Remove existing state classes
+    Object.values(STATES).forEach(s => scene.classList.remove(s.stateClass));
+    scene.classList.add(cfg.stateClass);
+    document.getElementById("branding-tagline").textContent = cfg.tagline;
+    document.getElementById("pill-text").textContent = cfg.pill;
+  }
+
+  // Read state from URL hash: #initial | #loading | #flags | #clean
+  const hash = location.hash.replace("#", "") || "initial";
+  applyState(hash);
+
+  window.addEventListener("hashchange", () => {
+    applyState(location.hash.replace("#", "") || "initial");
+  });
+</script>
+</body>
+</html>
