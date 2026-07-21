@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NoPiques — Analizar anuncio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Extrae el contenido de un anuncio inmobiliario y lo envía a NoPiques para su análisis de fraude.",
   "permissions": ["activeTab", "scripting", "storage", "tabs"],
   "optional_permissions": ["languageModel"],
