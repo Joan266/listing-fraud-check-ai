@@ -165,6 +165,23 @@
   #btn-analyze-anyway { display: none; }
   #btn-analyze-anyway.show { display: inline-flex; }
 
+  /* ---------- LOCAL AI BANNER ---------- */
+  #local-ai-banner {
+    display: none; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 12px; padding: 9px 12px; border-radius: 9px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  }
+  #local-ai-banner.show { display: flex; }
+  #local-ai-banner .ai-info { display: flex; flex-direction: column; gap: 2px; }
+  #local-ai-banner .ai-label { font-size: 12px; font-weight: 600; color: var(--text-dim); }
+  #local-ai-banner .ai-note { font-size: 10.5px; color: var(--text-faint); }
+  #btn-enable-local-ai {
+    flex-shrink: 0; background: transparent; border: 1px solid var(--border-strong);
+    border-radius: 7px; color: var(--text-dim); font-family: inherit; font-size: 12px;
+    font-weight: 600; padding: 5px 11px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  }
+  #btn-enable-local-ai:hover { border-color: var(--accent); color: var(--accent); }
+
   /* ---------- SETTINGS ---------- */
   .settings { margin-top: 6px; border-top: 1px solid var(--border); }
   .settings summary {
@@ -264,6 +281,14 @@
     </div>
 
     <button id="btn-analyze-anyway" class="btn btn-secondary">Ver informe completo igualmente</button>
+
+    <div id="local-ai-banner">
+      <div class="ai-info">
+        <span class="ai-label">⚡ IA local (Gemini Nano)</span>
+        <span class="ai-note">Opcional · no necesaria para el análisis completo</span>
+      </div>
+      <button id="btn-enable-local-ai">Activar</button>
+    </div>
 
   </div>
 

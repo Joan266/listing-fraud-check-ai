@@ -3,6 +3,8 @@ const API_ENDPOINT = "/api/v1/extract-data";
 
 const btnAnalyze = document.getElementById("btn-analyze");
 const btnAnalyzeAnyway = document.getElementById("btn-analyze-anyway");
+const btnEnableLocalAi = document.getElementById("btn-enable-local-ai");
+const localAiBanner = document.getElementById("local-ai-banner");
 const statusEl = document.getElementById("status");
 const pageTitleEl = document.getElementById("page-title");
 const pageUrlEl = document.getElementById("page-url");
@@ -252,7 +254,20 @@ async function fetchExtractedData(text, url, apiUrl) {
   if (isInsecureRemote(savedUrl)) {
     setStatus("Aviso: conexión no segura (HTTP). Usa HTTPS en producción.", "error");
   }
+
+  // Show local AI banner if languageModel permission not yet granted
+  const hasLocalAi = await chrome.permissions.contains({ permissions: ["languageModel"] });
+  if (!hasLocalAi && localAiBanner) {
+    localAiBanner.classList.add("show");
+  }
 })();
+
+btnEnableLocalAi?.addEventListener("click", async () => {
+  const granted = await chrome.permissions.request({ permissions: ["languageModel"] });
+  if (granted && localAiBanner) {
+    localAiBanner.classList.remove("show");
+  }
+});
 
 // --- Shared state for "analyze anyway" flow ---
 let _pendingText = null;
