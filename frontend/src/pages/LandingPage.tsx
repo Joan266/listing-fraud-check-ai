@@ -384,7 +384,7 @@ export const LandingPage: React.FC = () => {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                 <a
-                  href="https://github.com/Joan266/listing-fraud-check-ai"
+                  href="https://chromewebstore.google.com/detail/nopiques-analizar-anuncio/biofhgfnbmolcpgdiglciemegeldmoad"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
