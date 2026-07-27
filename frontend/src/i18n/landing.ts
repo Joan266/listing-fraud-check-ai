@@ -48,7 +48,7 @@ export interface LandingT {
     skip: string;
     useExample: string;
   };
-  stack: { label: string; title: string; award: string; subtitle: string };
+  stack: { label: string; title: string; subtitle: string };
   footer: { tagline: string; portfolio: string };
 }
 
@@ -152,7 +152,7 @@ export const translations: Record<Lang, LandingT> = {
     form: {
       label: 'Pruébalo ahora',
       title: 'Verifica un anuncio',
-      subtitle: 'Pega el texto de un anuncio real o usa nuestro ejemplo para ver un informe completo.',
+      subtitle: 'Pega el texto de un anuncio o la URL directa para ver un informe completo.',
       modeText: 'Pegar texto',
       modeUrl: 'Pegar URL',
       placeholder: 'Pega aquí el texto del anuncio de alquiler…\n\nConsejo: Ctrl+A para seleccionar todo, Ctrl+C para copiar, Ctrl+V para pegar.',
@@ -165,11 +165,10 @@ export const translations: Record<Lang, LandingT> = {
       useExample: 'Usar ejemplo con estafa',
     },
     stack: {
-      label: 'Bajo el capó · ingeniería',
+      label: 'Ingeniería de software',
       title: 'Stack tecnológico',
-      award: 'Construido para los Google Maps Platform Awards',
       subtitle:
-        'Inteligencia de ubicación real vía Geocoding, Places y Maps JavaScript API, análisis con Gemini, y colas de trabajos en paralelo con Redis + RQ.',
+        'Pipeline asíncrono con 6 workers paralelos en Cloud Run: Geocoding + Places API para validar dirección, Gemini para extracción de datos y análisis de texto, Google Vision para forense de imágenes. La extensión Chrome (Manifest V3) extrae el anuncio de 10+ portales y lo envía al pipeline sin copiar ni pegar. Redis (Upstash) + RQ gestionan la cola de trabajos; PostgreSQL (Supabase) persiste los análisis.',
     },
     footer: {
       tagline: 'Detección de fraude en alquileres con IA',
@@ -276,7 +275,7 @@ export const translations: Record<Lang, LandingT> = {
     form: {
       label: 'Try it now',
       title: 'Verify a listing',
-      subtitle: 'Paste the text of a real listing or use our example to see a full report.',
+      subtitle: 'Paste the listing text or a direct URL to see a full report.',
       modeText: 'Paste text',
       modeUrl: 'Paste URL',
       placeholder: 'Paste the rental listing text here…\n\nTip: Ctrl+A to select all, Ctrl+C to copy, Ctrl+V to paste.',
@@ -289,11 +288,10 @@ export const translations: Record<Lang, LandingT> = {
       useExample: 'Use scam example',
     },
     stack: {
-      label: 'Under the hood · engineering',
+      label: 'Software engineering',
       title: 'Tech stack',
-      award: 'Built for the Google Maps Platform Awards',
       subtitle:
-        'Real location intelligence via Geocoding, Places and the Maps JavaScript API, analysis with Gemini, and parallel job queues with Redis + RQ.',
+        'Async pipeline with 6 parallel workers on Cloud Run: Geocoding + Places API for location validation, Gemini for data extraction and text analysis, Google Vision for image forensics. The Chrome Extension (Manifest V3) extracts the listing from 10+ portals and sends it to the pipeline without copy-pasting. Redis (Upstash) + RQ manage the job queue; PostgreSQL (Supabase) persists the analyses.',
     },
     footer: {
       tagline: 'AI-powered rental fraud detection',

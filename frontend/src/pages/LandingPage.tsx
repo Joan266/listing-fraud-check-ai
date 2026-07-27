@@ -22,8 +22,8 @@ const EXT_ICONS     = [Download, Cpu, Zap];
 // ── Tech stack ───────────────────────────────────────────────────────────────
 const STACK: Array<{ name: string; role: Record<string, string>; icon: string }> = [
   { name: 'React',        role: { es: 'UI',                 en: 'UI'                  }, icon: 'https://cdn.simpleicons.org/react/61DAFB'       },
-  { name: 'Redux',        role: { es: 'Estado',             en: 'State'               }, icon: 'https://cdn.simpleicons.org/redux/764ABC'       },
   { name: 'TypeScript',   role: { es: 'Tipos · DX',         en: 'Types · DX'          }, icon: 'https://cdn.simpleicons.org/typescript/3178C6'   },
+  { name: 'Vercel',       role: { es: 'Frontend deploy',    en: 'Frontend deploy'     }, icon: 'https://cdn.simpleicons.org/vercel/E7ECF3'       },
   { name: 'FastAPI',      role: { es: 'API · Python',       en: 'API · Python'        }, icon: 'https://cdn.simpleicons.org/fastapi/009688'     },
   { name: 'PostgreSQL',   role: { es: 'Base de datos',      en: 'Database'            }, icon: 'https://cdn.simpleicons.org/postgresql/4169E1'  },
   { name: 'Redis + RQ',   role: { es: 'Colas de trabajos',  en: 'Job queues'          }, icon: 'https://cdn.simpleicons.org/redis/FF4438'       },
@@ -544,24 +544,6 @@ export const LandingPage: React.FC = () => {
                   ))}
                 </div>
 
-                {inputMode === 'text' && (
-                  <button
-                    type="button"
-                    onClick={() => setListingText(SCAM_EXAMPLE)}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 7,
-                      fontFamily: "'IBM Plex Sans', system-ui, sans-serif", fontSize: 13.5, fontWeight: 500,
-                      color: '#8FE7BD', background: 'none',
-                      border: '1px dashed rgba(53,212,138,0.4)',
-                      borderRadius: 9, padding: '8px 13px', cursor: 'pointer',
-                      transition: 'border-color 0.15s, color 0.15s',
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(53,212,138,0.7)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(53,212,138,0.4)'; }}
-                  >
-                    {t.form.useExample}
-                  </button>
-                )}
               </div>
 
               <form onSubmit={handleSubmit}>
@@ -642,21 +624,14 @@ export const LandingPage: React.FC = () => {
             padding: isMobile ? '24px 20px' : '48px 44px',
           }}>
             {/* Header row */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 36 }}>
-              <div>
-                <div style={S.monoLabel}>{t.stack.label}</div>
-                <h2 style={{ ...S.sectionTitle, margin: '12px 0 0' }}>{t.stack.title}</h2>
-              </div>
-              {/* Google Maps Platform award badge */}
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 9,
-                padding: '9px 15px', borderRadius: 999,
-                border: '1px solid rgba(66,133,244,0.35)', background: 'rgba(66,133,244,0.08)',
-              }}>
-                <img src="https://cdn.simpleicons.org/googlemaps/4285F4" width="17" height="17" alt="Google Maps" />
-                <span style={{ fontSize: 13.5, color: '#AEC6FF', fontWeight: 500 }}>{t.stack.award}</span>
-              </div>
+            <div style={{ marginBottom: 20 }}>
+              <div style={S.monoLabel}>{t.stack.label}</div>
+              <h2 style={{ ...S.sectionTitle, margin: '12px 0 0' }}>{t.stack.title}</h2>
             </div>
+
+            <p style={{ color: '#9AA3B2', fontSize: 15, lineHeight: 1.7, maxWidth: '72ch', marginBottom: 32 }}>
+              {t.stack.subtitle}
+            </p>
 
             {/* 4-col grid */}
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 14 }}>
@@ -680,10 +655,6 @@ export const LandingPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Footer note */}
-            <div style={{ marginTop: 32, paddingTop: 26, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-              <span style={{ fontSize: 14, color: '#9AA3B2' }}>{t.stack.subtitle}</span>
-            </div>
           </div>
         </section>
 
