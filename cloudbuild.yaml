@@ -34,6 +34,6 @@ steps:
       - '--memory=512Mi'
       - '--cpu=1'
       - '--set-secrets=DATABASE_URL=db-url:latest,GOOGLE_API_KEY=google-api-key:latest,GOOGLE_GEMINI_API_KEY=google-gemini-api-key:latest,GOOGLE_SEARCH_ENGINE_ID=google-search-engine-id:latest,JWT_SECRET=jwt-secret:latest,REDIS_HOST=redis-host:latest,REDIS_PASSWORD=redis-password:latest'
-      - '--set-env-vars=ENVIRONMENT=production,REDIS_SSL=true,REDIS_PORT=6379,BACKEND_CORS_ORIGINS=https://nopiques.vercel.app'
+      - '--set-env-vars=^|^ENVIRONMENT=production|REDIS_SSL=true|REDIS_PORT=6379|BACKEND_CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://listing-fraud-check-ai-three.vercel.app'
     id: 'Deploy API'
 
