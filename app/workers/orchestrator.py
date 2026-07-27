@@ -130,7 +130,7 @@ def start_full_analysis(check_id_arg):
     reviews_job = analysis_fast_queue.enqueue(tasks.job_listing_reviews_analysis, check_id_str, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
     price_sanity_job = analysis_fast_queue.enqueue(tasks.job_price_sanity_check, check_id_str, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
     host_profile_job = analysis_fast_queue.enqueue(tasks.job_host_profile_check, check_id_str, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
-    reverse_search_job = analysis_heavy_queue.enqueue(tasks.job_reverse_image_search, check_id_str, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
+    reverse_search_job = analysis_heavy_queue.enqueue(tasks.job_reverse_image_search, check_id_str, job_timeout=300, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)
     
     # --- Layer 2: Enqueue jobs that depend on Layer 1 jobs ---
     reputation_job = analysis_fast_queue.enqueue(tasks.job_reputation_check, check_id_str, depends_on=geocode_job, on_failure=handle_job_failure, on_success=_handle_job_success, result_ttl=3600)

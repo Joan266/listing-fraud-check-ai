@@ -26,7 +26,7 @@ def reverse_image_search(image_url: str) -> dict:
     try:
         image = vision.Image()
         image.source.image_uri = image_url
-        response = vision_client.web_detection(image=image)
+        response = vision_client.web_detection(image=image, timeout=20)
         detection = response.web_detection
 
         has_full_matches = bool(detection.full_matching_images)
