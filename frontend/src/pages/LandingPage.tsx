@@ -624,9 +624,19 @@ export const LandingPage: React.FC = () => {
             padding: isMobile ? '24px 20px' : '48px 44px',
           }}>
             {/* Header row */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={S.monoLabel}>{t.stack.label}</div>
-              <h2 style={{ ...S.sectionTitle, margin: '12px 0 0' }}>{t.stack.title}</h2>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 20 }}>
+              <div>
+                <div style={S.monoLabel}>{t.stack.label}</div>
+                <h2 style={{ ...S.sectionTitle, margin: '12px 0 0' }}>{t.stack.title}</h2>
+              </div>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 9,
+                padding: '9px 15px', borderRadius: 999,
+                border: '1px solid rgba(66,133,244,0.35)', background: 'rgba(66,133,244,0.08)',
+              }}>
+                <img src="https://cdn.simpleicons.org/googlemaps/4285F4" width="17" height="17" alt="Google Maps" />
+                <span style={{ fontSize: 13.5, color: '#AEC6FF', fontWeight: 500 }}>{t.stack.award}</span>
+              </div>
             </div>
 
             <p style={{ color: '#9AA3B2', fontSize: 15, lineHeight: 1.7, maxWidth: '72ch', marginBottom: 32 }}>

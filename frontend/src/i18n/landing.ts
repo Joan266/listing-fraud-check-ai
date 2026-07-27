@@ -48,7 +48,7 @@ export interface LandingT {
     skip: string;
     useExample: string;
   };
-  stack: { label: string; title: string; subtitle: string };
+  stack: { label: string; title: string; award: string; subtitle: string };
   footer: { tagline: string; portfolio: string };
 }
 
@@ -165,10 +165,11 @@ export const translations: Record<Lang, LandingT> = {
       useExample: 'Usar ejemplo con estafa',
     },
     stack: {
-      label: 'Ingeniería de software',
+      label: 'Arquitectura & skills',
       title: 'Stack tecnológico',
+      award: 'Construido para los Google Maps Platform Awards',
       subtitle:
-        'Pipeline asíncrono con 6 workers paralelos en Cloud Run: Geocoding + Places API para validar dirección, Gemini para extracción de datos y análisis de texto, Google Vision para forense de imágenes. La extensión Chrome (Manifest V3) extrae el anuncio de 10+ portales y lo envía al pipeline sin copiar ni pegar. Redis (Upstash) + RQ gestionan la cola de trabajos; PostgreSQL (Supabase) persiste los análisis.',
+        'Pipeline asíncrono con 6 workers paralelos en Cloud Run: Geocoding + Places API para validar dirección, Gemini para extracción de datos y análisis de texto, Google Vision + búsqueda inversa de imágenes para forense visual. La extensión Chrome (Manifest V3) extrae el anuncio de 10+ portales y lo envía al pipeline sin copiar ni pegar. Redis (Upstash) + RQ gestionan la cola de trabajos; PostgreSQL (Supabase) persiste los análisis.',
     },
     footer: {
       tagline: 'Detección de fraude en alquileres con IA',
@@ -288,10 +289,11 @@ export const translations: Record<Lang, LandingT> = {
       useExample: 'Use scam example',
     },
     stack: {
-      label: 'Software engineering',
+      label: 'Architecture & skills',
       title: 'Tech stack',
+      award: 'Built for the Google Maps Platform Awards',
       subtitle:
-        'Async pipeline with 6 parallel workers on Cloud Run: Geocoding + Places API for location validation, Gemini for data extraction and text analysis, Google Vision for image forensics. The Chrome Extension (Manifest V3) extracts the listing from 10+ portals and sends it to the pipeline without copy-pasting. Redis (Upstash) + RQ manage the job queue; PostgreSQL (Supabase) persists the analyses.',
+        'Async pipeline with 6 parallel workers on Cloud Run: Geocoding + Places API for location validation, Gemini for data extraction and text analysis, Google Vision + reverse image search for visual forensics. The Chrome Extension (Manifest V3) extracts the listing from 10+ portals and sends it to the pipeline without copy-pasting. Redis (Upstash) + RQ manage the job queue; PostgreSQL (Supabase) persists the analyses.',
     },
     footer: {
       tagline: 'AI-powered rental fraud detection',
