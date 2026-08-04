@@ -12,6 +12,7 @@ engine = create_engine(
     connect_args=connect_args,
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -48,6 +49,7 @@ if _is_postgres:
         _async_url,
         pool_size=settings.DB_POOL_SIZE,
         max_overflow=settings.DB_MAX_OVERFLOW,
+        pool_pre_ping=True,
     )
 elif _is_sqlite:
     _async_url = settings.DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///", 1)

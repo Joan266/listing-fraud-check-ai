@@ -7,6 +7,8 @@ class Message(BaseModel):
     role: str
     content: str
 
+    model_config = ConfigDict(from_attributes=True)
+
 class ChatRequest(BaseModel):
     session_id: str
     chat_id: str
