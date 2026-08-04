@@ -188,15 +188,25 @@ async def stream_analysis_progress(
     request: Request,
     check_id: str,
     session_id: str = Query(...),
+    db: AsyncSession = Depends(async_get_db),
 ):
     """
     SSE endpoint that streams real-time analysis progress.
     Uses query param for session_id since EventSource can't send custom headers.
     """
     try:
-        uuid.UUID(check_id)
+        check_uuid = uuid.UUID(check_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid check_id format.")
+
+    owner = await db.execute(
+        select(models.FraudCheck.session_id).where(models.FraudCheck.id == check_uuid)
+    )
+    owner_session_id = owner.scalar_one_or_none()
+    if owner_session_id is None:
+        raise HTTPException(status_code=404, detail="Analysis not found.")
+    if owner_session_id != session_id:
+        raise HTTPException(status_code=403, detail="Not authorized.")
 
     channel = f"analysis:{check_id}:progress"
 
