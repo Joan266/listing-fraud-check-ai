@@ -2,13 +2,6 @@
 
 An AI-powered tool to help users detect fraud in online rental and accommodation listings before booking.
 
----
-
-## Live Demo
-
-**Application:** [https://listing-fraud-check-ai-three.vercel.app/](https://listing-fraud-check-ai-three.vercel.app/)
-
-
 
 ---
 
