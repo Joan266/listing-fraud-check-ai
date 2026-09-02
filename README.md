@@ -8,7 +8,7 @@ An AI-powered tool to help users detect fraud in online rental and accommodation
 
 **Application:** [https://listing-fraud-check-ai-three.vercel.app/](https://listing-fraud-check-ai-three.vercel.app/)
 
-**API:** [https://listing-fraud-check-api-999434601012.us-central1.run.app](https://listing-fraud-check-api-999434601012.us-central1.run.app)
+
 
 ---
 
