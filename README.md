@@ -1,4 +1,4 @@
-# NoPiques
+# FraudCheck
 
 An AI-powered tool to help users detect fraud in online rental and accommodation listings before booking.
 
@@ -14,7 +14,7 @@ An AI-powered tool to help users detect fraud in online rental and accommodation
 
 ## About
 
-NoPiques analyzes rental listings (Idealista, Fotocasa, Airbnb, Booking, and more) and runs a multi-layered forensic check to surface common fraud signals. Users can paste listing text or use the Chrome extension to analyze any listing in one click.
+FraudCheck analyzes rental listings (Idealista, Fotocasa, Airbnb, Booking, and more) and runs a multi-layered forensic check to surface common fraud signals. Users can paste listing text or use the Chrome extension to analyze any listing in one click.
 
 ### How It Works
 
